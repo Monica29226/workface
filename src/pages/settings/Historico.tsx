@@ -50,7 +50,7 @@ export function Historico() {
   const [selectedCurrency, setSelectedCurrency] = useState<'CRC' | 'USD' | 'BOTH'>('BOTH');
   const [periodFilter, setPeriodFilter] = useState({ desde: '', hasta: '' });
   const [searchFilter, setSearchFilter] = useState('');
-  const [centroFilter, setCentroFilter] = useState('');
+  const [centroFilter, setCentroFilter] = useState('todos');
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [viewMode, setViewMode] = useState<'pivot' | 'detail'>('pivot');
 
@@ -102,7 +102,7 @@ export function Historico() {
         item.cedula.includes(searchFilter) ||
         item.email.toLowerCase().includes(searchFilter.toLowerCase());
       
-      const matchesCentro = !centroFilter || item.centro_costo === centroFilter;
+      const matchesCentro = centroFilter === 'todos' || item.centro_costo === centroFilter;
       
       return matchesSearch && matchesCentro;
     });
@@ -323,7 +323,7 @@ export function Historico() {
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos</SelectItem>
+                  <SelectItem value="todos">Todos</SelectItem>
                   {centrosCosto.map(centro => (
                     <SelectItem key={centro} value={centro}>{centro}</SelectItem>
                   ))}
@@ -367,7 +367,7 @@ export function Historico() {
               onClick={() => {
                 setPeriodFilter({ desde: '', hasta: '' });
                 setSearchFilter('');
-                setCentroFilter('');
+                setCentroFilter('todos');
               }}
             >
               Limpiar
