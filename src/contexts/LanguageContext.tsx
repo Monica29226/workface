@@ -1,0 +1,178 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+
+type Language = 'es' | 'en';
+
+interface LanguageContextType {
+  language: Language;
+  setLanguage: (lang: Language) => void;
+  t: (key: string) => string;
+}
+
+const translations = {
+  es: {
+    // Navigation
+    'nav.dashboard': 'Panel Principal',
+    'nav.employees': 'Empleados',
+    'nav.contracts': 'Contratos',
+    'nav.timesheets': 'Distribución Jornada',
+    'nav.payroll_process': 'Proceso Planilla',
+    'nav.payslips': 'Colillas',
+    'nav.cost_centers': 'Centros de Costo',
+    'nav.liquidations': 'Liquidaciones',
+    'nav.reports': 'Reportes',
+    'nav.email_center': 'Centro Correos',
+    'nav.parameters': 'Parámetros',
+    'nav.manager': 'Administrador',
+
+    // Dashboard
+    'dashboard.title': 'Panel Principal',
+    'dashboard.gross_period': 'Bruto del Período',
+    'dashboard.total_deductions': 'Deducciones Totales',
+    'dashboard.net_pay': 'Neto a Depositar',
+    'dashboard.employer_charges': 'Cargas Patronales',
+    'dashboard.active_employees': 'Empleados Activos',
+    'dashboard.avg_cost_employee': 'Costo Promedio por Empleado',
+
+    // Common
+    'common.save': 'Guardar',
+    'common.cancel': 'Cancelar',
+    'common.edit': 'Editar',
+    'common.delete': 'Eliminar',
+    'common.add': 'Agregar',
+    'common.export': 'Exportar',
+    'common.import': 'Importar',
+    'common.actions': 'Acciones',
+    'common.status': 'Estado',
+    'common.search': 'Buscar',
+    'common.filter': 'Filtrar',
+    'common.loading': 'Cargando...',
+
+    // Employee fields
+    'employee.cedula': 'Cédula',
+    'employee.name': 'Nombre',
+    'employee.email': 'Correo',
+    'employee.phone': 'Teléfono',
+    'employee.position': 'Puesto',
+    'employee.department': 'Departamento',
+    'employee.hire_date': 'Fecha Ingreso',
+    'employee.salary': 'Salario',
+    'employee.cost_center': 'Centro de Costo',
+
+    // Payroll
+    'payroll.gross': 'Bruto',
+    'payroll.deductions': 'Deducciones',
+    'payroll.net': 'Neto',
+    'payroll.aguinaldo': 'Aguinaldo',
+    'payroll.social_charges': 'Cargas Sociales',
+    'payroll.salary_retention': 'Retención Salarial',
+
+    // Status
+    'status.draft': 'Borrador',
+    'status.in_review': 'En Revisión',
+    'status.approved': 'Aprobado',
+    'status.closed': 'Cerrado'
+  },
+  en: {
+    // Navigation
+    'nav.dashboard': 'Dashboard',
+    'nav.employees': 'Employees',
+    'nav.contracts': 'Contracts',
+    'nav.timesheets': 'Timesheets',
+    'nav.payroll_process': 'Payroll Process',
+    'nav.payslips': 'Payslips',
+    'nav.cost_centers': 'Cost Centers',
+    'nav.liquidations': 'Severance',
+    'nav.reports': 'Reports',
+    'nav.email_center': 'Email Center',
+    'nav.parameters': 'Parameters',
+    'nav.manager': 'Manager',
+
+    // Dashboard
+    'dashboard.title': 'Dashboard',
+    'dashboard.gross_period': 'Period Gross',
+    'dashboard.total_deductions': 'Total Deductions',
+    'dashboard.net_pay': 'Net to Pay',
+    'dashboard.employer_charges': 'Employer Charges',
+    'dashboard.active_employees': 'Active Employees',
+    'dashboard.avg_cost_employee': 'Average Cost per Employee',
+
+    // Common
+    'common.save': 'Save',
+    'common.cancel': 'Cancel',
+    'common.edit': 'Edit',
+    'common.delete': 'Delete',
+    'common.add': 'Add',
+    'common.export': 'Export',
+    'common.import': 'Import',
+    'common.actions': 'Actions',
+    'common.status': 'Status',
+    'common.search': 'Search',
+    'common.filter': 'Filter',
+    'common.loading': 'Loading...',
+
+    // Employee fields
+    'employee.cedula': 'ID',
+    'employee.name': 'Name',
+    'employee.email': 'Email',
+    'employee.phone': 'Phone',
+    'employee.position': 'Position',
+    'employee.department': 'Department',
+    'employee.hire_date': 'Hire Date',
+    'employee.salary': 'Salary',
+    'employee.cost_center': 'Cost Center',
+
+    // Payroll
+    'payroll.gross': 'Gross',
+    'payroll.deductions': 'Deductions',
+    'payroll.net': 'Net',
+    'payroll.aguinaldo': 'Christmas Bonus',
+    'payroll.social_charges': 'Social Charges',
+    'payroll.salary_retention': 'Salary Retention',
+
+    // Status
+    'status.draft': 'Draft',
+    'status.in_review': 'In Review',
+    'status.approved': 'Approved',
+    'status.closed': 'Closed'
+  }
+};
+
+const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+
+export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  const [language, setLanguage] = useState<Language>('es');
+
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem('language') as Language;
+    if (savedLanguage && ['es', 'en'].includes(savedLanguage)) {
+      setLanguage(savedLanguage);
+    }
+  }, []);
+
+  const handleSetLanguage = (lang: Language) => {
+    setLanguage(lang);
+    localStorage.setItem('language', lang);
+  };
+
+  const t = (key: string): string => {
+    return translations[language][key as keyof typeof translations['es']] || key;
+  };
+
+  return (
+    <LanguageContext.Provider value={{
+      language,
+      setLanguage: handleSetLanguage,
+      t
+    }}>
+      {children}
+    </LanguageContext.Provider>
+  );
+}
+
+export function useLanguage() {
+  const context = useContext(LanguageContext);
+  if (context === undefined) {
+    throw new Error('useLanguage must be used within a LanguageProvider');
+  }
+  return context;
+}
