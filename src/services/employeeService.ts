@@ -235,17 +235,74 @@ export class EmployeeService {
 
   /**
    * Check if current user can access sensitive employee data
+   * Uses the enhanced security function for field-level access control
    */
   static async canAccessSensitiveData(): Promise<boolean> {
     const { data, error } = await supabase
-      .rpc('can_access_sensitive_employee_data');
+      .rpc('can_access_employee_sensitive_fields');
 
     if (error) {
-      console.error('Error checking permissions:', error);
+      console.error('Error checking sensitive field permissions:', error);
       return false;
     }
 
     return data === true;
+  }
+
+  /**
+   * Check if current user can access basic employee data
+   * This is used for managers who can see employee lists but not sensitive fields
+   */
+  static async canAccessBasicData(): Promise<boolean> {
+    const { data, error } = await supabase
+      .rpc('can_access_employee_basic_data');
+
+    if (error) {
+      console.error('Error checking basic data permissions:', error);
+      return false;
+    }
+
+    return data === true;
+  }
+
+  /**
+   * Create employee-user mapping for authentication
+   * This links an employee record to a user account for login access
+   */
+  static async createEmployeeUserMapping(employeeId: string, userEmail: string, companyId: string): Promise<{ data: any; error: any }> {
+    // First get the user ID from email
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('email', userEmail)
+      .maybeSingle();
+
+    if (userError) {
+      console.error('Error finding user:', userError);
+      return { data: null, error: userError };
+    }
+
+    if (!userData) {
+      return { data: null, error: 'User not found with email: ' + userEmail };
+    }
+
+    // Create the mapping
+    const { data, error } = await supabase
+      .from('employee_user_mapping')
+      .insert({
+        employee_id: employeeId,
+        user_id: userData.user_id,
+        company_id: companyId
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating employee-user mapping:', error);
+      return { data: null, error };
+    }
+
+    return { data, error: null };
   }
 
   /**

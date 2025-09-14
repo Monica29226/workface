@@ -336,6 +336,45 @@ export type Database = {
           },
         ]
       }
+      employee_user_mapping: {
+        Row: {
+          company_id: string
+          created_at: string | null
+          employee_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string | null
+          employee_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string | null
+          employee_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_user_mapping_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_employee_user_mapping_company"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           active: boolean | null
@@ -750,6 +789,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_employee_basic_data: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      can_access_employee_sensitive_fields: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       can_access_sensitive_employee_data: {
         Args: Record<PropertyKey, never>
         Returns: boolean
