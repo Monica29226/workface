@@ -30,7 +30,7 @@ export interface SecureEmployee {
 /**
  * Secure Employee Service
  * 
- * This service uses the employee_safe_view which automatically filters sensitive data
+ * This service uses the employees table with proper RLS policies to filter data
  * based on the user's role. Only HR, Admin, and Payroll personnel can see sensitive
  * information like cedula, email, phone, SSN, IBAN, etc.
  * 
@@ -41,28 +41,56 @@ export interface SecureEmployee {
  */
 export class EmployeeService {
   /**
+   * Mask sensitive data based on user permissions
+   */
+  private static maskSensitiveData(employee: any, canAccessSensitive: boolean): SecureEmployee {
+    if (canAccessSensitive) {
+      return employee as SecureEmployee;
+    }
+
+    return {
+      ...employee,
+      cedula: employee.cedula ? `${employee.cedula.substring(0, 3)}XXXXX` : null,
+      email: employee.email ? `${employee.email.substring(0, 2)}XXX@${employee.email.split('@')[1]}` : null,
+      phone: employee.phone ? `${employee.phone.substring(0, 4)}XXXX` : null,
+      iban: 'XXXXXXXXXXXXXXXX',
+      nss_ccss: 'XXXXXXXXX'
+    };
+  }
+
+  /**
    * Get all employees for the current user's company
    * Data is automatically filtered based on user's role and permissions
    */
   static async getEmployees(companyId?: string): Promise<{ data: SecureEmployee[] | null; error: any }> {
-    let query = supabase
-      .from('employee_safe_view')
-      .select('*')
-      .eq('active', true)
-      .order('first_name', { ascending: true });
+    try {
+      // Check user permissions first
+      const canAccessSensitive = await this.canAccessSensitiveData();
 
-    if (companyId) {
-      query = query.eq('company_id', companyId);
-    }
+      let query = supabase
+        .from('employees')
+        .select('*')
+        .eq('active', true)
+        .order('first_name', { ascending: true });
 
-    const { data, error } = await query;
+      if (companyId) {
+        query = query.eq('company_id', companyId);
+      }
 
-    if (error) {
-      console.error('Error fetching employees:', error);
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching employees:', error);
+        return { data: null, error };
+      }
+
+      // Apply data masking based on permissions
+      const maskedData = data?.map(emp => this.maskSensitiveData(emp, canAccessSensitive)) || [];
+      return { data: maskedData, error: null };
+    } catch (error) {
+      console.error('Error in getEmployees:', error);
       return { data: null, error };
     }
-
-    return { data: data as SecureEmployee[], error: null };
   }
 
   /**
@@ -70,18 +98,28 @@ export class EmployeeService {
    * Data is automatically filtered based on user's role and permissions
    */
   static async getEmployeeById(id: string): Promise<{ data: SecureEmployee | null; error: any }> {
-    const { data, error } = await supabase
-      .from('employee_safe_view')
-      .select('*')
-      .eq('id', id)
-      .single();
+    try {
+      // Check user permissions first
+      const canAccessSensitive = await this.canAccessSensitiveData();
 
-    if (error) {
-      console.error('Error fetching employee:', error);
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching employee:', error);
+        return { data: null, error };
+      }
+
+      // Apply data masking based on permissions
+      const maskedData = this.maskSensitiveData(data, canAccessSensitive);
+      return { data: maskedData, error: null };
+    } catch (error) {
+      console.error('Error in getEmployeeById:', error);
       return { data: null, error };
     }
-
-    return { data: data as SecureEmployee, error: null };
   }
 
   /**
@@ -89,25 +127,35 @@ export class EmployeeService {
    * Sensitive data is automatically filtered based on user permissions
    */
   static async searchEmployees(searchTerm: string, companyId?: string): Promise<{ data: SecureEmployee[] | null; error: any }> {
-    let query = supabase
-      .from('employee_safe_view')
-      .select('*')
-      .eq('active', true)
-      .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`)
-      .order('first_name', { ascending: true });
+    try {
+      // Check user permissions first
+      const canAccessSensitive = await this.canAccessSensitiveData();
 
-    if (companyId) {
-      query = query.eq('company_id', companyId);
-    }
+      let query = supabase
+        .from('employees')
+        .select('*')
+        .eq('active', true)
+        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%`)
+        .order('first_name', { ascending: true });
 
-    const { data, error } = await query;
+      if (companyId) {
+        query = query.eq('company_id', companyId);
+      }
 
-    if (error) {
-      console.error('Error searching employees:', error);
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error searching employees:', error);
+        return { data: null, error };
+      }
+
+      // Apply data masking based on permissions
+      const maskedData = data?.map(emp => this.maskSensitiveData(emp, canAccessSensitive)) || [];
+      return { data: maskedData, error: null };
+    } catch (error) {
+      console.error('Error in searchEmployees:', error);
       return { data: null, error };
     }
-
-    return { data: data as SecureEmployee[], error: null };
   }
 
   /**
