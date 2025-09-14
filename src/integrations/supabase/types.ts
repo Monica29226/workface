@@ -293,6 +293,27 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "contracts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_hr_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_manager_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_self_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       cost_centers: {
@@ -367,6 +388,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "employee_user_mapping_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_hr_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_user_mapping_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_manager_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_user_mapping_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_self_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_employee_user_mapping_company"
             columns: ["company_id"]
             isOneToOne: false
@@ -380,6 +422,7 @@ export type Database = {
           active: boolean | null
           birth_date: string | null
           cedula: string
+          cedula_encrypted: string | null
           children_count: number | null
           civil_status: string | null
           company_id: string | null
@@ -387,17 +430,21 @@ export type Database = {
           created_at: string | null
           department: string | null
           email: string | null
+          email_encrypted: string | null
           first_name: string
           has_garnishment: boolean | null
           has_pension: boolean | null
           hire_date: string
           iban: string | null
+          iban_encrypted: string | null
           id: string
           last_name: string
           manager_id: string | null
           nss_ccss: string | null
+          nss_ccss_encrypted: string | null
           payment_currency: string | null
           phone: string | null
+          phone_encrypted: string | null
           termination_date: string | null
           updated_at: string | null
         }
@@ -405,6 +452,7 @@ export type Database = {
           active?: boolean | null
           birth_date?: string | null
           cedula: string
+          cedula_encrypted?: string | null
           children_count?: number | null
           civil_status?: string | null
           company_id?: string | null
@@ -412,17 +460,21 @@ export type Database = {
           created_at?: string | null
           department?: string | null
           email?: string | null
+          email_encrypted?: string | null
           first_name: string
           has_garnishment?: boolean | null
           has_pension?: boolean | null
           hire_date: string
           iban?: string | null
+          iban_encrypted?: string | null
           id?: string
           last_name: string
           manager_id?: string | null
           nss_ccss?: string | null
+          nss_ccss_encrypted?: string | null
           payment_currency?: string | null
           phone?: string | null
+          phone_encrypted?: string | null
           termination_date?: string | null
           updated_at?: string | null
         }
@@ -430,6 +482,7 @@ export type Database = {
           active?: boolean | null
           birth_date?: string | null
           cedula?: string
+          cedula_encrypted?: string | null
           children_count?: number | null
           civil_status?: string | null
           company_id?: string | null
@@ -437,17 +490,21 @@ export type Database = {
           created_at?: string | null
           department?: string | null
           email?: string | null
+          email_encrypted?: string | null
           first_name?: string
           has_garnishment?: boolean | null
           has_pension?: boolean | null
           hire_date?: string
           iban?: string | null
+          iban_encrypted?: string | null
           id?: string
           last_name?: string
           manager_id?: string | null
           nss_ccss?: string | null
+          nss_ccss_encrypted?: string | null
           payment_currency?: string | null
           phone?: string | null
+          phone_encrypted?: string | null
           termination_date?: string | null
           updated_at?: string | null
         }
@@ -466,7 +523,106 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees_hr_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees_manager_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees_self_view"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      employees_backup: {
+        Row: {
+          active: boolean | null
+          birth_date: string | null
+          cedula: string | null
+          children_count: number | null
+          civil_status: string | null
+          company_id: string | null
+          cost_center: string | null
+          created_at: string | null
+          department: string | null
+          email: string | null
+          first_name: string | null
+          has_garnishment: boolean | null
+          has_pension: boolean | null
+          hire_date: string | null
+          iban: string | null
+          id: string | null
+          last_name: string | null
+          manager_id: string | null
+          nss_ccss: string | null
+          payment_currency: string | null
+          phone: string | null
+          termination_date: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          birth_date?: string | null
+          cedula?: string | null
+          children_count?: number | null
+          civil_status?: string | null
+          company_id?: string | null
+          cost_center?: string | null
+          created_at?: string | null
+          department?: string | null
+          email?: string | null
+          first_name?: string | null
+          has_garnishment?: boolean | null
+          has_pension?: boolean | null
+          hire_date?: string | null
+          iban?: string | null
+          id?: string | null
+          last_name?: string | null
+          manager_id?: string | null
+          nss_ccss?: string | null
+          payment_currency?: string | null
+          phone?: string | null
+          termination_date?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          birth_date?: string | null
+          cedula?: string | null
+          children_count?: number | null
+          civil_status?: string | null
+          company_id?: string | null
+          cost_center?: string | null
+          created_at?: string | null
+          department?: string | null
+          email?: string | null
+          first_name?: string | null
+          has_garnishment?: boolean | null
+          has_pension?: boolean | null
+          hire_date?: string | null
+          iban?: string | null
+          id?: string | null
+          last_name?: string | null
+          manager_id?: string | null
+          nss_ccss?: string | null
+          payment_currency?: string | null
+          phone?: string | null
+          termination_date?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       parameter_versions: {
         Row: {
@@ -612,6 +768,27 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payrolls_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_hr_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payrolls_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_manager_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payrolls_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_self_view"
             referencedColumns: ["id"]
           },
           {
@@ -782,11 +959,401 @@ export type Database = {
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "timesheets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_hr_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_manager_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_self_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      employees_hr_view: {
+        Row: {
+          active: boolean | null
+          birth_date: string | null
+          cedula: string | null
+          children_count: number | null
+          civil_status: string | null
+          company_id: string | null
+          cost_center: string | null
+          created_at: string | null
+          department: string | null
+          email: string | null
+          first_name: string | null
+          has_garnishment: boolean | null
+          has_pension: boolean | null
+          hire_date: string | null
+          iban: string | null
+          id: string | null
+          last_name: string | null
+          manager_id: string | null
+          nss_ccss: string | null
+          payment_currency: string | null
+          phone: string | null
+          termination_date: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          birth_date?: string | null
+          cedula?: never
+          children_count?: number | null
+          civil_status?: string | null
+          company_id?: string | null
+          cost_center?: string | null
+          created_at?: string | null
+          department?: string | null
+          email?: never
+          first_name?: string | null
+          has_garnishment?: boolean | null
+          has_pension?: boolean | null
+          hire_date?: string | null
+          iban?: never
+          id?: string | null
+          last_name?: string | null
+          manager_id?: string | null
+          nss_ccss?: never
+          payment_currency?: string | null
+          phone?: never
+          termination_date?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          birth_date?: string | null
+          cedula?: never
+          children_count?: number | null
+          civil_status?: string | null
+          company_id?: string | null
+          cost_center?: string | null
+          created_at?: string | null
+          department?: string | null
+          email?: never
+          first_name?: string | null
+          has_garnishment?: boolean | null
+          has_pension?: boolean | null
+          hire_date?: string | null
+          iban?: never
+          id?: string | null
+          last_name?: string | null
+          manager_id?: string | null
+          nss_ccss?: never
+          payment_currency?: string | null
+          phone?: never
+          termination_date?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees_hr_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees_manager_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees_self_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees_manager_view: {
+        Row: {
+          active: boolean | null
+          birth_date: string | null
+          cedula: string | null
+          children_count: number | null
+          civil_status: string | null
+          company_id: string | null
+          cost_center: string | null
+          created_at: string | null
+          department: string | null
+          email: string | null
+          first_name: string | null
+          has_garnishment: boolean | null
+          has_pension: boolean | null
+          hire_date: string | null
+          iban: string | null
+          id: string | null
+          last_name: string | null
+          manager_id: string | null
+          nss_ccss: string | null
+          payment_currency: string | null
+          phone: string | null
+          termination_date: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          birth_date?: never
+          cedula?: never
+          children_count?: never
+          civil_status?: string | null
+          company_id?: string | null
+          cost_center?: string | null
+          created_at?: string | null
+          department?: string | null
+          email?: never
+          first_name?: string | null
+          has_garnishment?: never
+          has_pension?: never
+          hire_date?: string | null
+          iban?: never
+          id?: string | null
+          last_name?: string | null
+          manager_id?: string | null
+          nss_ccss?: never
+          payment_currency?: string | null
+          phone?: never
+          termination_date?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          birth_date?: never
+          cedula?: never
+          children_count?: never
+          civil_status?: string | null
+          company_id?: string | null
+          cost_center?: string | null
+          created_at?: string | null
+          department?: string | null
+          email?: never
+          first_name?: string | null
+          has_garnishment?: never
+          has_pension?: never
+          hire_date?: string | null
+          iban?: never
+          id?: string | null
+          last_name?: string | null
+          manager_id?: string | null
+          nss_ccss?: never
+          payment_currency?: string | null
+          phone?: never
+          termination_date?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees_hr_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees_manager_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees_self_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees_secure: {
+        Row: {
+          active: boolean | null
+          birth_date: string | null
+          cedula: string | null
+          children_count: number | null
+          civil_status: string | null
+          company_id: string | null
+          cost_center: string | null
+          created_at: string | null
+          department: string | null
+          email: string | null
+          first_name: string | null
+          has_garnishment: boolean | null
+          has_pension: boolean | null
+          hire_date: string | null
+          iban: string | null
+          id: string | null
+          last_name: string | null
+          manager_id: string | null
+          nss_ccss: string | null
+          payment_currency: string | null
+          phone: string | null
+          termination_date: string | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
+      employees_self_view: {
+        Row: {
+          active: boolean | null
+          birth_date: string | null
+          cedula: string | null
+          children_count: number | null
+          civil_status: string | null
+          company_id: string | null
+          cost_center: string | null
+          created_at: string | null
+          department: string | null
+          email: string | null
+          first_name: string | null
+          has_garnishment: boolean | null
+          has_pension: boolean | null
+          hire_date: string | null
+          iban: string | null
+          id: string | null
+          last_name: string | null
+          manager_id: string | null
+          nss_ccss: string | null
+          payment_currency: string | null
+          phone: string | null
+          termination_date: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          birth_date?: never
+          cedula?: never
+          children_count?: never
+          civil_status?: never
+          company_id?: string | null
+          cost_center?: string | null
+          created_at?: string | null
+          department?: string | null
+          email?: never
+          first_name?: string | null
+          has_garnishment?: never
+          has_pension?: never
+          hire_date?: string | null
+          iban?: never
+          id?: string | null
+          last_name?: string | null
+          manager_id?: string | null
+          nss_ccss?: never
+          payment_currency?: never
+          phone?: never
+          termination_date?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          birth_date?: never
+          cedula?: never
+          children_count?: never
+          civil_status?: never
+          company_id?: string | null
+          cost_center?: string | null
+          created_at?: string | null
+          department?: string | null
+          email?: never
+          first_name?: string | null
+          has_garnishment?: never
+          has_pension?: never
+          hire_date?: string | null
+          iban?: never
+          id?: string | null
+          last_name?: string | null
+          manager_id?: string | null
+          nss_ccss?: never
+          payment_currency?: never
+          phone?: never
+          termination_date?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees_hr_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees_manager_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees_self_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       can_access_employee_basic_data: {
@@ -800,6 +1367,51 @@ export type Database = {
       can_access_sensitive_employee_data: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      decrypt_cedula: {
+        Args: { encrypted_cedula: string }
+        Returns: string
+      }
+      decrypt_email_safe: {
+        Args: { encrypted_email: string }
+        Returns: string
+      }
+      decrypt_iban: {
+        Args: { encrypted_iban: string }
+        Returns: string
+      }
+      decrypt_nss_ccss: {
+        Args: { encrypted_nss: string }
+        Returns: string
+      }
+      decrypt_phone_safe: {
+        Args: { encrypted_phone: string }
+        Returns: string
+      }
+      get_encryption_key: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      insert_employee_secure: {
+        Args: {
+          p_birth_date?: string
+          p_cedula?: string
+          p_children_count?: number
+          p_civil_status?: string
+          p_company_id: string
+          p_cost_center?: string
+          p_department?: string
+          p_email?: string
+          p_first_name: string
+          p_hire_date?: string
+          p_iban?: string
+          p_last_name: string
+          p_manager_id?: string
+          p_nss_ccss?: string
+          p_payment_currency?: string
+          p_phone?: string
+        }
+        Returns: string
       }
     }
     Enums: {
