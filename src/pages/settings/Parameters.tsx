@@ -133,8 +133,8 @@ export function Parameters() {
           centros_costo: Array.isArray(data.centros_costo) ? data.centros_costo : JSON.parse(data.centros_costo as string || '[]'),
           proyectos: Array.isArray(data.proyectos) ? data.proyectos : JSON.parse(data.proyectos as string || '[]'),
           email_config: typeof data.email_config === 'object' ? data.email_config : JSON.parse(data.email_config as string || '{"mode": "smtp", "batch": {"size": 50, "delay_ms": 1000}}'),
-          ins_rt: data.ins_rt || { rate: 0.005, base_method: "devengado_proporcional" },
-          cuentas_contables: data.cuentas_contables || {
+          ins_rt: (data as any).ins_rt || { rate: 0.005, base_method: "devengado_proporcional" },
+          cuentas_contables: (data as any).cuentas_contables || {
             sueldos: "511",
             cargas_patronales: "512",
             nomina_por_pagar: "212",
