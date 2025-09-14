@@ -16,37 +16,46 @@ import NotFound from "./pages/NotFound";
 import { Parameters } from "./pages/settings/Parameters";
 import { Admin } from "./pages/settings/Admin";
 import { Historico } from "./pages/settings/Historico";
+import { CompanyProvider } from "@/contexts/CompanyContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
+import { ThemeProvider } from "next-themes";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<CompanySelector />} />
-          <Route path="/index" element={<Index />} />
-          <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/employees" element={<Employees />} />
-            <Route path="/contracts" element={<Contracts />} />
-            <Route path="/timesheets" element={<Timesheets />} />
-            <Route path="/payroll-process" element={<PayrollProcess />} />
-            <Route path="/payslips" element={<Payslips />} />
-            <Route path="/cost-centers" element={<div className="p-6 text-center text-muted-foreground">Centros de Costo - En desarrollo</div>} />
-            <Route path="/liquidations" element={<div className="p-6 text-center text-muted-foreground">Liquidaciones - En desarrollo</div>} />
-            <Route path="/reports" element={<div className="p-6 text-center text-muted-foreground">Reportes - En desarrollo</div>} />
-            <Route path="/historico" element={<Historico />} />
-            <Route path="/email-center" element={<div className="p-6 text-center text-muted-foreground">Centro de Correos - En desarrollo</div>} />
-            <Route path="/settings/parameters" element={<Parameters />} />
-            <Route path="/settings/admin" element={<Admin />} />
-          </Route>
-          <Route path="/404" element={<NotFound />} />
-          <Route path="*" element={<Navigate to="/404" replace />} />
-        </Routes>
-      </BrowserRouter>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <LanguageProvider>
+          <CompanyProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<CompanySelector />} />
+                <Route path="/index" element={<Index />} />
+                <Route element={<AppLayout />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/employees" element={<Employees />} />
+                  <Route path="/contracts" element={<Contracts />} />
+                  <Route path="/timesheets" element={<Timesheets />} />
+                  <Route path="/payroll-process" element={<PayrollProcess />} />
+                  <Route path="/payslips" element={<Payslips />} />
+                  <Route path="/cost-centers" element={<div className="p-6 text-center text-muted-foreground">Centros de Costo - En desarrollo</div>} />
+                  <Route path="/liquidations" element={<div className="p-6 text-center text-muted-foreground">Liquidaciones - En desarrollo</div>} />
+                  <Route path="/reports" element={<div className="p-6 text-center text-muted-foreground">Reportes - En desarrollo</div>} />
+                  <Route path="/historico" element={<Historico />} />
+                  <Route path="/email-center" element={<div className="p-6 text-center text-muted-foreground">Centro de Correos - En desarrollo</div>} />
+                  <Route path="/settings/parameters" element={<Parameters />} />
+                  <Route path="/settings/admin" element={<Admin />} />
+                </Route>
+                <Route path="/404" element={<NotFound />} />
+                <Route path="*" element={<Navigate to="/404" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </CompanyProvider>
+        </LanguageProvider>
+      </ThemeProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
