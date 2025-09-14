@@ -15,68 +15,109 @@ interface PayrollTableProps {
   language: "es" | "en";
 }
 
-const employeeData = [
-  {
-    cedula: "1-1354-0838",
-    nombre: "Gabriel Cordero González",
-    centro_costo: "Administración",
-    departamento: "Finanzas",
-    bruto: 2424480,
-    deducciones: 463388,
-    neto: 1961092,
-    horas: 184,
-    horas_weekend: 16,
-    estado: "Aprobado"
-  },
-  {
-    cedula: "1-1936-0602", 
-    nombre: "Krissya Paulina Gutiérrez Solís",
-    centro_costo: "Programas",
-    departamento: "Bliss",
-    bruto: 606120,
-    deducciones: 64673,
-    neto: 541447,
-    horas: 168,
-    horas_weekend: 8,
-    estado: "Aprobado"
-  },
-  {
-    cedula: "1-1691-0435",
-    nombre: "David Marín Mora", 
-    centro_costo: "Programas",
-    departamento: "Freedom Academy",
-    bruto: 808160,
-    deducciones: 86231,
-    neto: 721929,
-    horas: 176,
-    horas_weekend: 0,
-    estado: "En Revisión"
-  },
-  {
-    cedula: "3-0470-0672",
-    nombre: "Rebeca Gamboa Venegas",
-    centro_costo: "Administración", 
-    departamento: "Finanzas",
-    bruto: 631375,
-    deducciones: 67368,
-    neto: 564007,
-    horas: 168,
-    horas_weekend: 8,
-    estado: "Aprobado"
-  },
-  {
-    cedula: "3-0517-0207",
-    nombre: "Jonathan Campos Carpio",
-    centro_costo: "Operaciones",
-    departamento: "Campo", 
-    bruto: 909180,
-    deducciones: 97010,
-    neto: 812170,
-    horas: 184,
-    horas_weekend: 24,
-    estado: "Aprobado"
-  }
-];
+  // Get employee data based on selected company
+  const getEmployeeData = () => {
+    const selectedCompany = localStorage.getItem('selectedCompany') || 'horizonte-positivo';
+    
+    if (selectedCompany === 'alturas-tenorio') {
+      return [
+        {
+          cedula: "1-074-50630",
+          nombre: "Andrés Hidalgo Vega",
+          centro_costo: "Operaciones",
+          bruto: 3301433,
+          deducciones: 728059,
+          neto: 2573374,
+          horas: 184,
+          horas_weekend: 16,
+          estado: "Aprobado"
+        },
+        {
+          cedula: "3-456-789",
+          nombre: "María González Rojas",
+          centro_costo: "Administración",
+          bruto: 850000,
+          deducciones: 120000,
+          neto: 730000,
+          horas: 176,
+          horas_weekend: 8,
+          estado: "Aprobado"
+        },
+        {
+          cedula: "2-789-456",
+          nombre: "Carlos Méndez Vega",
+          centro_costo: "Turismo",
+          bruto: 650000,
+          deducciones: 95000,
+          neto: 555000,
+          horas: 168,
+          horas_weekend: 0,
+          estado: "En Revisión"
+        }
+      ];
+    }
+    
+    // Default Horizonte Positivo data
+    return [
+      {
+        cedula: "1-1354-0838",
+        nombre: "Gabriel Cordero González",
+        centro_costo: "Administración",
+        bruto: 2424480,
+        deducciones: 463388,
+        neto: 1961092,
+        horas: 184,
+        horas_weekend: 16,
+        estado: "Aprobado"
+      },
+      {
+        cedula: "1-1936-0602", 
+        nombre: "Krissya Paulina Gutiérrez Solís",
+        centro_costo: "Programas",
+        bruto: 606120,
+        deducciones: 64673,
+        neto: 541447,
+        horas: 168,
+        horas_weekend: 8,
+        estado: "Aprobado"
+      },
+      {
+        cedula: "1-1691-0435",
+        nombre: "David Marín Mora", 
+        centro_costo: "Programas",
+        bruto: 808160,
+        deducciones: 86231,
+        neto: 721929,
+        horas: 176,
+        horas_weekend: 0,
+        estado: "En Revisión"
+      },
+      {
+        cedula: "3-0470-0672",
+        nombre: "Rebeca Gamboa Venegas",
+        centro_costo: "Administración", 
+        bruto: 631375,
+        deducciones: 67368,
+        neto: 564007,
+        horas: 168,
+        horas_weekend: 8,
+        estado: "Aprobado"
+      },
+      {
+        cedula: "3-0517-0207",
+        nombre: "Jonathan Campos Carpio",
+        centro_costo: "Operaciones",
+        bruto: 909180,
+        deducciones: 97010,
+        neto: 812170,
+        horas: 184,
+        horas_weekend: 24,
+        estado: "Aprobado"
+      }
+    ];
+  };
+
+  const employeeData = getEmployeeData();
 
 export const PayrollTable = ({ language = "es" }: PayrollTableProps) => {
   const labels = {
@@ -84,7 +125,6 @@ export const PayrollTable = ({ language = "es" }: PayrollTableProps) => {
       title: "Detalle por Empleado - Setiembre 2025",
       employee: "Empleado",
       costCenter: "Centro de Costo",
-      department: "Departamento", 
       gross: "Bruto",
       deductions: "Deducciones",
       net: "Neto",
@@ -102,7 +142,6 @@ export const PayrollTable = ({ language = "es" }: PayrollTableProps) => {
       title: "Employee Detail - September 2025",
       employee: "Employee",
       costCenter: "Cost Center", 
-      department: "Department",
       gross: "Gross",
       deductions: "Deductions",
       net: "Net",
@@ -156,7 +195,6 @@ export const PayrollTable = ({ language = "es" }: PayrollTableProps) => {
               <TableRow className="bg-muted/50">
                 <TableHead className="font-semibold">{t.employee}</TableHead>
                 <TableHead className="font-semibold">{t.costCenter}</TableHead>
-                <TableHead className="font-semibold">{t.department}</TableHead>
                 <TableHead className="font-semibold text-right">{t.gross}</TableHead>
                 <TableHead className="font-semibold text-right">{t.deductions}</TableHead>
                 <TableHead className="font-semibold text-right">{t.net}</TableHead>
@@ -180,7 +218,6 @@ export const PayrollTable = ({ language = "es" }: PayrollTableProps) => {
                       {employee.centro_costo}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm">{employee.departamento}</TableCell>
                   <TableCell className="text-right font-mono">
                     ₡{formatCurrency(employee.bruto)}
                   </TableCell>

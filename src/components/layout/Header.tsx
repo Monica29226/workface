@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Building2, ChevronDown, Globe, Menu, Bell, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,11 +22,39 @@ interface HeaderProps {
 }
 
 export const Header = ({ onMenuToggle }: HeaderProps) => {
+  const navigate = useNavigate();
   const [selectedCompany, setSelectedCompany] = useState(companies[0]);
   const [language, setLanguage] = useState<"es" | "en">("es");
 
+  useEffect(() => {
+    const selectedCompanyId = localStorage.getItem('selectedCompany') || 'horizonte-positivo';
+    const savedLanguage = localStorage.getItem('selectedLanguage') as "es" | "en" || 'es';
+    setLanguage(savedLanguage);
+    
+    const company = companies.find(c => 
+      (selectedCompanyId === 'alturas-tenorio' && c.id === 'coT') ||
+      (selectedCompanyId === 'horizonte-positivo' && c.id === 'coH')
+    ) || companies[0];
+    
+    setSelectedCompany(company);
+  }, []);
+
   const toggleLanguage = () => {
-    setLanguage(prev => prev === "es" ? "en" : "es");
+    const newLang = language === "es" ? "en" : "es";
+    setLanguage(newLang);
+    localStorage.setItem('selectedLanguage', newLang);
+  };
+
+  const handleCompanyChange = (company: typeof companies[0]) => {
+    setSelectedCompany(company);
+    const companyId = company.id === 'coT' ? 'alturas-tenorio' : 'horizonte-positivo';
+    localStorage.setItem('selectedCompany', companyId);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('selectedCompany');
+    localStorage.removeItem('selectedLanguage');
+    navigate('/');
   };
 
   const labels = {
@@ -102,7 +131,7 @@ export const Header = ({ onMenuToggle }: HeaderProps) => {
               {companies.map((company) => (
                 <DropdownMenuItem 
                   key={company.id}
-                  onClick={() => setSelectedCompany(company)}
+                  onClick={() => handleCompanyChange(company)}
                   className="cursor-pointer"
                 >
                   <div className="flex items-center gap-3 w-full">
@@ -157,7 +186,7 @@ export const Header = ({ onMenuToggle }: HeaderProps) => {
               <DropdownMenuItem>{t.profile}</DropdownMenuItem>
               <DropdownMenuItem>{t.settings}</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">{t.logout}</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive">{t.logout}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
