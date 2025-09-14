@@ -13,6 +13,9 @@ import { Payslips } from "@/pages/Payslips";
 import CompanySelector from "./pages/CompanySelector";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
+import { Parameters } from "./pages/settings/Parameters";
+import { Admin } from "./pages/settings/Admin";
+import { Historico } from "./pages/settings/Historico";
 
 const queryClient = new QueryClient();
 
@@ -35,9 +38,10 @@ const App = () => (
             <Route path="/cost-centers" element={<div className="p-6 text-center text-muted-foreground">Centros de Costo - En desarrollo</div>} />
             <Route path="/liquidations" element={<div className="p-6 text-center text-muted-foreground">Liquidaciones - En desarrollo</div>} />
             <Route path="/reports" element={<div className="p-6 text-center text-muted-foreground">Reportes - En desarrollo</div>} />
+            <Route path="/historico" element={<Historico />} />
             <Route path="/email-center" element={<div className="p-6 text-center text-muted-foreground">Centro de Correos - En desarrollo</div>} />
-            <Route path="/parameters" element={<div className="p-6 text-center text-muted-foreground">Parámetros - En desarrollo</div>} />
-            <Route path="/manager" element={<div className="p-6 text-center text-muted-foreground">Administrador - En desarrollo</div>} />
+            <Route path="/settings/parameters" element={<Parameters />} />
+            <Route path="/settings/admin" element={<Admin />} />
           </Route>
           <Route path="/404" element={<NotFound />} />
           <Route path="*" element={<Navigate to="/404" replace />} />

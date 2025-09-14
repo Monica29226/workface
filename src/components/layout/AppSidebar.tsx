@@ -78,8 +78,8 @@ const navigationItems = [
     group: 'payroll'
   },
   { 
-    title: 'nav.reports', 
-    url: '/reports', 
+    title: 'nav.historico', 
+    url: '/historico', 
     icon: BarChart3,
     group: 'reports'
   },
@@ -91,13 +91,13 @@ const navigationItems = [
   },
   { 
     title: 'nav.parameters', 
-    url: '/parameters', 
+    url: '/settings/parameters', 
     icon: Settings,
     group: 'config'
   },
   { 
-    title: 'nav.manager', 
-    url: '/manager', 
+    title: 'nav.admin', 
+    url: '/settings/admin', 
     icon: UserCheck,
     group: 'config'
   }

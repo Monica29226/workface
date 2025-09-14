@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_log: {
+        Row: {
+          accion: string
+          antes: Json | null
+          company_id: string
+          created_at: string
+          despues: Json | null
+          entidad: string
+          entidad_id: string | null
+          id: string
+          motivo: string | null
+          user_id: string | null
+        }
+        Insert: {
+          accion: string
+          antes?: Json | null
+          company_id: string
+          created_at?: string
+          despues?: Json | null
+          entidad: string
+          entidad_id?: string | null
+          id?: string
+          motivo?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          accion?: string
+          antes?: Json | null
+          company_id?: string
+          created_at?: string
+          despues?: Json | null
+          entidad?: string
+          entidad_id?: string | null
+          id?: string
+          motivo?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           accent_color: string | null
@@ -53,6 +92,90 @@ export type Database = {
           name?: string
           primary_color?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      company_parameters: {
+        Row: {
+          aguinaldo: Json | null
+          anio: number
+          ccss: Json | null
+          centros_costo: Json | null
+          cesantia_matriz: Json | null
+          company_id: string
+          created_at: string
+          email_config: Json | null
+          feriados: Json | null
+          formato_decimal: number | null
+          id: string
+          moneda_default: string | null
+          pie_legal_pdf: string | null
+          proyectos: Json | null
+          publicado: boolean | null
+          publicado_at: string | null
+          publicado_por: string | null
+          recargos: Json | null
+          renta: Json | null
+          tipo_cambio: Json | null
+          updated_at: string
+          vacaciones: Json | null
+          version: number | null
+          weekend_rates: Json | null
+          workweek: string | null
+        }
+        Insert: {
+          aguinaldo?: Json | null
+          anio: number
+          ccss?: Json | null
+          centros_costo?: Json | null
+          cesantia_matriz?: Json | null
+          company_id: string
+          created_at?: string
+          email_config?: Json | null
+          feriados?: Json | null
+          formato_decimal?: number | null
+          id?: string
+          moneda_default?: string | null
+          pie_legal_pdf?: string | null
+          proyectos?: Json | null
+          publicado?: boolean | null
+          publicado_at?: string | null
+          publicado_por?: string | null
+          recargos?: Json | null
+          renta?: Json | null
+          tipo_cambio?: Json | null
+          updated_at?: string
+          vacaciones?: Json | null
+          version?: number | null
+          weekend_rates?: Json | null
+          workweek?: string | null
+        }
+        Update: {
+          aguinaldo?: Json | null
+          anio?: number
+          ccss?: Json | null
+          centros_costo?: Json | null
+          cesantia_matriz?: Json | null
+          company_id?: string
+          created_at?: string
+          email_config?: Json | null
+          feriados?: Json | null
+          formato_decimal?: number | null
+          id?: string
+          moneda_default?: string | null
+          pie_legal_pdf?: string | null
+          proyectos?: Json | null
+          publicado?: boolean | null
+          publicado_at?: string | null
+          publicado_por?: string | null
+          recargos?: Json | null
+          renta?: Json | null
+          tipo_cambio?: Json | null
+          updated_at?: string
+          vacaciones?: Json | null
+          version?: number | null
+          weekend_rates?: Json | null
+          workweek?: string | null
         }
         Relationships: []
       }
@@ -302,6 +425,44 @@ export type Database = {
             columns: ["manager_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      parameter_versions: {
+        Row: {
+          comentario: string | null
+          created_at: string
+          created_by: string | null
+          data: Json
+          id: string
+          parameter_id: string
+          version: number
+        }
+        Insert: {
+          comentario?: string | null
+          created_at?: string
+          created_by?: string | null
+          data: Json
+          id?: string
+          parameter_id: string
+          version: number
+        }
+        Update: {
+          comentario?: string | null
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          parameter_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "parameter_versions_parameter_id_fkey"
+            columns: ["parameter_id"]
+            isOneToOne: false
+            referencedRelation: "company_parameters"
             referencedColumns: ["id"]
           },
         ]
