@@ -14,7 +14,576 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      companies: {
+        Row: {
+          accent_color: string | null
+          active: boolean | null
+          created_at: string | null
+          id: string
+          juridical_id: string
+          legal_name: string
+          light_color: string | null
+          logo_url: string | null
+          name: string
+          primary_color: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          accent_color?: string | null
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          juridical_id: string
+          legal_name: string
+          light_color?: string | null
+          logo_url?: string | null
+          name: string
+          primary_color?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          accent_color?: string | null
+          active?: boolean | null
+          created_at?: string | null
+          id?: string
+          juridical_id?: string
+          legal_name?: string
+          light_color?: string | null
+          logo_url?: string | null
+          name?: string
+          primary_color?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      company_users: {
+        Row: {
+          active: boolean | null
+          company_id: string | null
+          created_at: string | null
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean | null
+          company_id?: string | null
+          created_at?: string | null
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean | null
+          company_id?: string | null
+          created_at?: string | null
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_users_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contracts: {
+        Row: {
+          base_salary: number
+          commissions: number | null
+          company_id: string | null
+          contract_type: string
+          created_at: string | null
+          currency: string | null
+          employee_id: string | null
+          end_date: string | null
+          holiday_rate: number | null
+          id: string
+          max_weekly_hours: number | null
+          night_rate: number | null
+          overtime_rate: number | null
+          payment_period: string
+          schedule_text: string | null
+          start_date: string
+          status: string | null
+          updated_at: string | null
+          workday_type: string
+        }
+        Insert: {
+          base_salary: number
+          commissions?: number | null
+          company_id?: string | null
+          contract_type?: string
+          created_at?: string | null
+          currency?: string | null
+          employee_id?: string | null
+          end_date?: string | null
+          holiday_rate?: number | null
+          id?: string
+          max_weekly_hours?: number | null
+          night_rate?: number | null
+          overtime_rate?: number | null
+          payment_period?: string
+          schedule_text?: string | null
+          start_date: string
+          status?: string | null
+          updated_at?: string | null
+          workday_type?: string
+        }
+        Update: {
+          base_salary?: number
+          commissions?: number | null
+          company_id?: string | null
+          contract_type?: string
+          created_at?: string | null
+          currency?: string | null
+          employee_id?: string | null
+          end_date?: string | null
+          holiday_rate?: number | null
+          id?: string
+          max_weekly_hours?: number | null
+          night_rate?: number | null
+          overtime_rate?: number | null
+          payment_period?: string
+          schedule_text?: string | null
+          start_date?: string
+          status?: string | null
+          updated_at?: string | null
+          workday_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_centers: {
+        Row: {
+          active: boolean | null
+          code: string | null
+          company_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          code?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          code?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_centers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          active: boolean | null
+          birth_date: string | null
+          cedula: string
+          children_count: number | null
+          civil_status: string | null
+          company_id: string | null
+          cost_center: string | null
+          created_at: string | null
+          department: string | null
+          email: string | null
+          first_name: string
+          has_garnishment: boolean | null
+          has_pension: boolean | null
+          hire_date: string
+          iban: string | null
+          id: string
+          last_name: string
+          manager_id: string | null
+          nss_ccss: string | null
+          payment_currency: string | null
+          phone: string | null
+          termination_date: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          birth_date?: string | null
+          cedula: string
+          children_count?: number | null
+          civil_status?: string | null
+          company_id?: string | null
+          cost_center?: string | null
+          created_at?: string | null
+          department?: string | null
+          email?: string | null
+          first_name: string
+          has_garnishment?: boolean | null
+          has_pension?: boolean | null
+          hire_date: string
+          iban?: string | null
+          id?: string
+          last_name: string
+          manager_id?: string | null
+          nss_ccss?: string | null
+          payment_currency?: string | null
+          phone?: string | null
+          termination_date?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          birth_date?: string | null
+          cedula?: string
+          children_count?: number | null
+          civil_status?: string | null
+          company_id?: string | null
+          cost_center?: string | null
+          created_at?: string | null
+          department?: string | null
+          email?: string | null
+          first_name?: string
+          has_garnishment?: boolean | null
+          has_pension?: boolean | null
+          hire_date?: string
+          iban?: string | null
+          id?: string
+          last_name?: string
+          manager_id?: string | null
+          nss_ccss?: string | null
+          payment_currency?: string | null
+          phone?: string | null
+          termination_date?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_periods: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          end_date: string
+          exchange_rate: number | null
+          id: string
+          name: string
+          start_date: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          end_date: string
+          exchange_rate?: number | null
+          id?: string
+          name: string
+          start_date: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          end_date?: string
+          exchange_rate?: number | null
+          id?: string
+          name?: string
+          start_date?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_periods_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payrolls: {
+        Row: {
+          aguinaldo: number | null
+          company_id: string | null
+          created_at: string | null
+          employee_id: string | null
+          gross_salary: number
+          id: string
+          net_salary: number
+          notes: string | null
+          period_id: string | null
+          salary_retention: number | null
+          social_charges: number | null
+          status: string | null
+          updated_at: string | null
+          vacations_amount: number | null
+        }
+        Insert: {
+          aguinaldo?: number | null
+          company_id?: string | null
+          created_at?: string | null
+          employee_id?: string | null
+          gross_salary: number
+          id?: string
+          net_salary: number
+          notes?: string | null
+          period_id?: string | null
+          salary_retention?: number | null
+          social_charges?: number | null
+          status?: string | null
+          updated_at?: string | null
+          vacations_amount?: number | null
+        }
+        Update: {
+          aguinaldo?: number | null
+          company_id?: string | null
+          created_at?: string | null
+          employee_id?: string | null
+          gross_salary?: number
+          id?: string
+          net_salary?: number
+          notes?: string | null
+          period_id?: string | null
+          salary_retention?: number | null
+          social_charges?: number | null
+          status?: string | null
+          updated_at?: string | null
+          vacations_amount?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payrolls_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payrolls_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payrolls_period_id_fkey"
+            columns: ["period_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          language: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email: string
+          full_name?: string | null
+          id?: string
+          language?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          language?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      system_parameters: {
+        Row: {
+          ccss_employee_rate: number | null
+          ccss_employer_rate: number | null
+          company_id: string | null
+          created_at: string | null
+          holiday_rate: number | null
+          id: string
+          night_rate: number | null
+          overtime_rate: number | null
+          saturday_multiplier: number | null
+          sunday_multiplier: number | null
+          updated_at: string | null
+          vacation_days_per_month: number | null
+          workweek: string | null
+          year: number
+        }
+        Insert: {
+          ccss_employee_rate?: number | null
+          ccss_employer_rate?: number | null
+          company_id?: string | null
+          created_at?: string | null
+          holiday_rate?: number | null
+          id?: string
+          night_rate?: number | null
+          overtime_rate?: number | null
+          saturday_multiplier?: number | null
+          sunday_multiplier?: number | null
+          updated_at?: string | null
+          vacation_days_per_month?: number | null
+          workweek?: string | null
+          year: number
+        }
+        Update: {
+          ccss_employee_rate?: number | null
+          ccss_employer_rate?: number | null
+          company_id?: string | null
+          created_at?: string | null
+          holiday_rate?: number | null
+          id?: string
+          night_rate?: number | null
+          overtime_rate?: number | null
+          saturday_multiplier?: number | null
+          sunday_multiplier?: number | null
+          updated_at?: string | null
+          vacation_days_per_month?: number | null
+          workweek?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_parameters_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timesheets: {
+        Row: {
+          activity: string
+          approved: boolean | null
+          approved_by: string | null
+          company_id: string | null
+          cost_center: string
+          created_at: string | null
+          date: string
+          description: string | null
+          employee_id: string | null
+          hours: number
+          id: string
+          is_holiday: boolean | null
+          is_weekend: boolean | null
+          project: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          activity: string
+          approved?: boolean | null
+          approved_by?: string | null
+          company_id?: string | null
+          cost_center: string
+          created_at?: string | null
+          date: string
+          description?: string | null
+          employee_id?: string | null
+          hours: number
+          id?: string
+          is_holiday?: boolean | null
+          is_weekend?: boolean | null
+          project?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          activity?: string
+          approved?: boolean | null
+          approved_by?: string | null
+          company_id?: string | null
+          cost_center?: string
+          created_at?: string | null
+          date?: string
+          description?: string | null
+          employee_id?: string | null
+          hours?: number
+          id?: string
+          is_holiday?: boolean | null
+          is_weekend?: boolean | null
+          project?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timesheets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timesheets_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
