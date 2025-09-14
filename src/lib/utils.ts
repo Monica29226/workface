@@ -83,3 +83,54 @@ export function calculateCCSS(salary: number, employeeRate: number = 0.105, empl
     employer: salary * employerRate
   };
 }
+
+// Company Detection Utilities for coT (Alturas de Tenorio)
+export function isCoT(company: any): boolean {
+  if (!company) return false;
+  
+  return (
+    company.id === "550e8400-e29b-41d4-a716-446655440001" ||
+    company.slug === "alturas-de-tenorio" ||
+    /Alturas de Tenorio/i.test(company.name)
+  );
+}
+
+export function requiresCoT(company: any): boolean {
+  return isCoT(company);
+}
+
+// Security Guards for coT-only features
+export function isCoTFeatureEnabled(company: any): boolean {
+  return isCoT(company);
+}
+
+// Formatting utilities for Costa Rica locale
+export function formatCurrencyCostaRica(amount: number, currency: string = 'CRC'): string {
+  if (currency === 'CRC') {
+    const formatted = new Intl.NumberFormat('es-CR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+      useGrouping: true
+    }).format(amount);
+    return `₡${formatted}`;
+  }
+  
+  if (currency === 'USD') {
+    return new Intl.NumberFormat('es-CR', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  }
+  
+  return formatCurrency(amount, currency);
+}
+
+export function formatNumberCostaRica(value: number, decimals: number = 2): string {
+  return new Intl.NumberFormat('es-CR', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+    useGrouping: true
+  }).format(value);
+}

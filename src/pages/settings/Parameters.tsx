@@ -13,7 +13,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, isCoT, formatCurrencyCostaRica } from "@/lib/utils";
+import { useCoTAccess } from "@/hooks/useCoTAccess";
 
 interface CompanyParameters {
   id?: string;
@@ -33,7 +34,13 @@ interface CompanyParameters {
   weekend_rates: {saturday_mult: number; sunday_mult: number};
   workweek: string;
   feriados: Array<{fecha: string; nombre: string; doble: boolean}>;
-  cesantia_matriz: Array<any>;
+  cesantia_matriz: Array<{
+    anos_desde: number;
+    anos_hasta: number;
+    dias_preaviso: number;
+    dias_cesantia: number;
+    tope_cesantia?: number;
+  }>;
   centros_costo: Array<{id: string; codigo: string; nombre: string; activo: boolean}>;
   proyectos: Array<{id: string; codigo: string; nombre: string; activo: boolean}>;
   email_config: {
@@ -49,11 +56,26 @@ interface CompanyParameters {
   publicado: boolean;
   publicado_at?: string;
   publicado_por?: string;
+  // New coT-specific fields
+  ins_rt?: {
+    rate: number;
+    base_method: string;
+  };
+  cuentas_contables?: {
+    sueldos: string;
+    cargas_patronales: string;
+    nomina_por_pagar: string;
+    ccss_retenciones: string;
+    ccss_patronal_por_pagar: string;
+    ins_rt: string;
+    puente?: string;
+  };
 }
 
 export function Parameters() {
   const { selectedCompany } = useCompany();
   const { toast } = useToast();
+  const { isCoTCompany, canEdit, shouldShowReadOnly } = useCoTAccess();
   const [parameters, setParameters] = useState<CompanyParameters | null>(null);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [loading, setLoading] = useState(false);
@@ -71,6 +93,16 @@ export function Parameters() {
 
   const loadParameters = async () => {
     if (!selectedCompany?.id) return;
+    
+    // Security guard: Only allow coT to load parameters for coT company
+    if (!isCoT(selectedCompany)) {
+      toast({
+        title: "Acceso restringido",
+        description: "Esta funcionalidad está disponible solo para Alturas de Tenorio",
+        variant: "destructive"
+      });
+      return;
+    }
     
     setLoading(true);
     try {
@@ -100,7 +132,16 @@ export function Parameters() {
           cesantia_matriz: Array.isArray(data.cesantia_matriz) ? data.cesantia_matriz : JSON.parse(data.cesantia_matriz as string || '[]'),
           centros_costo: Array.isArray(data.centros_costo) ? data.centros_costo : JSON.parse(data.centros_costo as string || '[]'),
           proyectos: Array.isArray(data.proyectos) ? data.proyectos : JSON.parse(data.proyectos as string || '[]'),
-          email_config: typeof data.email_config === 'object' ? data.email_config : JSON.parse(data.email_config as string || '{"mode": "smtp", "batch": {"size": 50, "delay_ms": 1000}}')
+          email_config: typeof data.email_config === 'object' ? data.email_config : JSON.parse(data.email_config as string || '{"mode": "smtp", "batch": {"size": 50, "delay_ms": 1000}}'),
+          ins_rt: data.ins_rt || { rate: 0.005, base_method: "devengado_proporcional" },
+          cuentas_contables: data.cuentas_contables || {
+            sueldos: "511",
+            cargas_patronales: "512",
+            nomina_por_pagar: "212",
+            ccss_retenciones: "214",
+            ccss_patronal_por_pagar: "213",
+            ins_rt: "516"
+          }
         } as CompanyParameters;
         setParameters(parsedData);
       } else {
@@ -128,12 +169,26 @@ export function Parameters() {
           weekend_rates: { saturday_mult: 1.00, sunday_mult: 1.50 },
           workweek: 'Mon-Fri',
           feriados: [],
-          cesantia_matriz: [],
+          cesantia_matriz: [
+            { anos_desde: 0, anos_hasta: 3, dias_preaviso: 0, dias_cesantia: 0 },
+            { anos_desde: 3, anos_hasta: 6, dias_preaviso: 7, dias_cesantia: 7 },
+            { anos_desde: 6, anos_hasta: 12, dias_preaviso: 14, dias_cesantia: 14 },
+            { anos_desde: 12, anos_hasta: 999, dias_preaviso: 30, dias_cesantia: 21.5, tope_cesantia: 8 }
+          ],
           centros_costo: [],
           proyectos: [],
           email_config: {
             mode: 'smtp',
             batch: { size: 50, delay_ms: 1000 }
+          },
+          ins_rt: { rate: 0.005, base_method: "devengado_proporcional" },
+          cuentas_contables: {
+            sueldos: "511",
+            cargas_patronales: "512", 
+            nomina_por_pagar: "212",
+            ccss_retenciones: "214",
+            ccss_patronal_por_pagar: "213",
+            ins_rt: "516"
           },
           version: 1,
           publicado: false
