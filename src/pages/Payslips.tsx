@@ -28,7 +28,8 @@ import {
   Edit,
   Send,
   Calendar,
-  DollarSign
+  DollarSign,
+  Building2
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -73,7 +74,7 @@ interface Payslip {
 
 export function Payslips() {
   const { t } = useLanguage();
-  const { selectedCompany } = useCompany();
+  const { selectedCompany, setSelectedCompany, companies } = useCompany();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedYear, setSelectedYear] = useState("2025");
@@ -81,6 +82,8 @@ export function Payslips() {
   const [selectedCurrency, setSelectedCurrency] = useState<'CRC' | 'USD' | 'BOTH'>('CRC');
   const [editingPayslip, setEditingPayslip] = useState<Payslip | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isCompanyEditOpen, setIsCompanyEditOpen] = useState(false);
+  const [editingCompany, setEditingCompany] = useState(selectedCompany);
 
   const getPayslipsData = (): Payslip[] => {
     const baseExchangeRate = 510.27;
@@ -226,6 +229,33 @@ export function Payslips() {
     return matchesSearch && matchesYear;
   });
 
+  // Group data for yearly view
+  const yearlyData = viewMode === 'yearly' ? (() => {
+    const grouped = filteredPayslips.reduce((acc, payslip) => {
+      const key = payslip.employeeId;
+      if (!acc[key]) {
+        acc[key] = {
+          ...payslip,
+          id: `yearly-${payslip.employeeId}`,
+          period: `Año ${selectedYear}`,
+          grossSalary: 0,
+          deductions: 0,
+          netSalary: 0,
+          aguinaldo: 0
+        };
+      }
+      acc[key].grossSalary += payslip.grossSalary;
+      acc[key].deductions += payslip.deductions;
+      acc[key].netSalary += payslip.netSalary;
+      acc[key].aguinaldo += payslip.aguinaldo;
+      return acc;
+    }, {} as Record<string, any>);
+    
+    return Object.values(grouped);
+  })() : [];
+
+  const displayData = viewMode === 'yearly' ? yearlyData : filteredPayslips;
+
   // Helper functions for currency conversion
   const convertToUSD = (amountCRC: number, exchangeRate: number) => {
     return amountCRC / exchangeRate;
@@ -300,6 +330,22 @@ export function Payslips() {
         description: "No se pudo enviar la colilla por correo.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleEditCompany = () => {
+    setEditingCompany(selectedCompany);
+    setIsCompanyEditOpen(true);
+  };
+
+  const handleSaveCompany = () => {
+    if (editingCompany) {
+      setSelectedCompany(editingCompany);
+      toast({
+        title: "Empresa actualizada",
+        description: "Los datos de la empresa han sido actualizados correctamente.",
+      });
+      setIsCompanyEditOpen(false);
     }
   };
 
@@ -490,6 +536,10 @@ export function Payslips() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleEditCompany}>
+            <Building2 className="h-4 w-4" />
+            Editar Empresa
+          </Button>
           <Button variant="outline" size="sm" className="gap-2">
             <Archive className="h-4 w-4" />
             ZIP Colillas
@@ -554,7 +604,7 @@ export function Payslips() {
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-teal">
-                {payslips.length}
+                {displayData.length}
               </div>
               <div className="text-sm text-muted-foreground">
                 Total Colillas
@@ -567,7 +617,7 @@ export function Payslips() {
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {payslips.filter(p => p.emailStatus === 'sent').length}
+                {viewMode === 'yearly' ? displayData.length : displayData.filter(p => p.emailStatus === 'sent').length}
               </div>
               <div className="text-sm text-muted-foreground">
                 Enviadas
@@ -580,7 +630,7 @@ export function Payslips() {
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-yellow-600">
-                {payslips.filter(p => p.emailStatus === 'pending').length}
+                {viewMode === 'yearly' ? 0 : displayData.filter(p => p.emailStatus === 'pending').length}
               </div>
               <div className="text-sm text-muted-foreground">
                 Pendientes
@@ -593,7 +643,7 @@ export function Payslips() {
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-navy">
-                {formatCurrency(payslips.reduce((acc, p) => acc + p.netSalary, 0), 'CRC')}
+                {formatCurrency(displayData.reduce((acc, p) => acc + p.netSalary, 0), 'CRC')}
               </div>
               <div className="text-sm text-muted-foreground">
                 Total Neto
@@ -606,7 +656,9 @@ export function Payslips() {
       {/* Payslips Table */}
       <Card className="card-elevated">
         <CardHeader>
-          <CardTitle className="text-navy">Colillas Generadas - Setiembre 2025</CardTitle>
+          <CardTitle className="text-navy">
+            Colillas Generadas - {viewMode === 'yearly' ? `Año ${selectedYear}` : `Setiembre ${selectedYear}`}
+          </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -625,7 +677,7 @@ export function Payslips() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPayslips.map((payslip) => (
+                {displayData.map((payslip) => (
                   <TableRow key={payslip.id} className="hover:bg-muted/25">
                     <TableCell>
                       <div>
@@ -637,22 +689,28 @@ export function Payslips() {
                     </TableCell>
                     <TableCell>{payslip.costCenter}</TableCell>
                     <TableCell className="text-right font-mono">
-                      {formatCurrency(payslip.grossSalary, 'CRC')}
+                      {formatAmount(payslip.grossSalary, payslip.currency, payslip.exchangeRate)}
                     </TableCell>
                     <TableCell className="text-right font-mono text-orange-600">
-                      {formatCurrency(payslip.deductions, 'CRC')}
+                      {formatAmount(payslip.deductions, payslip.currency, payslip.exchangeRate)}
                     </TableCell>
                     <TableCell className="text-right font-mono font-semibold text-teal">
-                      {formatCurrency(payslip.netSalary, 'CRC')}
+                      {formatAmount(payslip.netSalary, payslip.currency, payslip.exchangeRate)}
                     </TableCell>
                     <TableCell className="text-right font-mono text-green-600">
-                      {formatCurrency(payslip.aguinaldo, 'CRC')}
+                      {formatAmount(payslip.aguinaldo, payslip.currency, payslip.exchangeRate)}
                     </TableCell>
                     <TableCell className="text-center">
-                      {getStatusBadge(payslip.status)}
+                      {viewMode === 'yearly' ? 
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Enviada</Badge> :
+                        getStatusBadge(payslip.status)
+                      }
                     </TableCell>
                     <TableCell className="text-center">
-                      {getEmailStatusBadge(payslip.emailStatus)}
+                      {viewMode === 'yearly' ? 
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Enviado</Badge> :
+                        getEmailStatusBadge(payslip.emailStatus)
+                      }
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-1">
@@ -677,6 +735,7 @@ export function Payslips() {
                           variant="ghost" 
                           size="icon" 
                           className="h-8 w-8"
+                          onClick={() => handleSendEmail(payslip)}
                           title="Enviar por email"
                         >
                           <Mail className="h-4 w-4" />
@@ -698,6 +757,90 @@ export function Payslips() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Company Edit Dialog */}
+      <Dialog open={isCompanyEditOpen} onOpenChange={setIsCompanyEditOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Editar Empresa</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="company-name">Nombre</Label>
+                <Input
+                  id="company-name"
+                  value={editingCompany?.name || ''}
+                  onChange={(e) => setEditingCompany(prev => prev ? {...prev, name: e.target.value} : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="company-legal">Razón Social</Label>
+                <Input
+                  id="company-legal"
+                  value={editingCompany?.legal_name || ''}
+                  onChange={(e) => setEditingCompany(prev => prev ? {...prev, legal_name: e.target.value} : null)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="company-id">Cédula Jurídica</Label>
+                <Input
+                  id="company-id"
+                  value={editingCompany?.juridical_id || ''}
+                  onChange={(e) => setEditingCompany(prev => prev ? {...prev, juridical_id: e.target.value} : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="company-logo">URL del Logo</Label>
+                <Input
+                  id="company-logo"
+                  value={editingCompany?.logo_url || ''}
+                  onChange={(e) => setEditingCompany(prev => prev ? {...prev, logo_url: e.target.value} : null)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="primary-color">Color Primario</Label>
+                <Input
+                  id="primary-color"
+                  type="color"
+                  value={editingCompany?.primary_color || '#0B2B4C'}
+                  onChange={(e) => setEditingCompany(prev => prev ? {...prev, primary_color: e.target.value} : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="accent-color">Color Acento</Label>
+                <Input
+                  id="accent-color"
+                  type="color"
+                  value={editingCompany?.accent_color || '#2A9D8F'}
+                  onChange={(e) => setEditingCompany(prev => prev ? {...prev, accent_color: e.target.value} : null)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="light-color">Color Claro</Label>
+                <Input
+                  id="light-color"
+                  type="color"
+                  value={editingCompany?.light_color || '#F5EFE6'}
+                  onChange={(e) => setEditingCompany(prev => prev ? {...prev, light_color: e.target.value} : null)}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsCompanyEditOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveCompany}>
+              Guardar Cambios
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
