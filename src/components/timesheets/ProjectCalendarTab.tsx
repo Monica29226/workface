@@ -1,421 +1,377 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Calendar } from "@/components/ui/calendar";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { 
-  Plus,
   Calendar as CalendarIcon,
-  FolderOpen,
-  Users,
-  Activity,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Clock,
+  Users
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks } from "date-fns";
 import { es } from "date-fns/locale";
+import { useCompany } from "@/contexts/CompanyContext";
 
-interface ProjectActivity {
+interface EmployeeTimesheet {
   id: string;
+  employeeName: string;
   date: string;
-  project: string;
   activity: string;
+  project?: string;
+  costCenter: string;
+  hours: number;
   description: string;
-  responsible: string;
-  status: 'planned' | 'in-progress' | 'completed' | 'cancelled';
-  priority: 'low' | 'medium' | 'high';
+  isWeekend: boolean;
+  isHoliday: boolean;
+  approved: boolean;
 }
 
 export function ProjectCalendarTab() {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [activities, setActivities] = useState<ProjectActivity[]>([
-    {
-      id: '1',
-      date: '2025-09-14',
-      project: 'Proyecto Turístico',
-      activity: 'Supervisión de Campo',
-      description: 'Inspección de instalaciones turísticas',
-      responsible: 'María González',
-      status: 'in-progress',
-      priority: 'high'
-    },
-    {
-      id: '2',
-      date: '2025-09-15',
-      project: 'Programa Social',
-      activity: 'Capacitación',
-      description: 'Capacitación a beneficiarios del programa',
-      responsible: 'Gabriel Cordero',
-      status: 'planned',
-      priority: 'medium'
-    },
-    {
-      id: '3',
-      date: '2025-09-14',
-      project: 'Administración',
-      activity: 'Reunión Gerencial',
-      description: 'Revisión de indicadores mensuales',
-      responsible: 'Andrés Hidalgo',
-      status: 'completed',
-      priority: 'high'
+  const { selectedCompany } = useCompany();
+  const [currentWeek, setCurrentWeek] = useState(new Date());
+
+  const getTimesheetsData = (): EmployeeTimesheet[] => {
+    if (selectedCompany?.id === '550e8400-e29b-41d4-a716-446655440001') {
+      return [
+        {
+          id: '1',
+          employeeName: 'Andrés Hidalgo Vega',
+          date: '2025-09-06',
+          activity: 'Supervisión General',
+          costCenter: 'Administración',
+          hours: 8,
+          description: 'Supervisión de operaciones diarias',
+          isWeekend: true,
+          isHoliday: false,
+          approved: true
+        },
+        {
+          id: '2',
+          employeeName: 'María González Rojas',
+          date: '2025-09-07',
+          activity: 'Operación de Campo',
+          project: 'Proyecto Turístico',
+          costCenter: 'Operaciones',
+          hours: 8,
+          description: 'Trabajo en campo turístico',
+          isWeekend: true,
+          isHoliday: false,
+          approved: false
+        },
+        {
+          id: '3',
+          employeeName: 'Andrés Hidalgo Vega',
+          date: '2025-09-08',
+          activity: 'Reuniones',
+          costCenter: 'Administración',
+          hours: 4,
+          description: 'Reuniones gerenciales',
+          isWeekend: false,
+          isHoliday: false,
+          approved: true
+        },
+        {
+          id: '4',
+          employeeName: 'María González Rojas',
+          date: '2025-09-08',
+          activity: 'Capacitación',
+          project: 'Programa Social',
+          costCenter: 'Programas',
+          hours: 6,
+          description: 'Capacitación a beneficiarios',
+          isWeekend: false,
+          isHoliday: false,
+          approved: true
+        }
+      ];
     }
-  ]);
 
-  const [newActivity, setNewActivity] = useState<Partial<ProjectActivity>>({
-    date: format(selectedDate, 'yyyy-MM-dd'),
-    project: '',
-    activity: '',
-    description: '',
-    responsible: '',
-    status: 'planned',
-    priority: 'medium'
-  });
-
-  const projects = [
-    'Proyecto Turístico',
-    'Programa Social', 
-    'Administración',
-    'Operaciones',
-    'Desarrollo'
-  ];
-
-  const employees = [
-    'María González Rojas',
-    'Gabriel Cordero González',
-    'Andrés Hidalgo Vega',
-    'Krissya Paulina Gutiérrez Solís'
-  ];
-
-  const handleSaveActivity = () => {
-    if (newActivity.project && newActivity.activity && newActivity.responsible) {
-      const activity: ProjectActivity = {
-        id: Date.now().toString(),
-        date: newActivity.date || format(selectedDate, 'yyyy-MM-dd'),
-        project: newActivity.project,
-        activity: newActivity.activity,
-        description: newActivity.description || '',
-        responsible: newActivity.responsible,
-        status: newActivity.status as ProjectActivity['status'] || 'planned',
-        priority: newActivity.priority as ProjectActivity['priority'] || 'medium'
-      };
-      setActivities([...activities, activity]);
-      setNewActivity({
-        date: format(selectedDate, 'yyyy-MM-dd'),
-        project: '',
-        activity: '',
-        description: '',
-        responsible: '',
-        status: 'planned',
-        priority: 'medium'
-      });
-      setIsDialogOpen(false);
-    }
+    return [
+      {
+        id: '1',
+        employeeName: 'Gabriel Cordero González',
+        date: '2025-09-01',
+        activity: 'Administración',
+        costCenter: 'Administración',
+        hours: 4,
+        description: 'Gestión administrativa general',
+        isWeekend: false,
+        isHoliday: false,
+        approved: true
+      },
+      {
+        id: '2',
+        employeeName: 'Gabriel Cordero González',
+        date: '2025-09-01',
+        activity: 'Apoyo Programas',
+        costCenter: 'Programas',
+        hours: 4,
+        description: 'Apoyo en programas sociales',
+        isWeekend: false,
+        isHoliday: false,
+        approved: true
+      },
+      {
+        id: '3',
+        employeeName: 'Krissya Paulina Gutiérrez Solís',
+        date: '2025-09-02',
+        activity: 'Soporte Técnico',
+        costCenter: 'Programas',
+        hours: 8,
+        description: 'Soporte técnico a beneficiarios',
+        isWeekend: false,
+        isHoliday: false,
+        approved: false
+      },
+      {
+        id: '4',
+        employeeName: 'Gabriel Cordero González',
+        date: '2025-09-03',
+        activity: 'Capacitación',
+        project: 'Programa Educativo',
+        costCenter: 'Programas',
+        hours: 6,
+        description: 'Capacitación en nuevas metodologías',
+        isWeekend: false,
+        isHoliday: false,
+        approved: true
+      },
+      {
+        id: '5',
+        employeeName: 'Krissya Paulina Gutiérrez Solís',
+        date: '2025-09-03',
+        activity: 'Desarrollo',
+        costCenter: 'Tecnología',
+        hours: 8,
+        description: 'Desarrollo de herramientas digitales',
+        isWeekend: false,
+        isHoliday: false,
+        approved: true
+      }
+    ];
   };
 
-  const getActivitiesForDate = (date: Date) => {
+  const timesheets = getTimesheetsData();
+  const weekStart = startOfWeek(currentWeek, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(currentWeek, { weekStartsOn: 1 });
+  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+  const employees = Array.from(new Set(timesheets.map(t => t.employeeName)));
+
+  const getHoursForEmployeeAndDate = (employee: string, date: Date) => {
     const dateString = format(date, 'yyyy-MM-dd');
-    return activities.filter(activity => activity.date === dateString);
+    return timesheets
+      .filter(t => t.employeeName === employee && t.date === dateString)
+      .reduce((total, t) => total + t.hours, 0);
   };
 
-  const getSelectedDateActivities = () => {
-    return getActivitiesForDate(selectedDate);
+  const getActivitiesForEmployeeAndDate = (employee: string, date: Date) => {
+    const dateString = format(date, 'yyyy-MM-dd');
+    return timesheets.filter(t => t.employeeName === employee && t.date === dateString);
   };
 
-  const getStatusBadge = (status: ProjectActivity['status']) => {
-    switch (status) {
-      case 'completed':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Completado</Badge>;
-      case 'in-progress':
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">En Progreso</Badge>;
-      case 'cancelled':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Cancelado</Badge>;
-      default:
-        return <Badge variant="secondary">Planificado</Badge>;
+  const getTotalHoursForEmployee = (employee: string) => {
+    return timesheets
+      .filter(t => t.employeeName === employee)
+      .reduce((total, t) => total + t.hours, 0);
+  };
+
+  const getTotalHoursForDate = (date: Date) => {
+    const dateString = format(date, 'yyyy-MM-dd');
+    return timesheets
+      .filter(t => t.date === dateString)
+      .reduce((total, t) => total + t.hours, 0);
+  };
+
+  const getStatusBadge = (timesheet: EmployeeTimesheet) => {
+    if (timesheet.isWeekend) {
+      return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Fin de Semana</Badge>;
     }
-  };
-
-  const getPriorityBadge = (priority: ProjectActivity['priority']) => {
-    switch (priority) {
-      case 'high':
-        return <Badge variant="destructive">Alta</Badge>;
-      case 'medium':
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Media</Badge>;
-      default:
-        return <Badge variant="outline">Baja</Badge>;
+    if (timesheet.isHoliday) {
+      return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">Feriado</Badge>;
     }
+    if (timesheet.hours > 8) {
+      return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Horas Extra</Badge>;
+    }
+    return <Badge variant="outline">Normal</Badge>;
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-xl font-semibold text-gradient">Calendario de Proyectos</h2>
-          <p className="text-muted-foreground">Gestión diaria de actividades por proyecto</p>
+          <h2 className="text-xl font-semibold text-gradient">Calendario de Colaboradores</h2>
+          <p className="text-muted-foreground">Vista semanal de horas por colaborador para {selectedCompany?.name}</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 gradient-navy text-white">
-              <Plus className="h-4 w-4" />
-              Nueva Actividad
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Agregar Actividad de Proyecto</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="project">Proyecto</Label>
-                <Select
-                  value={newActivity.project}
-                  onValueChange={(value) => setNewActivity({...newActivity, project: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar proyecto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map((project) => (
-                      <SelectItem key={project} value={project}>
-                        {project}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="activity">Actividad</Label>
-                <Input
-                  id="activity"
-                  placeholder="Nombre de la actividad"
-                  value={newActivity.activity}
-                  onChange={(e) => setNewActivity({...newActivity, activity: e.target.value})}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="responsible">Responsable</Label>
-                <Select
-                  value={newActivity.responsible}
-                  onValueChange={(value) => setNewActivity({...newActivity, responsible: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar responsable" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employees.map((employee) => (
-                      <SelectItem key={employee} value={employee}>
-                        {employee}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="status">Estado</Label>
-                  <Select
-                    value={newActivity.status}
-                    onValueChange={(value) => setNewActivity({...newActivity, status: value as ProjectActivity['status']})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="planned">Planificado</SelectItem>
-                      <SelectItem value="in-progress">En Progreso</SelectItem>
-                      <SelectItem value="completed">Completado</SelectItem>
-                      <SelectItem value="cancelled">Cancelado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="priority">Prioridad</Label>
-                  <Select
-                    value={newActivity.priority}
-                    onValueChange={(value) => setNewActivity({...newActivity, priority: value as ProjectActivity['priority']})}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Baja</SelectItem>
-                      <SelectItem value="medium">Media</SelectItem>
-                      <SelectItem value="high">Alta</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Descripción detallada de la actividad"
-                  value={newActivity.description}
-                  onChange={(e) => setNewActivity({...newActivity, description: e.target.value})}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleSaveActivity} className="gradient-navy text-white">
-                Guardar
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}
+            className="gap-2"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Semana Anterior
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}
+            className="gap-2"
+          >
+            Semana Siguiente
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 card-elevated">
-          <CardHeader>
-            <CardTitle className="text-navy flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5" />
-              Calendario
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(date) => date && setSelectedDate(date)}
-              month={currentMonth}
-              onMonthChange={setCurrentMonth}
-              locale={es}
-              className="rounded-md border"
-              components={{
-                DayContent: ({ date }) => {
-                  const dayActivities = getActivitiesForDate(date);
-                  return (
-                    <div className="relative w-full h-full">
-                      <span>{date.getDate()}</span>
-                      {dayActivities.length > 0 && (
-                        <div className="absolute bottom-0 right-0 w-2 h-2 bg-teal rounded-full"></div>
-                      )}
-                    </div>
-                  );
-                }
-              }}
-            />
-          </CardContent>
-        </Card>
-
-        <Card className="card-elevated">
-          <CardHeader>
-            <CardTitle className="text-navy flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Actividades del Día
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {format(selectedDate, 'dd MMMM yyyy', { locale: es })}
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {getSelectedDateActivities().length === 0 ? (
-                <p className="text-muted-foreground text-sm">No hay actividades programadas</p>
-              ) : (
-                getSelectedDateActivities().map((activity) => (
-                  <div key={activity.id} className="border rounded-lg p-3 space-y-2">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1 flex-1">
-                        <h4 className="font-medium text-sm">{activity.activity}</h4>
-                        <p className="text-xs text-muted-foreground">{activity.project}</p>
-                        <p className="text-xs">{activity.responsible}</p>
+      <Card className="card-elevated">
+        <CardHeader>
+          <CardTitle className="text-navy flex items-center gap-2">
+            <CalendarIcon className="h-5 w-5" />
+            Semana del {format(weekStart, 'dd MMM', { locale: es })} al {format(weekEnd, 'dd MMM yyyy', { locale: es })}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="font-semibold sticky left-0 bg-background">Colaborador</TableHead>
+                  {weekDays.map((day) => (
+                    <TableHead key={day.toString()} className="text-center font-semibold min-w-[120px]">
+                      <div className="space-y-1">
+                        <div>{format(day, 'EEE', { locale: es })}</div>
+                        <div className="text-xs text-muted-foreground">{format(day, 'dd/MM')}</div>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        {getStatusBadge(activity.status)}
-                        {getPriorityBadge(activity.priority)}
-                      </div>
-                    </div>
-                    {activity.description && (
-                      <p className="text-xs text-muted-foreground">{activity.description}</p>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                    </TableHead>
+                  ))}
+                  <TableHead className="text-center font-semibold">Total Semana</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {employees.map((employee) => (
+                  <TableRow key={employee} className="hover:bg-muted/25">
+                    <TableCell className="font-medium sticky left-0 bg-background border-r">
+                      {employee}
+                    </TableCell>
+                    {weekDays.map((day) => {
+                      const hours = getHoursForEmployeeAndDate(employee, day);
+                      const activities = getActivitiesForEmployeeAndDate(employee, day);
+                      return (
+                        <TableCell key={day.toString()} className="text-center p-2">
+                          {hours > 0 ? (
+                            <div className="space-y-1">
+                              <div className="font-semibold text-teal text-lg">{hours}h</div>
+                              <div className="space-y-1">
+                                {activities.map((activity, idx) => (
+                                  <div key={idx} className="text-xs">
+                                    <div className="font-medium">{activity.activity}</div>
+                                    {activity.project && (
+                                      <div className="text-muted-foreground">{activity.project}</div>
+                                    )}
+                                    <div className="flex justify-center mt-1">
+                                      {getStatusBadge(activity)}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-muted-foreground text-sm">-</div>
+                          )}
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell className="text-center font-bold text-teal">
+                      {getTotalHoursForEmployee(employee)}h
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="bg-muted/25 font-semibold">
+                  <TableCell className="sticky left-0 bg-muted/25 border-r">Total por Día</TableCell>
+                  {weekDays.map((day) => (
+                    <TableCell key={day.toString()} className="text-center font-bold text-navy">
+                      {getTotalHoursForDate(day)}h
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-center font-bold text-navy">
+                    {timesheets.reduce((total, t) => total + t.hours, 0)}h
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="card-elevated">
           <CardHeader>
             <CardTitle className="text-navy flex items-center gap-2">
-              <FolderOpen className="h-5 w-5" />
-              Proyectos Activos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-teal">
-              {new Set(activities.map(a => a.project)).size}
-            </div>
-            <p className="text-sm text-muted-foreground">Este mes</p>
-          </CardContent>
-        </Card>
-
-        <Card className="card-elevated">
-          <CardHeader>
-            <CardTitle className="text-navy flex items-center gap-2">
-              <Activity className="h-5 w-5" />
-              Actividades
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-teal">
-              {activities.length}
-            </div>
-            <p className="text-sm text-muted-foreground">Total programadas</p>
-          </CardContent>
-        </Card>
-
-        <Card className="card-elevated">
-          <CardHeader>
-            <CardTitle className="text-navy flex items-center gap-2">
               <Users className="h-5 w-5" />
-              Completadas
+              Colaboradores Activos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-teal">
+              {employees.length}
+            </div>
+            <p className="text-sm text-muted-foreground">Esta semana</p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle className="text-navy flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Horas Totales
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-teal">
+              {timesheets.reduce((total, t) => total + t.hours, 0)}h
+            </div>
+            <p className="text-sm text-muted-foreground">Esta semana</p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle className="text-navy flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Horas Aprobadas
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {activities.filter(a => a.status === 'completed').length}
+              {timesheets.filter(t => t.approved).reduce((total, t) => total + t.hours, 0)}h
             </div>
-            <p className="text-sm text-muted-foreground">Este mes</p>
+            <p className="text-sm text-muted-foreground">Esta semana</p>
           </CardContent>
         </Card>
 
         <Card className="card-elevated">
           <CardHeader>
             <CardTitle className="text-navy flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5" />
-              En Progreso
+              <Clock className="h-5 w-5" />
+              Horas Pendientes
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {activities.filter(a => a.status === 'in-progress').length}
+            <div className="text-2xl font-bold text-orange-600">
+              {timesheets.filter(t => !t.approved).reduce((total, t) => total + t.hours, 0)}h
             </div>
-            <p className="text-sm text-muted-foreground">Este mes</p>
+            <p className="text-sm text-muted-foreground">Esta semana</p>
           </CardContent>
         </Card>
       </div>
