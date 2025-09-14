@@ -1,151 +1,119 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  DollarSign, 
-  TrendingUp, 
-  Users, 
-  Calculator,
-  ArrowUpRight,
-  ArrowDownRight
-} from "lucide-react";
+import { TrendingUp, TrendingDown, DollarSign, Users, Clock, FileText } from "lucide-react";
 
 interface KPICardsProps {
   language: "es" | "en";
 }
 
-const kpiData = {
-  grossPayroll: 6894615,
-  totalDeductions: 940351,
-  netPayable: 5954264,
-  employerCharges: 1792600,
-  activeEmployees: 7,
-  avgCostPerEmployee: 985516
-};
-
-export const KPICards = ({ language = "es" }: KPICardsProps) => {
+export function KPICards({ language }: KPICardsProps) {
   const labels = {
     es: {
-      grossPayroll: "Nómina Bruta",
-      totalDeductions: "Deducciones Totales", 
-      netPayable: "Neto a Depositar",
-      employerCharges: "Cargas Patronales",
-      activeEmployees: "Empleados Activos",
-      avgCost: "Costo Promedio/Empleado",
-      vsLastMonth: "vs mes anterior",
-      currency: "₡"
+      totalSalaries: "Total Salarios",
+      totalEmployees: "Total Empleados",
+      avgHours: "Promedio Horas",
+      activePeriods: "Períodos Activos",
+      compared: "vs mes anterior",
+      increase: "aumento",
+      decrease: "disminución",
+      hours: "horas",
+      active: "activos"
     },
     en: {
-      grossPayroll: "Gross Payroll",
-      totalDeductions: "Total Deductions",
-      netPayable: "Net Payable", 
-      employerCharges: "Employer Charges",
-      activeEmployees: "Active Employees",
-      avgCost: "Avg Cost/Employee",
-      vsLastMonth: "vs last month",
-      currency: "₡"
+      totalSalaries: "Total Salaries",
+      totalEmployees: "Total Employees", 
+      avgHours: "Average Hours",
+      activePeriods: "Active Periods",
+      compared: "vs previous month",
+      increase: "increase",
+      decrease: "decrease",
+      hours: "hours",
+      active: "active"
     }
   };
 
   const t = labels[language];
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('es-CR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(amount);
-  };
-
   const kpis = [
     {
-      title: t.grossPayroll,
-      value: `${t.currency}${formatCurrency(kpiData.grossPayroll)}`,
+      title: t.totalSalaries,
+      value: "₡2,450,000",
       change: "+12.5%",
-      trend: "up" as const,
+      trend: "up",
       icon: DollarSign,
-      className: "gradient-navy text-white"
+      color: "text-green-600"
     },
     {
-      title: t.totalDeductions,
-      value: `${t.currency}${formatCurrency(kpiData.totalDeductions)}`,
-      change: "+8.2%", 
-      trend: "up" as const,
-      icon: Calculator,
-      className: "bg-destructive/10 text-destructive border-destructive/20"
-    },
-    {
-      title: t.netPayable,
-      value: `${t.currency}${formatCurrency(kpiData.netPayable)}`,
-      change: "+14.1%",
-      trend: "up" as const,
-      icon: TrendingUp,
-      className: "gradient-teal text-white"
-    },
-    {
-      title: t.employerCharges,
-      value: `${t.currency}${formatCurrency(kpiData.employerCharges)}`,
-      change: "+11.8%",
-      trend: "up" as const,
-      icon: Calculator,
-      className: "bg-orange-500/10 text-orange-600 border-orange-500/20"
-    },
-    {
-      title: t.activeEmployees,
-      value: kpiData.activeEmployees.toString(),
-      change: "+2",
-      trend: "up" as const,
+      title: t.totalEmployees,
+      value: "45",
+      change: "+3",
+      trend: "up", 
       icon: Users,
-      className: "bg-blue-500/10 text-blue-600 border-blue-500/20"
+      color: "text-blue-600",
+      suffix: t.active
     },
     {
-      title: t.avgCost,
-      value: `${t.currency}${formatCurrency(kpiData.avgCostPerEmployee)}`,
-      change: "-2.3%",
-      trend: "down" as const,
-      icon: DollarSign,
-      className: "bg-green-500/10 text-green-600 border-green-500/20"
+      title: t.avgHours,
+      value: "168",
+      change: "-2.1%",
+      trend: "down",
+      icon: Clock,
+      color: "text-orange-600",
+      suffix: t.hours
+    },
+    {
+      title: t.activePeriods,
+      value: "2",
+      change: "0",
+      trend: "neutral",
+      icon: FileText,
+      color: "text-purple-600",
+      suffix: t.active
     }
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {kpis.map((kpi, index) => {
         const Icon = kpi.icon;
-        const isPositiveTrend = kpi.trend === "up";
+        const isPositive = kpi.trend === "up";
+        const isNegative = kpi.trend === "down";
         
         return (
-          <Card key={index} className="card-elevated border-2">
+          <Card key={index} className="card-elevated">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
                 {kpi.title}
               </CardTitle>
-              <div className={`p-2 rounded-lg ${kpi.className}`}>
-                <Icon className="h-4 w-4" />
-              </div>
+              <Icon className={`h-4 w-4 ${kpi.color}`} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold mb-1">
                 {kpi.value}
+                {kpi.suffix && <span className="text-sm font-normal text-muted-foreground ml-1">{kpi.suffix}</span>}
               </div>
-              <div className="flex items-center gap-2">
-                <Badge 
-                  variant={isPositiveTrend ? "default" : "secondary"}
-                  className="flex items-center gap-1 text-xs"
-                >
-                  {isPositiveTrend ? (
-                    <ArrowUpRight className="h-3 w-3" />
-                  ) : (
-                    <ArrowDownRight className="h-3 w-3" />
-                  )}
-                  {kpi.change}
-                </Badge>
-                <span className="text-xs text-muted-foreground">
-                  {t.vsLastMonth}
-                </span>
-              </div>
+              {kpi.change !== "0" && (
+                <div className="flex items-center gap-1">
+                  {isPositive ? (
+                    <TrendingUp className="h-3 w-3 text-green-600" />
+                  ) : isNegative ? (
+                    <TrendingDown className="h-3 w-3 text-red-600" />
+                  ) : null}
+                  <Badge 
+                    variant={isPositive ? "default" : isNegative ? "destructive" : "secondary"}
+                    className="text-xs px-1.5 py-0.5"
+                  >
+                    {kpi.change}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground ml-1">
+                    {t.compared}
+                  </span>
+                </div>
+              )}
             </CardContent>
           </Card>
         );
       })}
     </div>
   );
-};
+}

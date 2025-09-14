@@ -11,6 +11,7 @@ import { Timesheets } from "@/pages/Timesheets";
 import { PayrollProcess } from "@/pages/PayrollProcess";
 import { Payslips } from "@/pages/Payslips";
 import CompanySelector from "./pages/CompanySelector";
+import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<CompanySelector />} />
+          <Route path="/index" element={<Index />} />
           <Route element={<AppLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/employees" element={<Employees />} />

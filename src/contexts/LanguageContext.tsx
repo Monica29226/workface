@@ -70,7 +70,12 @@ const translations = {
     'status.draft': 'Borrador',
     'status.in_review': 'En Revisión',
     'status.approved': 'Aprobado',
-    'status.closed': 'Cerrado'
+    'status.closed': 'Cerrado',
+
+    // Company Selector
+    'companySelector.title': 'Sistema de Planillas Costa Rica',
+    'companySelector.subtitle': 'Seleccione su compañía para continuar',
+    'companySelector.enter': 'Ingresar'
   },
   en: {
     // Navigation
@@ -133,7 +138,12 @@ const translations = {
     'status.draft': 'Draft',
     'status.in_review': 'In Review',
     'status.approved': 'Approved',
-    'status.closed': 'Closed'
+    'status.closed': 'Closed',
+
+    // Company Selector
+    'companySelector.title': 'Costa Rica Payroll System',
+    'companySelector.subtitle': 'Select your company to continue',
+    'companySelector.enter': 'Enter'
   }
 };
 
