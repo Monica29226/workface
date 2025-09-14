@@ -804,50 +804,50 @@ export type Database = {
         Insert: {
           active?: boolean | null
           birth_date?: string | null
-          cedula?: never
+          cedula?: string | null
           children_count?: number | null
           civil_status?: string | null
           company_id?: string | null
           cost_center?: string | null
           created_at?: string | null
           department?: string | null
-          email?: never
+          email?: string | null
           first_name?: string | null
           has_garnishment?: boolean | null
           has_pension?: boolean | null
           hire_date?: string | null
-          iban?: never
+          iban?: string | null
           id?: string | null
           last_name?: string | null
           manager_id?: string | null
-          nss_ccss?: never
+          nss_ccss?: string | null
           payment_currency?: string | null
-          phone?: never
+          phone?: string | null
           termination_date?: string | null
           updated_at?: string | null
         }
         Update: {
           active?: boolean | null
           birth_date?: string | null
-          cedula?: never
+          cedula?: string | null
           children_count?: number | null
           civil_status?: string | null
           company_id?: string | null
           cost_center?: string | null
           created_at?: string | null
           department?: string | null
-          email?: never
+          email?: string | null
           first_name?: string | null
           has_garnishment?: boolean | null
           has_pension?: boolean | null
           hire_date?: string | null
-          iban?: never
+          iban?: string | null
           id?: string | null
           last_name?: string | null
           manager_id?: string | null
-          nss_ccss?: never
+          nss_ccss?: string | null
           payment_currency?: string | null
-          phone?: never
+          phone?: string | null
           termination_date?: string | null
           updated_at?: string | null
         }
