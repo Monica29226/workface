@@ -67,6 +67,12 @@ const menuItems = [
     description: { es: "Liquidaciones", en: "Settlements" } 
   },
   { 
+    title: { es: "Horas por Proyecto", en: "Project Hours" }, 
+    icon: Clock, 
+    path: "/horas-proyecto", 
+    description: { es: "Clasificación horas", en: "Hour classification" } 
+  },
+  { 
     title: { es: "Correos", en: "Email Center" }, 
     icon: Mail, 
     path: "/email-center", 
