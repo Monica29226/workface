@@ -14,10 +14,12 @@ import {
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCompany } from "@/contexts/CompanyContext";
 import { formatCurrency } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
 export function Dashboard() {
   const { t } = useLanguage();
   const { selectedCompany } = useCompany();
+  const navigate = useNavigate();
 
   // Demo KPIs data based on selected company
   const getKPIData = () => {
@@ -241,19 +243,35 @@ export function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Button variant="outline" className="justify-start gap-2 h-12">
+            <Button 
+              variant="outline" 
+              className="justify-start gap-2 h-12"
+              onClick={() => navigate('/employees')}
+            >
               <Users className="h-4 w-4" />
               Nuevo Empleado
             </Button>
-            <Button variant="outline" className="justify-start gap-2 h-12">
+            <Button 
+              variant="outline" 
+              className="justify-start gap-2 h-12"
+              onClick={() => navigate('/payroll-process')}
+            >
               <FileText className="h-4 w-4" />
               Generar Planilla
             </Button>
-            <Button variant="outline" className="justify-start gap-2 h-12">
+            <Button 
+              variant="outline" 
+              className="justify-start gap-2 h-12"
+              onClick={() => navigate('/payroll-process')}
+            >
               <Calculator className="h-4 w-4" />
               Procesar Nómina
             </Button>
-            <Button variant="outline" className="justify-start gap-2 h-12">
+            <Button 
+              variant="outline" 
+              className="justify-start gap-2 h-12"
+              onClick={() => navigate('/liquidations')}
+            >
               <Download className="h-4 w-4" />
               Archivo Bancario
             </Button>
