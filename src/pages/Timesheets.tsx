@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -19,11 +20,16 @@ import {
   Edit, 
   Check,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Calendar,
+  Receipt,
+  FileText
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCompany } from "@/contexts/CompanyContext";
 import { formatDate } from "@/lib/utils";
+import { PayrollProcessTab } from "@/components/timesheets/PayrollProcessTab";
+import { ProjectCalendarTab } from "@/components/timesheets/ProjectCalendarTab";
 
 interface Timesheet {
   id: string;
@@ -144,7 +150,7 @@ export function Timesheets() {
             {t('nav.timesheets')}
           </h1>
           <p className="text-muted-foreground">
-            Distribución de jornada laboral para {selectedCompany?.name}
+            Gestión de planilla y proyectos para {selectedCompany?.name}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -162,6 +168,56 @@ export function Timesheets() {
           </Button>
         </div>
       </div>
+
+      <Tabs defaultValue="timesheets" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="timesheets" className="gap-2">
+            <Clock className="h-4 w-4" />
+            Registro de Horas
+          </TabsTrigger>
+          <TabsTrigger value="payroll" className="gap-2">
+            <Receipt className="h-4 w-4" />
+            Proceso de Planilla
+          </TabsTrigger>
+          <TabsTrigger value="calendar" className="gap-2">
+            <Calendar className="h-4 w-4" />
+            Calendario de Proyectos
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="timesheets" className="mt-6">
+          <TimesheetsContent 
+            timesheets={timesheets}
+            filteredTimesheets={filteredTimesheets}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            getStatusBadge={getStatusBadge}
+          />
+        </TabsContent>
+
+        <TabsContent value="payroll" className="mt-6">
+          <PayrollProcessTab />
+        </TabsContent>
+
+        <TabsContent value="calendar" className="mt-6">
+          <ProjectCalendarTab />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+interface TimesheetsContentProps {
+  timesheets: Timesheet[];
+  filteredTimesheets: Timesheet[];
+  searchTerm: string;
+  setSearchTerm: (value: string) => void;
+  getStatusBadge: (timesheet: Timesheet) => JSX.Element;
+}
+
+function TimesheetsContent({ timesheets, filteredTimesheets, searchTerm, setSearchTerm, getStatusBadge }: TimesheetsContentProps) {
+  return (
+    <div className="space-y-6">
 
       <Card className="card-elevated">
         <CardContent className="pt-6">
