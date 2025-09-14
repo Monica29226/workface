@@ -803,10 +803,10 @@ export type Database = {
         }
         Insert: {
           active?: boolean | null
-          birth_date?: never
+          birth_date?: string | null
           cedula?: never
-          children_count?: never
-          civil_status?: never
+          children_count?: number | null
+          civil_status?: string | null
           company_id?: string | null
           cost_center?: string | null
           created_at?: string | null
@@ -828,10 +828,10 @@ export type Database = {
         }
         Update: {
           active?: boolean | null
-          birth_date?: never
+          birth_date?: string | null
           cedula?: never
-          children_count?: never
-          civil_status?: never
+          children_count?: number | null
+          civil_status?: string | null
           company_id?: string | null
           cost_center?: string | null
           created_at?: string | null
