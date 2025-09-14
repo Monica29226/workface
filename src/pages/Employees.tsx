@@ -1,8 +1,11 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -18,10 +21,14 @@ import {
   Upload, 
   Edit, 
   Trash2,
-  Calculator
+  Calculator,
+  FileText,
+  Save,
+  X
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCompany } from "@/contexts/CompanyContext";
+import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatDate, calculateVacationDays, calculateAguinaldo } from "@/lib/utils";
 
 interface Employee {
@@ -43,7 +50,13 @@ interface Employee {
 export function Employees() {
   const { t } = useLanguage();
   const { selectedCompany } = useCompany();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showCertificateDialog, setShowCertificateDialog] = useState(false);
+  const [selectedEmployeeForCertificate, setSelectedEmployeeForCertificate] = useState<Employee | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
 
   // Demo employees data
   const getEmployeesData = (): Employee[] => {
@@ -177,13 +190,55 @@ export function Employees() {
     ];
   };
 
-  const employees = getEmployeesData();
+  // Initialize employees data on component mount
+  useEffect(() => {
+    setEmployees(getEmployeesData());
+  }, [selectedCompany?.id]);
   
   const filteredEmployees = employees.filter(employee =>
     `${employee.firstName} ${employee.lastName} ${employee.cedula} ${employee.email}`
       .toLowerCase()
       .includes(searchTerm.toLowerCase())
   );
+
+  const handleEditEmployee = (employee: Employee) => {
+    setEditingEmployee({ ...employee });
+    setShowEditDialog(true);
+  };
+
+  const handleSaveEmployee = () => {
+    if (!editingEmployee) return;
+
+    setEmployees(prev => prev.map(emp => 
+      emp.id === editingEmployee.id ? editingEmployee : emp
+    ));
+
+    toast({
+      title: "Empleado actualizado",
+      description: "Los datos del empleado han sido actualizados correctamente",
+    });
+
+    setShowEditDialog(false);
+    setEditingEmployee(null);
+  };
+
+  const handleGenerateCertificate = (employee: Employee) => {
+    setSelectedEmployeeForCertificate(employee);
+    setShowCertificateDialog(true);
+  };
+
+  const generateWorkCertificate = () => {
+    if (!selectedEmployeeForCertificate) return;
+
+    // Here you would generate and download the work certificate
+    toast({
+      title: "Constancia generada",
+      description: `Constancia laboral generada para ${selectedEmployeeForCertificate.firstName} ${selectedEmployeeForCertificate.lastName}`,
+    });
+
+    setShowCertificateDialog(false);
+    setSelectedEmployeeForCertificate(null);
+  };
 
   const calculateEmployeeMetrics = (employee: Employee) => {
     const monthsWorked = Math.floor((new Date().getTime() - new Date(employee.hireDate).getTime()) / (1000 * 60 * 60 * 24 * 30));
@@ -313,8 +368,18 @@ export function Employees() {
                             size="icon" 
                             className="h-8 w-8"
                             title="Editar empleado"
+                            onClick={() => handleEditEmployee(employee)}
                           >
                             <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            title="Constancia laboral"
+                            onClick={() => handleGenerateCertificate(employee)}
+                          >
+                            <FileText className="h-4 w-4" />
                           </Button>
                           <Button 
                             variant="ghost" 
@@ -395,6 +460,200 @@ export function Employees() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Edit Employee Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Editar Empleado</DialogTitle>
+            <DialogDescription>
+              Actualiza la información del empleado
+            </DialogDescription>
+          </DialogHeader>
+          {editingEmployee && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="firstName">Nombre</Label>
+                <Input
+                  id="firstName"
+                  value={editingEmployee.firstName}
+                  onChange={(e) => setEditingEmployee({...editingEmployee, firstName: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="lastName">Apellidos</Label>
+                <Input
+                  id="lastName"
+                  value={editingEmployee.lastName}
+                  onChange={(e) => setEditingEmployee({...editingEmployee, lastName: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="cedula">Cédula</Label>
+                <Input
+                  id="cedula"
+                  value={editingEmployee.cedula}
+                  onChange={(e) => setEditingEmployee({...editingEmployee, cedula: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={editingEmployee.email}
+                  onChange={(e) => setEditingEmployee({...editingEmployee, email: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="position">Puesto</Label>
+                <Input
+                  id="position"
+                  value={editingEmployee.position}
+                  onChange={(e) => setEditingEmployee({...editingEmployee, position: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="department">Departamento</Label>
+                <Select 
+                  value={editingEmployee.department} 
+                  onValueChange={(value) => setEditingEmployee({...editingEmployee, department: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Administración">Administración</SelectItem>
+                    <SelectItem value="Programas Sociales">Programas Sociales</SelectItem>
+                    <SelectItem value="Finanzas">Finanzas</SelectItem>
+                    <SelectItem value="Campo">Campo</SelectItem>
+                    <SelectItem value="TI">TI</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="costCenter">Centro de Costo</Label>
+                <Select 
+                  value={editingEmployee.costCenter} 
+                  onValueChange={(value) => setEditingEmployee({...editingEmployee, costCenter: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Administración">Administración</SelectItem>
+                    <SelectItem value="Programas">Programas</SelectItem>
+                    <SelectItem value="Operaciones">Operaciones</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="hireDate">Fecha de Ingreso</Label>
+                <Input
+                  id="hireDate"
+                  type="date"
+                  value={editingEmployee.hireDate}
+                  onChange={(e) => setEditingEmployee({...editingEmployee, hireDate: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="salary">Salario Mensual</Label>
+                <Input
+                  id="salary"
+                  type="number"
+                  value={editingEmployee.monthlySalary}
+                  onChange={(e) => setEditingEmployee({...editingEmployee, monthlySalary: parseFloat(e.target.value)})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="status">Estado</Label>
+                <Select 
+                  value={editingEmployee.status} 
+                  onValueChange={(value: 'active' | 'inactive') => setEditingEmployee({...editingEmployee, status: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Activo</SelectItem>
+                    <SelectItem value="inactive">Inactivo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              <X className="h-4 w-4 mr-2" />
+              Cancelar
+            </Button>
+            <Button onClick={handleSaveEmployee}>
+              <Save className="h-4 w-4 mr-2" />
+              Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Work Certificate Dialog */}
+      <Dialog open={showCertificateDialog} onOpenChange={setShowCertificateDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Generar Constancia Laboral</DialogTitle>
+            <DialogDescription>
+              Constancia laboral para {selectedEmployeeForCertificate?.firstName} {selectedEmployeeForCertificate?.lastName}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedEmployeeForCertificate && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <Label className="font-semibold">Cédula:</Label>
+                  <p>{selectedEmployeeForCertificate.cedula}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Puesto:</Label>
+                  <p>{selectedEmployeeForCertificate.position}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Departamento:</Label>
+                  <p>{selectedEmployeeForCertificate.department}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Fecha de Ingreso:</Label>
+                  <p>{formatDate(selectedEmployeeForCertificate.hireDate)}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Salario:</Label>
+                  <p>{formatCurrency(selectedEmployeeForCertificate.monthlySalary, selectedEmployeeForCertificate.currency)}</p>
+                </div>
+                <div>
+                  <Label className="font-semibold">Estado:</Label>
+                  <Badge variant={selectedEmployeeForCertificate.status === 'active' ? 'default' : 'secondary'}>
+                    {selectedEmployeeForCertificate.status === 'active' ? 'Activo' : 'Inactivo'}
+                  </Badge>
+                </div>
+              </div>
+              
+              <div className="bg-muted p-4 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  Se generará una constancia laboral oficial con la información del empleado, 
+                  incluyendo fecha de ingreso, puesto actual y salario.
+                </p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCertificateDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={generateWorkCertificate}>
+              <FileText className="h-4 w-4 mr-2" />
+              Generar Constancia
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
