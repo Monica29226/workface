@@ -10,6 +10,7 @@ import { Contracts } from "@/pages/Contracts";
 import { Timesheets } from "@/pages/Timesheets";
 import { PayrollProcess } from "@/pages/PayrollProcess";
 import { Payslips } from "@/pages/Payslips";
+import { Liquidaciones } from "@/pages/Liquidaciones";
 import CompanySelector from "./pages/CompanySelector";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -42,7 +43,7 @@ const App = () => (
                   <Route path="/payroll-process" element={<PayrollProcess />} />
                   <Route path="/payslips" element={<Payslips />} />
                   <Route path="/cost-centers" element={<div className="p-6 text-center text-muted-foreground">Centros de Costo - En desarrollo</div>} />
-                  <Route path="/liquidations" element={<div className="p-6 text-center text-muted-foreground">Liquidaciones - En desarrollo</div>} />
+                  <Route path="/liquidaciones" element={<Liquidaciones />} />
                   <Route path="/reports" element={<div className="p-6 text-center text-muted-foreground">Reportes - En desarrollo</div>} />
                   <Route path="/historico" element={<Historico />} />
                   <Route path="/email-center" element={<div className="p-6 text-center text-muted-foreground">Centro de Correos - En desarrollo</div>} />

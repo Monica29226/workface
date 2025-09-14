@@ -61,9 +61,9 @@ const menuItems = [
     description: { es: "Recibos de pago", en: "Pay receipts" } 
   },
   { 
-    title: { es: "Terminaciones", en: "Terminations" }, 
+    title: { es: "Liquidaciones", en: "Terminations" }, 
     icon: UserX, 
-    path: "/terminations", 
+    path: "/liquidaciones", 
     description: { es: "Liquidaciones", en: "Settlements" } 
   },
   { 
