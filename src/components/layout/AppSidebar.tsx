@@ -36,51 +36,51 @@ const navigationItems = [
     group: 'main'
   },
   { 
-    title: 'nav.employees', 
-    url: '/employees', 
-    icon: Users,
-    group: 'hr'
-  },
-  { 
-    title: 'nav.contracts', 
-    url: '/contracts', 
-    icon: FileText,
-    group: 'hr'
-  },
-  { 
-    title: 'nav.timesheets', 
-    url: '/timesheets', 
-    icon: Clock,
-    group: 'hr'
-  },
-  { 
     title: 'nav.payroll_process', 
     url: '/payroll-process', 
     icon: Calculator,
-    group: 'payroll'
+    group: 'main'
+  },
+  { 
+    title: 'nav.employees', 
+    url: '/employees', 
+    icon: Users,
+    group: 'main'
+  },
+  { 
+    title: 'nav.projects', 
+    url: '/timesheets', 
+    icon: Clock,
+    group: 'main'
   },
   { 
     title: 'nav.payslips', 
     url: '/payslips', 
     icon: Receipt,
-    group: 'payroll'
-  },
-  { 
-    title: 'nav.cost_centers', 
-    url: '/cost-centers', 
-    icon: Building2,
-    group: 'payroll'
-  },
-  { 
-    title: 'nav.liquidations', 
-    url: '/liquidations', 
-    icon: DollarSign,
-    group: 'payroll'
+    group: 'main'
   },
   { 
     title: 'nav.historico', 
     url: '/historico', 
     icon: BarChart3,
+    group: 'reports'
+  },
+  { 
+    title: 'nav.contracts', 
+    url: '/contracts', 
+    icon: FileText,
+    group: 'reports'
+  },
+  { 
+    title: 'nav.cost_centers', 
+    url: '/cost-centers', 
+    icon: Building2,
+    group: 'reports'
+  },
+  { 
+    title: 'nav.liquidations', 
+    url: '/liquidations', 
+    icon: DollarSign,
     group: 'reports'
   },
   { 
@@ -93,23 +93,21 @@ const navigationItems = [
     title: 'nav.parameters', 
     url: '/settings/parameters', 
     icon: Settings,
-    group: 'config'
+    group: 'admin'
   },
   { 
     title: 'nav.admin', 
     url: '/settings/admin', 
     icon: UserCheck,
-    group: 'config'
+    group: 'admin'
   }
 ];
 
 const groups = {
-  main: 'Principal',
-  hr: 'Recursos Humanos',
-  payroll: 'Planillas',
+  main: 'ACL Payroll CR',
   reports: 'Reportes',
   communications: 'Comunicaciones',
-  config: 'Configuración'
+  admin: 'Administración'
 };
 
 export function AppSidebar() {

@@ -8,30 +8,31 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* ACL Costa Rica Payroll System - Navy, Beige, Gray, Teal Palette */
-    --background: 42 46% 95%;
-    --foreground: 210 24% 16%;
+    /* ACL Payroll CR - Multi-Empresa & Multi-Moneda */
+    /* Primary: #1A3B5D, Secondary: #D9C8A9, Neutral: #F7F7F7, Accent: #2D7A9E */
+    --background: 0 0% 97%;
+    --foreground: 210 56% 23%;
 
     --card: 0 0% 100%;
-    --card-foreground: 210 24% 16%;
+    --card-foreground: 210 56% 23%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 24% 16%;
+    --popover-foreground: 210 56% 23%;
 
-    /* Navy primary */
-    --primary: 210 63% 18%;
-    --primary-foreground: 42 46% 95%;
+    /* Primary - Navy #1A3B5D */
+    --primary: 210 56% 23%;
+    --primary-foreground: 0 0% 97%;
 
-    /* Teal secondary */
-    --secondary: 172 39% 37%;
-    --secondary-foreground: 0 0% 100%;
+    /* Secondary - Beige #D9C8A9 */
+    --secondary: 39 40% 76%;
+    --secondary-foreground: 210 56% 23%;
 
     /* Light gray muted */
-    --muted: 210 17% 93%;
-    --muted-foreground: 210 10% 40%;
+    --muted: 0 0% 95%;
+    --muted-foreground: 210 20% 40%;
 
-    /* Teal accent */
-    --accent: 172 39% 37%;
+    /* Accent - Teal #2D7A9E */
+    --accent: 199 56% 40%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -39,18 +40,18 @@ All colors MUST be HSL.
 
     --border: 210 17% 89%;
     --input: 210 17% 89%;
-    --ring: 210 63% 18%;
+    --ring: 210 56% 23%;
 
     --radius: 0.75rem;
 
-    /* Custom design tokens for payroll system */
-    --navy: 210 63% 18%;
-    --navy-light: 210 40% 25%;
-    --beige: 42 46% 95%;
-    --beige-dark: 42 20% 85%;
-    --gray-light: 210 17% 93%;
-    --teal: 172 39% 37%;
-    --teal-light: 172 25% 50%;
+    /* Custom design tokens for ACL Payroll CR */
+    --navy: 210 56% 23%;
+    --navy-light: 210 45% 35%;
+    --beige: 39 40% 76%;
+    --beige-dark: 39 30% 65%;
+    --gray-light: 0 0% 95%;
+    --teal: 199 56% 40%;
+    --teal-light: 199 50% 55%;
     
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--navy)), hsl(var(--navy-light)));
@@ -84,42 +85,42 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 210 63% 8%;
-    --foreground: 42 46% 95%;
+    --background: 210 56% 10%;
+    --foreground: 0 0% 97%;
 
-    --card: 210 50% 12%;
-    --card-foreground: 42 46% 95%;
+    --card: 210 50% 15%;
+    --card-foreground: 0 0% 97%;
 
-    --popover: 210 50% 12%;
-    --popover-foreground: 42 46% 95%;
+    --popover: 210 50% 15%;
+    --popover-foreground: 0 0% 97%;
 
-    --primary: 42 46% 95%;
-    --primary-foreground: 210 63% 18%;
+    --primary: 39 40% 76%;
+    --primary-foreground: 210 56% 23%;
 
-    --secondary: 172 39% 37%;
+    --secondary: 199 56% 40%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 210 40% 15%;
+    --muted: 210 40% 18%;
     --muted-foreground: 210 10% 60%;
 
-    --accent: 172 39% 37%;
+    --accent: 199 56% 40%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 40% 20%;
-    --input: 210 40% 20%;
-    --ring: 42 46% 95%;
+    --border: 210 40% 25%;
+    --input: 210 40% 25%;
+    --ring: 39 40% 76%;
 
     /* Dark mode custom tokens */
-    --navy: 42 46% 95%;
-    --navy-light: 42 30% 85%;
-    --beige: 210 63% 8%;
-    --beige-dark: 210 40% 15%;
-    --gray-light: 210 40% 15%;
-    --teal: 172 39% 37%;
-    --teal-light: 172 25% 50%;
+    --navy: 39 40% 76%;
+    --navy-light: 39 30% 85%;
+    --beige: 210 56% 10%;
+    --beige-dark: 210 40% 18%;
+    --gray-light: 210 40% 18%;
+    --teal: 199 56% 40%;
+    --teal-light: 199 50% 55%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;

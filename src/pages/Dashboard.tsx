@@ -98,24 +98,24 @@ export function Dashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gradient">
-            {t('dashboard.title')}
+          <h1 className="text-2xl font-bold text-primary">
+            ACL Payroll CR
           </h1>
           <p className="text-muted-foreground">
-            {selectedCompany?.name} - Setiembre 2025
+            {selectedCompany?.name} - Sistema Multi-Empresa & Multi-Moneda
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-            {t('status.approved')}
+          <Badge variant="outline" className="bg-accent/10 text-accent border-accent/20">
+            CRC
           </Badge>
           <Button variant="outline" size="sm" className="gap-2">
             <Download className="h-4 w-4" />
             {t('common.export')}
           </Button>
-          <Button size="sm" className="gap-2 gradient-navy text-white">
+          <Button size="sm" className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
             <FileText className="h-4 w-4" />
-            Ver Colillas
+            Ver Boletas
           </Button>
         </div>
       </div>
@@ -123,15 +123,17 @@ export function Dashboard() {
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {kpiCards.map((kpi, index) => (
-          <Card key={index} className="card-elevated hover:scale-[1.02] transition-all duration-200">
+          <Card key={index} className="card-elevated hover:scale-[1.02] transition-all duration-200 border-l-4 border-l-primary">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {kpi.title}
               </CardTitle>
-              <kpi.icon className="h-4 w-4 text-muted-foreground" />
+              <div className="p-2 rounded-lg bg-primary/10">
+                <kpi.icon className="h-4 w-4 text-primary" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-navy">
+              <div className="text-2xl font-bold text-primary">
                 {kpi.value}
               </div>
               <p className={`text-xs ${kpi.trendColor} flex items-center gap-1 mt-1`}>
@@ -148,7 +150,7 @@ export function Dashboard() {
         {/* Gross vs Deductions Chart */}
         <Card className="card-elevated">
           <CardHeader>
-            <CardTitle className="text-navy">
+            <CardTitle className="text-primary">
               Bruto vs Deducciones por Centro de Costo
             </CardTitle>
           </CardHeader>
@@ -198,7 +200,7 @@ export function Dashboard() {
         {/* Employees by Department */}
         <Card className="card-elevated">
           <CardHeader>
-            <CardTitle className="text-navy">
+            <CardTitle className="text-primary">
               Empleados por Departamento
             </CardTitle>
           </CardHeader>
@@ -239,7 +241,7 @@ export function Dashboard() {
       {/* Quick Actions */}
       <Card className="card-elevated">
         <CardHeader>
-          <CardTitle className="text-navy">Acciones Rápidas</CardTitle>
+          <CardTitle className="text-primary">Acciones Rápidas</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
