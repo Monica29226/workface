@@ -1,17 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -20,396 +12,614 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { 
-  Plus, 
-  Calculator, 
-  FileText, 
-  Download, 
-  Eye,
-  AlertTriangle,
-  CheckCircle
-} from "lucide-react";
+import { Calendar, DollarSign, Mail, FileText, Download } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCompany } from "@/contexts/CompanyContext";
-import { formatCurrency, formatDate, calculateVacationAmount, calculateAguinaldo } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
-interface Liquidation {
+interface PayrollLine {
   id: string;
-  employeeId: string;
-  employeeName: string;
-  employeeCedula: string;
-  terminationDate: string;
-  cause: string;
-  withEmployerLiability: boolean;
-  vacationDays: number;
-  vacationAmount: number;
-  aguinaldoAmount: number;
-  preaviso: number;
-  cesantia: number;
-  pendingSalaries: number;
-  finalDeductions: number;
-  totalToPay: number;
-  status: 'draft' | 'calculated' | 'approved' | 'paid';
-  createdDate: string;
+  gross_salary: number;
+  deductions: number;
+  net_pay: number;
+  aguinaldo_accrued: number;
+  period_start: string;
+  period_end: string;
+  currency: string;
+  exchange_rate_to_base: number;
+}
+
+interface Employee {
+  id: string;
+  employee_id: string;
+  full_name: string;
+  work_email: string;
+  base_salary: number;
 }
 
 export function Liquidations() {
   const { t } = useLanguage();
   const { selectedCompany } = useCompany();
-  const [showNewLiquidation, setShowNewLiquidation] = useState(false);
-  
-  const [newLiquidation, setNewLiquidation] = useState({
-    employeeId: '',
-    terminationDate: new Date().toISOString().split('T')[0],
-    cause: '',
-    withEmployerLiability: true
-  });
+  const { toast } = useToast();
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [selectedEmployee, setSelectedEmployee] = useState<string>("");
+  const [selectedYear, setSelectedYear] = useState("2025");
+  const [payrollHistory, setPayrollHistory] = useState<PayrollLine[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
-  const getLiquidationsData = (): Liquidation[] => {
-    return [
-      {
-        id: '1',
-        employeeId: 'emp1',
-        employeeName: 'Ejemplo de Liquidación',
-        employeeCedula: '1-1234-5678',
-        terminationDate: '2025-09-15',
-        cause: 'Renuncia voluntaria',
-        withEmployerLiability: false,
-        vacationDays: 15.5,
-        vacationAmount: 465000,
-        aguinaldoAmount: 185000,
-        preaviso: 0,
-        cesantia: 620000,
-        pendingSalaries: 0,
-        finalDeductions: 45000,
-        totalToPay: 1225000,
-        status: 'calculated',
-        createdDate: '2025-09-10'
-      }
-    ];
-  };
+  useEffect(() => {
+    if (selectedCompany) {
+      fetchEmployees();
+    }
+  }, [selectedCompany]);
 
-  const liquidations = getLiquidationsData();
+  useEffect(() => {
+    if (selectedEmployee && selectedYear) {
+      fetchPayrollHistory();
+    }
+  }, [selectedEmployee, selectedYear]);
 
-  // Costa Rica severance calculation matrix (simplified)
-  const calculateCesantia = (yearsWorked: number, monthlySalary: number) => {
-    let severanceDays = 0;
-    
-    if (yearsWorked >= 1 && yearsWorked < 2) severanceDays = 19.5;
-    else if (yearsWorked >= 2 && yearsWorked < 3) severanceDays = 20;
-    else if (yearsWorked >= 3 && yearsWorked < 4) severanceDays = 20.5;
-    else if (yearsWorked >= 4 && yearsWorked < 5) severanceDays = 21;
-    else if (yearsWorked >= 5) severanceDays = 21.24;
-    
-    const dailySalary = monthlySalary / 30;
-    const maxAmount = 8 * monthlySalary; // Maximum 8 salaries in Costa Rica
-    
-    return Math.min(severanceDays * dailySalary, maxAmount);
-  };
+  const fetchEmployees = async () => {
+    if (!selectedCompany) return;
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'draft':
-        return <Badge variant="secondary">Borrador</Badge>;
-      case 'calculated':
-        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Calculada</Badge>;
-      case 'approved':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Aprobada</Badge>;
-      case 'paid':
-        return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">Pagada</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('company_id', selectedCompany.id)
+        .eq('status', 'activo')
+        .order('full_name');
+
+      if (error) throw error;
+      setEmployees(data || []);
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los empleados",
+        variant: "destructive",
+      });
     }
   };
 
-  const renderLiquidationCalculator = () => (
-    <Card className="card-elevated">
-      <CardHeader>
-        <CardTitle className="text-navy flex items-center gap-2">
-          <Calculator className="h-5 w-5" />
-          Calculadora de Liquidación
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="employee">Empleado</Label>
-              <Select onValueChange={(value) => setNewLiquidation(prev => ({ ...prev, employeeId: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar empleado..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="emp1">Gabriel Cordero González</SelectItem>
-                  <SelectItem value="emp2">Krissya Paulina Gutiérrez Solís</SelectItem>
-                  <SelectItem value="emp3">David Marín Mora</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+  const fetchPayrollHistory = async () => {
+    if (!selectedEmployee || !selectedCompany) return;
 
-            <div className="space-y-2">
-              <Label htmlFor="terminationDate">Fecha de Corte</Label>
-              <Input
-                id="terminationDate"
-                type="date"
-                value={newLiquidation.terminationDate}
-                onChange={(e) => setNewLiquidation(prev => ({ ...prev, terminationDate: e.target.value }))}
-              />
-            </div>
+    setIsLoading(true);
+    try {
+      const yearStart = `${selectedYear}-01-01`;
+      const yearEnd = `${selectedYear}-12-31`;
 
-            <div className="space-y-2">
-              <Label htmlFor="cause">Causal de Terminación</Label>
-              <Select onValueChange={(value) => setNewLiquidation(prev => ({ ...prev, cause: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar causal..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="renuncia">Renuncia Voluntaria</SelectItem>
-                  <SelectItem value="despido_con_causa">Despido con Responsabilidad Patronal</SelectItem>
-                  <SelectItem value="despido_sin_causa">Despido sin Responsabilidad Patronal</SelectItem>
-                  <SelectItem value="mutuo_acuerdo">Mutuo Acuerdo</SelectItem>
-                  <SelectItem value="vencimiento">Vencimiento de Contrato</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+      const { data, error } = await supabase
+        .from('payroll_lines')
+        .select(`
+          *,
+          batch:payroll_batches(
+            period_start,
+            period_end,
+            status
+          )
+        `)
+        .eq('employee_id', selectedEmployee)
+        .eq('company_id', selectedCompany.id)
+        .gte('batch.period_start', yearStart)
+        .lte('batch.period_end', yearEnd)
+        .order('batch.period_start', { ascending: true });
 
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="withLiability"
-                checked={newLiquidation.withEmployerLiability}
-                onChange={(e) => setNewLiquidation(prev => ({ ...prev, withEmployerLiability: e.target.checked }))}
-                className="rounded"
-              />
-              <Label htmlFor="withLiability">Con responsabilidad patronal</Label>
+      if (error) throw error;
+
+      const transformedData = (data || []).map((line: any) => ({
+        id: line.id,
+        gross_salary: Number(line.gross_salary),
+        deductions: Number(line.deductions),
+        net_pay: Number(line.net_pay),
+        aguinaldo_accrued: Number(line.aguinaldo_accrued || 0),
+        period_start: line.batch.period_start,
+        period_end: line.batch.period_end,
+        currency: line.currency,
+        exchange_rate_to_base: Number(line.exchange_rate_to_base)
+      }));
+
+      setPayrollHistory(transformedData);
+    } catch (error) {
+      console.error('Error fetching payroll history:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo cargar el historial de planillas",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const calculateAguinaldo = () => {
+    if (payrollHistory.length === 0) return 0;
+    
+    const totalGross = payrollHistory.reduce((sum, line) => sum + line.gross_salary, 0);
+    const monthsWorked = payrollHistory.length;
+    
+    // Aguinaldo = promedio mensual * (meses trabajados / 12)
+    const averageMonthly = totalGross / monthsWorked;
+    const aguinaldo = (averageMonthly * monthsWorked) / 12;
+    
+    return aguinaldo;
+  };
+
+  const calculateTotals = () => {
+    const totalGross = payrollHistory.reduce((sum, line) => sum + line.gross_salary, 0);
+    const totalDeductions = payrollHistory.reduce((sum, line) => sum + line.deductions, 0);
+    const totalNet = payrollHistory.reduce((sum, line) => sum + line.net_pay, 0);
+    const aguinaldo = calculateAguinaldo();
+    
+    return {
+      totalGross,
+      totalDeductions,
+      totalNet,
+      aguinaldo,
+      monthsWorked: payrollHistory.length
+    };
+  };
+
+  const selectedEmployeeData = employees.find(e => e.id === selectedEmployee);
+  const totals = calculateTotals();
+
+  const generateLiquidationPDF = () => {
+    if (!selectedEmployeeData) return;
+
+    const monthNames = [
+      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ];
+
+    const liquidationWindow = window.open('', '_blank');
+    if (liquidationWindow) {
+      liquidationWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <title>Liquidación - ${selectedEmployeeData.full_name}</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 40px; 
+              line-height: 1.6; 
+              color: #0B2B4C;
+            }
+            .header { 
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              margin-bottom: 30px;
+            }
+            .company-logo { 
+              font-size: 48px; 
+              color: #2A9D8F; 
+              font-weight: bold; 
+            }
+            .company-name { 
+              font-size: 24px; 
+              font-weight: bold; 
+              color: #0B2B4C; 
+            }
+            .document-info {
+              text-align: right;
+            }
+            .document-title { 
+              font-size: 20px; 
+              color: #2A9D8F;
+              margin: 5px 0;
+            }
+            .period { 
+              color: #0B2B4C; 
+              font-size: 14px; 
+            }
+            .employee-box { 
+              border: 3px solid #0B2B4C; 
+              padding: 20px; 
+              margin: 30px 0;
+            }
+            .section-title { 
+              background: #2A9D8F; 
+              color: white; 
+              padding: 10px 15px; 
+              font-weight: bold;
+              font-size: 16px;
+              margin: 20px 0 0 0;
+            }
+            .data-grid { 
+              display: grid; 
+              grid-template-columns: 1fr 1fr; 
+              gap: 15px;
+              margin: 15px 0;
+            }
+            .data-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 8px 0;
+              border-bottom: 1px solid #e0e0e0;
+            }
+            .label { 
+              font-weight: bold; 
+              color: #0B2B4C; 
+            }
+            .value {
+              text-align: right;
+              font-family: 'Courier New', monospace;
+            }
+            table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin: 15px 0;
+            }
+            th, td { 
+              border: 1px solid #ddd; 
+              padding: 12px; 
+              text-align: left; 
+            }
+            th { 
+              background: #f8f9fa; 
+              font-weight: bold; 
+              color: #0B2B4C; 
+            }
+            .amount { 
+              text-align: right; 
+              font-family: 'Courier New', monospace; 
+            }
+            .total-row { 
+              font-weight: bold; 
+              background: #e9ecef; 
+              font-size: 16px;
+            }
+            .aguinaldo-highlight {
+              background: #d4edda;
+              font-weight: bold;
+              color: #155724;
+            }
+            .final-box { 
+              border: 3px solid #2A9D8F; 
+              padding: 20px; 
+              margin: 30px 0;
+              text-align: center;
+            }
+            .final-amount {
+              font-size: 28px;
+              font-weight: bold;
+              color: #2A9D8F;
+              margin: 10px 0;
+            }
+            @media print {
+              body { margin: 20px; }
+              button { display: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <div class="company-logo">Horizonte +</div>
+              <div class="company-name">${selectedCompany?.name || 'Empresa'}</div>
+            </div>
+            <div class="document-info">
+              <div class="document-title">Liquidación Laboral</div>
+              <div class="period">Año ${selectedYear}</div>
+              <div class="period">Fecha: ${new Date().toLocaleDateString('es-CR')}</div>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <h3 className="font-semibold text-navy">Cálculo Automático</h3>
-            <div className="p-4 bg-muted/25 rounded-lg space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm">Vacaciones Pendientes:</span>
-                <span className="font-mono text-teal">15.5 días</span>
+          <div class="employee-box">
+            <h3 style="margin-top: 0; color: #0B2B4C;">Datos del Empleado</h3>
+            <div class="data-grid">
+              <div>
+                <div class="data-row">
+                  <span class="label">Nombre:</span>
+                  <span class="value">${selectedEmployeeData.full_name}</span>
+                </div>
+                <div class="data-row">
+                  <span class="label">Identificación:</span>
+                  <span class="value">${selectedEmployeeData.employee_id}</span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm">Valor Vacaciones:</span>
-                <span className="font-mono text-teal">{formatCurrency(465000, 'CRC')}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm">Aguinaldo Proporcional:</span>
-                <span className="font-mono text-teal">{formatCurrency(185000, 'CRC')}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm">Cesantía:</span>
-                <span className="font-mono text-teal">{formatCurrency(620000, 'CRC')}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm">Preaviso:</span>
-                <span className="font-mono text-orange-600">{formatCurrency(0, 'CRC')}</span>
-              </div>
-              <div className="border-t pt-2">
-                <div className="flex justify-between font-semibold">
-                  <span>Total a Pagar:</span>
-                  <span className="font-mono text-navy">{formatCurrency(1225000, 'CRC')}</span>
+              <div>
+                <div class="data-row">
+                  <span class="label">Correo:</span>
+                  <span class="value">${selectedEmployeeData.work_email}</span>
+                </div>
+                <div class="data-row">
+                  <span class="label">Meses trabajados:</span>
+                  <span class="value">${totals.monthsWorked} meses</span>
                 </div>
               </div>
             </div>
-
-            <div className="flex gap-2">
-              <Button className="flex-1 gradient-navy text-white">
-                <Calculator className="h-4 w-4 mr-2" />
-                Calcular
-              </Button>
-              <Button variant="outline">
-                <FileText className="h-4 w-4 mr-2" />
-                Vista Previa
-              </Button>
-            </div>
           </div>
-        </div>
 
-        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
-            <div>
-              <h4 className="font-semibold text-yellow-800">Importante - Legislación Costarricense</h4>
-              <p className="text-sm text-yellow-700 mt-1">
-                Los cálculos se basan en la matriz de cesantía vigente. Vacaciones: 1.25 días por mes trabajado.
-                Aguinaldo proporcional del período 01-dic a 30-nov. Consulte con su asesor legal para casos específicos.
-              </p>
-            </div>
+          <div class="section-title">Detalle de Salarios del Año ${selectedYear}</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Período</th>
+                <th class="amount">Salario Bruto</th>
+                <th class="amount">Deducciones</th>
+                <th class="amount">Salario Neto</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${payrollHistory.map(line => {
+                const date = new Date(line.period_start);
+                const month = monthNames[date.getMonth()];
+                const year = date.getFullYear();
+                return `
+                  <tr>
+                    <td>${month} ${year}</td>
+                    <td class="amount">${formatCurrency(line.gross_salary, line.currency)}</td>
+                    <td class="amount">${formatCurrency(line.deductions, line.currency)}</td>
+                    <td class="amount">${formatCurrency(line.net_pay, line.currency)}</td>
+                  </tr>
+                `;
+              }).join('')}
+              <tr class="total-row">
+                <td>TOTALES</td>
+                <td class="amount">${formatCurrency(totals.totalGross, 'CRC')}</td>
+                <td class="amount">${formatCurrency(totals.totalDeductions, 'CRC')}</td>
+                <td class="amount">${formatCurrency(totals.totalNet, 'CRC')}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="section-title">Cálculo de Aguinaldo</div>
+          <table>
+            <tbody>
+              <tr>
+                <td class="label">Total Salarios Brutos del Año</td>
+                <td class="amount">${formatCurrency(totals.totalGross, 'CRC')}</td>
+              </tr>
+              <tr>
+                <td class="label">Meses Trabajados</td>
+                <td class="amount">${totals.monthsWorked} meses</td>
+              </tr>
+              <tr>
+                <td class="label">Promedio Mensual</td>
+                <td class="amount">${formatCurrency(totals.totalGross / totals.monthsWorked, 'CRC')}</td>
+              </tr>
+              <tr class="aguinaldo-highlight">
+                <td class="label">AGUINALDO (1/12 por mes trabajado)</td>
+                <td class="amount">${formatCurrency(totals.aguinaldo, 'CRC')}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="final-box">
+            <h2 style="margin-top: 0; color: #0B2B4C;">Total de Liquidación</h2>
+            <div class="final-amount">${formatCurrency(totals.aguinaldo, 'CRC')}</div>
+            <p style="color: #666; margin-top: 20px;">
+              Este documento certifica el cálculo de liquidación correspondiente<br>
+              al período del 01 de enero al 31 de diciembre de ${selectedYear}
+            </p>
           </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
+
+          <div style="margin-top: 50px; text-align: center;">
+            <button onclick="window.print()" style="
+              background: #2A9D8F;
+              color: white;
+              border: none;
+              padding: 12px 30px;
+              font-size: 16px;
+              border-radius: 5px;
+              cursor: pointer;
+              margin-right: 10px;
+            ">Imprimir</button>
+            <button onclick="window.close()" style="
+              background: #0B2B4C;
+              color: white;
+              border: none;
+              padding: 12px 30px;
+              font-size: 16px;
+              border-radius: 5px;
+              cursor: pointer;
+            ">Cerrar</button>
+          </div>
+        </body>
+        </html>
+      `);
+      liquidationWindow.document.close();
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!selectedEmployeeData) return;
+
+    setIsSendingEmail(true);
+    try {
+      toast({
+        title: "Función no implementada",
+        description: "Para enviar correos, necesitas configurar Resend. Ve a Settings y agrega RESEND_API_KEY como secreto.",
+      });
+    } catch (error) {
+      console.error('Error sending email:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo enviar el correo",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="space-y-6 p-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gradient">
-            Liquidaciones
-          </h1>
+          <h1 className="text-3xl font-bold">Liquidaciones</h1>
           <p className="text-muted-foreground">
-            Cálculo de prestaciones laborales - {selectedCompany?.name}
+            Calcula aguinaldos y genera liquidaciones laborales
           </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setShowNewLiquidation(!showNewLiquidation)}
-            className="gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Nueva Liquidación
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Download className="h-4 w-4" />
-            Exportar
-          </Button>
         </div>
       </div>
 
-      {/* New Liquidation Form */}
-      {showNewLiquidation && renderLiquidationCalculator()}
-
-      {/* Liquidations Table */}
-      <Card className="card-elevated">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-navy">Liquidaciones Generadas</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="font-semibold">Empleado</TableHead>
-                  <TableHead className="font-semibold">Fecha Corte</TableHead>
-                  <TableHead className="font-semibold">Causal</TableHead>
-                  <TableHead className="font-semibold text-right">Vacaciones</TableHead>
-                  <TableHead className="font-semibold text-right">Aguinaldo</TableHead>
-                  <TableHead className="font-semibold text-right">Cesantía</TableHead>
-                  <TableHead className="font-semibold text-right">Total</TableHead>
-                  <TableHead className="font-semibold text-center">Estado</TableHead>
-                  <TableHead className="font-semibold text-center">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {liquidations.map((liquidation) => (
-                  <TableRow key={liquidation.id} className="hover:bg-muted/25">
-                    <TableCell>
-                      <div>
-                        <div className="font-medium">{liquidation.employeeName}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {liquidation.employeeCedula}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{formatDate(liquidation.terminationDate)}</TableCell>
-                    <TableCell>{liquidation.cause}</TableCell>
-                    <TableCell className="text-right font-mono">
-                      {formatCurrency(liquidation.vacationAmount, 'CRC')}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {formatCurrency(liquidation.aguinaldoAmount, 'CRC')}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {formatCurrency(liquidation.cesantia, 'CRC')}
-                    </TableCell>
-                    <TableCell className="text-right font-mono font-semibold text-navy">
-                      {formatCurrency(liquidation.totalToPay, 'CRC')}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {getStatusBadge(liquidation.status)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                          title="Ver detalle"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8"
-                          title="Descargar PDF"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-green-600 hover:text-green-600"
-                          title="Aprobar"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Legal Information */}
-      <Card className="card-elevated">
-        <CardHeader>
-          <CardTitle className="text-navy">Matriz de Cesantía - Costa Rica 2025</CardTitle>
+          <CardTitle>Seleccionar Empleado y Período</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-semibold mb-3">Años de Servicio - Días de Cesantía</h4>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>1 año a menos de 2:</span>
-                  <span className="font-mono">19.5 días</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>2 años a menos de 3:</span>
-                  <span className="font-mono">20 días</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>3 años a menos de 4:</span>
-                  <span className="font-mono">20.5 días</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>4 años a menos de 5:</span>
-                  <span className="font-mono">21 días</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>5 años o más:</span>
-                  <span className="font-mono">21.24 días</span>
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label>Empleado</Label>
+              <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona un empleado" />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map(emp => (
+                    <SelectItem key={emp.id} value={emp.id}>
+                      {emp.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            
-            <div>
-              <h4 className="font-semibold mb-3">Límites y Consideraciones</h4>
-              <div className="space-y-2 text-sm">
-                <p>• <strong>Tope máximo:</strong> 8 salarios mensuales</p>
-                <p>• <strong>Vacaciones:</strong> 1.25 días por mes trabajado</p>
-                <p>• <strong>Aguinaldo:</strong> Proporcional del período</p>
-                <p>• <strong>Preaviso:</strong> Según causal de despido</p>
-                <p className="text-muted-foreground italic">
-                  *Los cálculos son referenciales. Consulte asesoría legal.
-                </p>
-              </div>
+
+            <div className="space-y-2">
+              <Label>Año</Label>
+              <Select value={selectedYear} onValueChange={setSelectedYear}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2024">2024</SelectItem>
+                  <SelectItem value="2025">2025</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Cargando datos...</p>
+          </div>
+        </div>
+      ) : selectedEmployee && payrollHistory.length > 0 ? (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Historial de Planillas {selectedYear}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Período</TableHead>
+                    <TableHead className="text-right">Salario Bruto</TableHead>
+                    <TableHead className="text-right">Deducciones</TableHead>
+                    <TableHead className="text-right">Salario Neto</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payrollHistory.map((line, index) => {
+                    const date = new Date(line.period_start);
+                    const monthNames = [
+                      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                      'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'
+                    ];
+                    const period = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+                    
+                    return (
+                      <TableRow key={line.id}>
+                        <TableCell className="font-medium">{period}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(line.gross_salary, line.currency)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(line.deductions, line.currency)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(line.net_pay, line.currency)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  <TableRow className="font-bold bg-muted">
+                    <TableCell>TOTALES</TableCell>
+                    <TableCell className="text-right">{formatCurrency(totals.totalGross, 'CRC')}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(totals.totalDeductions, 'CRC')}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(totals.totalNet, 'CRC')}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Cálculo de Aguinaldo
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Salarios Brutos</p>
+                    <p className="text-2xl font-bold">{formatCurrency(totals.totalGross, 'CRC')}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Meses Trabajados</p>
+                    <p className="text-2xl font-bold">{totals.monthsWorked} meses</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Promedio Mensual</p>
+                    <p className="text-2xl font-bold">{formatCurrency(totals.totalGross / totals.monthsWorked, 'CRC')}</p>
+                  </div>
+                  <div className="col-span-2 bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border-2 border-green-500">
+                    <p className="text-sm text-muted-foreground">Aguinaldo (1/12 por mes trabajado)</p>
+                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totals.aguinaldo, 'CRC')}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button onClick={generateLiquidationPDF} className="flex-1">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Ver Liquidación
+                  </Button>
+                  <Button 
+                    onClick={handleSendEmail} 
+                    disabled={isSendingEmail}
+                    variant="outline"
+                    className="flex-1"
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    {isSendingEmail ? "Enviando..." : "Enviar por Correo"}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      ) : selectedEmployee ? (
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center text-muted-foreground">
+              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>No hay registros de planilla para este empleado en {selectedYear}</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Selecciona un empleado para ver su liquidación</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
