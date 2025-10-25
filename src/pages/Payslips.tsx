@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useCompany } from "@/contexts/CompanyContext";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Payslip {
   id: string;
@@ -84,140 +85,100 @@ export function Payslips() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isCompanyEditOpen, setIsCompanyEditOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState(selectedCompany);
+  const [payslips, setPayslips] = useState<Payslip[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const getPayslipsData = (): Payslip[] => {
-    const baseExchangeRate = 510.27;
-    const currentYear = parseInt(selectedYear);
-    
-    if (selectedCompany?.id === '550e8400-e29b-41d4-a716-446655440001') {
-      return [
-        {
-          id: '1',
-          employeeId: 'emp1',
-          employeeName: 'Andrés Hidalgo Vega',
-          employeeCedula: '1-074-50630',
-          email: 'andres.hidalgo@alturasdetenorio.com',
-          position: 'Director Ejecutivo',
-          period: 'Setiembre 2025',
-          month: 9,
-          year: currentYear,
-          grossSalary: 3301433,
-          deductions: 400000,
-          netSalary: 2901433,
-          aguinaldo: 275281,
-          generatedDate: '2025-09-30',
-          status: 'sent',
-          emailStatus: 'sent',
-          costCenter: 'Administración',
-          exchangeRate: baseExchangeRate,
-          currency: 'CRC',
-          benefits: {
-            baseSalary: 3301433,
-            overtime: 0,
-            extraHours: 0,
-            bonuses: 0
-          },
-          deductionBreakdown: {
-            ccss_employee: 181579,
-            ccss_ivm: 165072,
-            income_tax: 53349,
-            loan_deduction: 0,
-            other: 0
-          }
-        }
-      ];
+  useEffect(() => {
+    if (selectedCompany) {
+      fetchPayslips();
     }
+  }, [selectedCompany, selectedYear]);
 
-    // Generate 12 months of data for Horizonte Positivo
-    const employees = [
-      {
-        id: '1',
-        employeeId: 'emp1',
-        employeeName: 'Gabriel Cordero González',
-        employeeCedula: '1-1354-0838',
-        email: 'gabriel.cordero@horizontepositivo.org',
-        position: 'Director Ejecutivo',
-        costCenter: 'Administración',
-        baseSalary: 2424480
-      },
-      {
-        id: '2',
-        employeeId: 'emp2',
-        employeeName: 'Krissya Paulina Gutiérrez Solís',
-        employeeCedula: '1-1936-0602',
-        email: 'krissya.gutierrez@horizontepositivo.org',
-        position: 'Soporte Interno',
-        costCenter: 'Programas',
-        baseSalary: 606120
-      },
-      {
-        id: '3',
-        employeeId: 'emp3',
-        employeeName: 'David Marín Mora',
-        employeeCedula: '1-1691-0435',
-        email: 'david@horizontepositivo.org',
-        position: 'Coordinador de Programas',
-        costCenter: 'Programas',
-        baseSalary: 808160
-      }
-    ];
+  const fetchPayslips = async () => {
+    if (!selectedCompany) return;
+    
+    setIsLoading(true);
+    try {
+      // Fetch payroll lines with batch and employee data
+      const { data, error } = await supabase
+        .from('payroll_lines')
+        .select(`
+          *,
+          batch:payroll_batches(
+            batch_id,
+            period_start,
+            period_end,
+            status
+          ),
+          employee:employees(
+            employee_id,
+            full_name,
+            work_email
+          )
+        `)
+        .eq('company_id', selectedCompany.id)
+        .order('created_at', { ascending: false });
 
-    const payslips: Payslip[] = [];
-    const months = [
-      'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-      'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'
-    ];
+      if (error) throw error;
 
-    employees.forEach((employee, empIndex) => {
-      for (let month = 1; month <= 12; month++) {
-        const monthlyVariation = (Math.random() * 0.1 - 0.05); // ±5% variation
-        const grossSalary = Math.round(employee.baseSalary * (1 + monthlyVariation));
-        const ccssEmployee = Math.round(grossSalary * 0.105);
-        const deductions = ccssEmployee + Math.round(grossSalary * 0.02); // Add other deductions
-        const netSalary = grossSalary - deductions;
-        const aguinaldo = Math.round(grossSalary * 0.0833); // 1/12
+      // Transform data to Payslip format
+      const transformedPayslips: Payslip[] = (data || []).map((line: any) => {
+        const periodStart = new Date(line.batch.period_start);
+        const month = periodStart.getMonth() + 1;
+        const year = periodStart.getFullYear();
+        const monthNames = [
+          'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+          'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        ];
 
-        payslips.push({
-          id: `${employee.id}-${month}`,
-          employeeId: employee.employeeId,
-          employeeName: employee.employeeName,
-          employeeCedula: employee.employeeCedula,
-          email: employee.email,
-          position: employee.position,
-          period: `${months[month - 1]} ${currentYear}`,
+        return {
+          id: line.id,
+          employeeId: line.employee.employee_id,
+          employeeName: line.employee.full_name,
+          employeeCedula: line.employee.employee_id, // Using employee_id as placeholder
+          email: line.employee.work_email,
+          position: 'Programas', // Placeholder
+          period: `${monthNames[month - 1]} ${year}`,
           month,
-          year: currentYear,
-          grossSalary,
-          deductions,
-          netSalary,
-          aguinaldo,
-          generatedDate: `${currentYear}-${month.toString().padStart(2, '0')}-30`,
-          status: month <= 9 ? 'sent' : month === 10 ? 'viewed' : 'generated',
-          emailStatus: month <= 9 ? 'sent' : month === 10 ? 'sent' : 'pending',
-          costCenter: employee.costCenter,
-          exchangeRate: baseExchangeRate + (Math.random() * 10 - 5), // Small exchange rate variation
-          currency: 'CRC',
+          year,
+          grossSalary: Number(line.gross_salary),
+          deductions: Number(line.deductions),
+          netSalary: Number(line.net_pay),
+          aguinaldo: Number(line.aguinaldo_accrued || 0),
+          generatedDate: line.created_at,
+          status: line.batch.status === 'aprobado' ? 'sent' : 'generated',
+          emailStatus: line.batch.status === 'aprobado' ? 'sent' : 'pending',
+          costCenter: 'Programas',
+          exchangeRate: Number(line.exchange_rate_to_base),
+          currency: line.currency,
           benefits: {
-            baseSalary: grossSalary,
-            overtime: 0,
+            baseSalary: Number(line.gross_salary),
+            overtime: Number(line.overtime || 0),
             extraHours: 0,
             bonuses: 0
           },
           deductionBreakdown: {
-            ccss_employee: Math.round(grossSalary * 0.055),
-            ccss_ivm: Math.round(grossSalary * 0.05),
-            income_tax: Math.max(0, Math.round(grossSalary * 0.01)),
+            ccss_employee: Math.round(Number(line.gross_salary) * 0.1067),
+            ccss_ivm: 0,
+            income_tax: 0,
             loan_deduction: 0,
-            other: Math.round(grossSalary * 0.005)
+            other: Number(line.deductions) - Math.round(Number(line.gross_salary) * 0.1067)
           }
-        });
-      }
-    });
+        };
+      });
 
-    return payslips;
+      setPayslips(transformedPayslips);
+    } catch (error) {
+      console.error('Error fetching payslips:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las colillas de pago",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
-
-  const payslips = getPayslipsData();
   
   const filteredPayslips = payslips.filter(payslip => {
     const matchesSearch = `${payslip.employeeName} ${payslip.employeeCedula} ${payslip.period}`
@@ -255,6 +216,17 @@ export function Payslips() {
   })() : [];
 
   const displayData = viewMode === 'yearly' ? yearlyData : filteredPayslips;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Cargando colillas de pago...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Helper functions for currency conversion
   const convertToUSD = (amountCRC: number, exchangeRate: number) => {
