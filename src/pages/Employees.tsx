@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useCompany } from "@/contexts/CompanyContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Search, Edit, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface Employee {
@@ -38,11 +39,15 @@ interface Company {
 export function Employees() {
   const { toast } = useToast();
   const { role } = useUserRole();
+  const { selectedCompany } = useCompany();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterCompany, setFilterCompany] = useState<string>("all");
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -61,9 +66,14 @@ export function Employees() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (selectedCompany) {
+      setFilterCompany(selectedCompany.id);
+    }
+  }, [selectedCompany]);
+
   const fetchData = async () => {
     try {
-      // Fetch companies
       const { data: companiesData, error: companiesError } = await supabase
         .from('companies')
         .select('id, display_name, base_currency')
@@ -72,7 +82,6 @@ export function Employees() {
       if (companiesError) throw companiesError;
       setCompanies(companiesData || []);
 
-      // Fetch employees
       const { data: employeesData, error: employeesError } = await supabase
         .from('employees')
         .select('*')
@@ -97,38 +106,106 @@ export function Employees() {
     setSaving(true);
 
     try {
-      const { error } = await supabase.from('employees').insert([{
-        employee_id: formData.employee_id,
-        company_id: formData.company_id,
-        full_name: formData.full_name,
-        work_email: formData.work_email,
-        base_salary: parseFloat(formData.base_salary),
-        hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
-        hire_date: formData.hire_date || null,
-        contract_type: formData.contract_type as 'mensual' | 'por_horas',
-        currency: formData.currency as 'CRC' | 'USD' | 'EUR' | 'GBP',
-        status: 'activo' as 'activo' | 'inactivo',
-      }]);
+      if (editingEmployee) {
+        const { error } = await supabase
+          .from('employees')
+          .update({
+            employee_id: formData.employee_id,
+            company_id: formData.company_id,
+            full_name: formData.full_name,
+            work_email: formData.work_email,
+            base_salary: parseFloat(formData.base_salary),
+            hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
+            hire_date: formData.hire_date || null,
+            contract_type: formData.contract_type as 'mensual' | 'por_horas',
+            currency: formData.currency as 'CRC' | 'USD' | 'EUR' | 'GBP',
+          })
+          .eq('id', editingEmployee.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "¡Éxito!",
+          description: "Empleado actualizado correctamente",
+        });
+      } else {
+        const { error } = await supabase.from('employees').insert([{
+          employee_id: formData.employee_id,
+          company_id: formData.company_id,
+          full_name: formData.full_name,
+          work_email: formData.work_email,
+          base_salary: parseFloat(formData.base_salary),
+          hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
+          hire_date: formData.hire_date || null,
+          contract_type: formData.contract_type as 'mensual' | 'por_horas',
+          currency: formData.currency as 'CRC' | 'USD' | 'EUR' | 'GBP',
+          status: 'activo' as 'activo' | 'inactivo',
+        }]);
+
+        if (error) throw error;
+
+        toast({
+          title: "¡Éxito!",
+          description: "Empleado creado correctamente",
+        });
+      }
+
+      setDialogOpen(false);
+      setEditingEmployee(null);
+      resetForm();
+      fetchData();
+    } catch (error: any) {
+      console.error('Error saving employee:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo guardar el empleado",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEdit = (employee: Employee) => {
+    setEditingEmployee(employee);
+    setFormData({
+      employee_id: employee.employee_id,
+      full_name: employee.full_name,
+      work_email: employee.work_email,
+      base_salary: employee.base_salary.toString(),
+      hourly_rate: employee.hourly_rate?.toString() || '',
+      hire_date: employee.hire_date || '',
+      contract_type: employee.contract_type,
+      currency: employee.currency,
+      company_id: employee.company_id,
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async (employeeId: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este empleado?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .delete()
+        .eq('id', employeeId);
 
       if (error) throw error;
 
       toast({
         title: "¡Éxito!",
-        description: "Empleado creado correctamente",
+        description: "Empleado eliminado correctamente",
       });
 
-      setDialogOpen(false);
-      resetForm();
       fetchData();
     } catch (error: any) {
-      console.error('Error creating employee:', error);
+      console.error('Error deleting employee:', error);
       toast({
         title: "Error",
-        description: error.message || "No se pudo crear el empleado",
+        description: error.message || "No se pudo eliminar el empleado",
         variant: "destructive",
       });
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -142,13 +219,23 @@ export function Employees() {
       hire_date: '',
       contract_type: 'mensual',
       currency: 'CRC',
-      company_id: '',
+      company_id: selectedCompany?.id || '',
     });
   };
 
   const getCompanyName = (companyId: string) => {
     return companies.find(c => c.id === companyId)?.display_name || 'N/A';
   };
+
+  const filteredEmployees = employees.filter(emp => {
+    const matchesSearch = emp.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.employee_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.work_email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCompany = filterCompany === "all" || emp.company_id === filterCompany;
+    
+    return matchesSearch && matchesCompany;
+  });
 
   if (loading) {
     return (
@@ -159,30 +246,35 @@ export function Employees() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-primary">Empleados</h1>
-          <p className="text-muted-foreground">Gestión de colaboradores del sistema</p>
+          <h1 className="text-3xl font-bold">Empleados</h1>
+          <p className="text-muted-foreground">
+            Gestiona la información de los empleados
+          </p>
         </div>
-
         {(role === 'admin' || role === 'company_manager') && (
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={dialogOpen} onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) {
+              setEditingEmployee(null);
+              resetForm();
+            }
+          }}>
             <DialogTrigger asChild>
-              <Button className="bg-primary hover:bg-primary/90">
-                <Plus className="h-4 w-4 mr-2" />
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
                 Nuevo Empleado
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Agregar Nuevo Empleado</DialogTitle>
+                <DialogTitle>{editingEmployee ? 'Editar Empleado' : 'Nuevo Empleado'}</DialogTitle>
                 <DialogDescription>
-                  Complete la información del nuevo colaborador
+                  {editingEmployee ? 'Actualiza la información del empleado' : 'Completa el formulario para agregar un nuevo empleado'}
                 </DialogDescription>
               </DialogHeader>
-
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -195,7 +287,6 @@ export function Employees() {
                       required
                     />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="company_id">Empresa *</Label>
                     <Select
@@ -324,19 +415,23 @@ export function Employees() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setDialogOpen(false)}
+                    onClick={() => {
+                      setDialogOpen(false);
+                      setEditingEmployee(null);
+                      resetForm();
+                    }}
                     disabled={saving}
                   >
                     Cancelar
                   </Button>
-                  <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90">
+                  <Button type="submit" disabled={saving}>
                     {saving ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Guardando...
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {editingEmployee ? 'Actualizando...' : 'Guardando...'}
                       </>
                     ) : (
-                      'Guardar Empleado'
+                      editingEmployee ? 'Actualizar' : 'Crear Empleado'
                     )}
                   </Button>
                 </div>
@@ -346,15 +441,39 @@ export function Employees() {
         )}
       </div>
 
-      {/* Employees Table */}
-      <Card className="card-elevated">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-primary">Lista de Empleados</CardTitle>
+          <CardTitle>Lista de Empleados</CardTitle>
           <CardDescription>
-            {employees.length} empleado{employees.length !== 1 ? 's' : ''} registrado{employees.length !== 1 ? 's' : ''}
+            {filteredEmployees.length} empleado{filteredEmployees.length !== 1 ? 's' : ''} encontrado{filteredEmployees.length !== 1 ? 's' : ''}
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="flex gap-4 mb-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nombre, ID o email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={filterCompany} onValueChange={setFilterCompany}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filtrar por empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las empresas</SelectItem>
+                {companies.map(company => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.display_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -364,40 +483,57 @@ export function Employees() {
                   <TableHead>Empresa</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Tipo Contrato</TableHead>
-                  <TableHead>Salario Base</TableHead>
-                  <TableHead>Moneda</TableHead>
-                  <TableHead>Vacaciones</TableHead>
+                  <TableHead className="text-right">Salario</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {employees.length === 0 ? (
+                {filteredEmployees.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                      No hay empleados registrados. Agregue el primer empleado usando el botón "Nuevo Empleado".
+                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                      No se encontraron empleados.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  employees.map((employee) => (
+                  filteredEmployees.map((employee) => (
                     <TableRow key={employee.id}>
-                      <TableCell className="font-mono text-xs">{employee.employee_id}</TableCell>
-                      <TableCell className="font-medium">{employee.full_name}</TableCell>
+                      <TableCell className="font-medium">{employee.employee_id}</TableCell>
+                      <TableCell>{employee.full_name}</TableCell>
                       <TableCell>{getCompanyName(employee.company_id)}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{employee.work_email}</TableCell>
+                      <TableCell>{employee.work_email}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">
+                        <Badge variant={employee.contract_type === 'mensual' ? 'default' : 'secondary'}>
                           {employee.contract_type === 'mensual' ? 'Mensual' : 'Por Horas'}
                         </Badge>
                       </TableCell>
-                      <TableCell>{formatCurrency(employee.base_salary, employee.currency)}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{employee.currency}</Badge>
+                      <TableCell className="text-right">
+                        {formatCurrency(employee.base_salary, employee.currency)}
                       </TableCell>
-                      <TableCell className="text-center">{employee.vac_balance_days.toFixed(2)} días</TableCell>
                       <TableCell>
                         <Badge variant={employee.status === 'activo' ? 'default' : 'secondary'}>
                           {employee.status === 'activo' ? 'Activo' : 'Inactivo'}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(employee)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          {role === 'admin' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(employee.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
