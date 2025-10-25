@@ -49,7 +49,7 @@ const navigationItems = [
   },
   { 
     title: 'nav.projects', 
-    url: '/timesheets', 
+    url: '/projects', 
     icon: Clock,
     group: 'main'
   },

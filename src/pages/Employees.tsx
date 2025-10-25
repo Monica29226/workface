@@ -1,659 +1,412 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { 
-  Plus, 
-  Search, 
-  Download, 
-  Upload, 
-  Edit, 
-  Trash2,
-  Calculator,
-  FileText,
-  Save,
-  X
-} from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { useCompany } from "@/contexts/CompanyContext";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency, formatDate, calculateVacationDays, calculateAguinaldo } from "@/lib/utils";
+import { Plus, Loader2 } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 interface Employee {
   id: string;
-  cedula: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  position: string;
-  department: string;
-  costCenter: string;
-  hireDate: string;
-  monthlySalary: number;
+  employee_id: string;
+  full_name: string;
+  work_email: string;
+  base_salary: number;
+  hourly_rate: number | null;
+  hire_date: string | null;
+  contract_type: string;
   currency: string;
-  status: 'active' | 'inactive';
+  status: string;
+  company_id: string;
+  vac_balance_days: number;
+  aguinaldo_base_12m: number;
+}
+
+interface Company {
+  id: string;
+  display_name: string;
+  base_currency: string;
 }
 
 export function Employees() {
-  const { t } = useLanguage();
-  const { selectedCompany } = useCompany();
   const { toast } = useToast();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showCertificateDialog, setShowCertificateDialog] = useState(false);
-  const [selectedEmployeeForCertificate, setSelectedEmployeeForCertificate] = useState<Employee | null>(null);
+  const { role } = useUserRole();
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  // Demo employees data
-  const getEmployeesData = (): Employee[] => {
-    if (selectedCompany?.id === '550e8400-e29b-41d4-a716-446655440001') {
-      return [
-        {
-          id: '1',
-          cedula: '1-074-50630',
-          firstName: 'Andrés',
-          lastName: 'Hidalgo Vega',
-          email: 'andres@alturasdetenorio.com',
-          phone: '8888-8888',
-          position: 'Gerente General',
-          department: 'Administración',
-          costCenter: 'Administración',
-          hireDate: '2024-01-15',
-          monthlySalary: 3301433,
-          currency: 'CRC',
-          status: 'active'
-        },
-        {
-          id: '2',
-          cedula: '3-456-789',
-          firstName: 'María',
-          lastName: 'González Rojas',
-          email: 'maria@alturasdetenorio.com',
-          phone: '7777-7777',
-          position: 'Operaria de Campo',
-          department: 'Campo',
-          costCenter: 'Operaciones',
-          hireDate: '2024-02-01',
-          monthlySalary: 850000,
-          currency: 'CRC',
-          status: 'active'
-        },
-        {
-          id: '3',
-          cedula: '2-789-456',
-          firstName: 'Carlos',
-          lastName: 'Méndez Vega',
-          email: 'carlos@alturasdetenorio.com',
-          phone: '6666-6666',
-          position: 'Supervisor de Campo',
-          department: 'Campo',
-          costCenter: 'Operaciones',
-          hireDate: '2024-01-20',
-          monthlySalary: 650000,
-          currency: 'CRC',
-          status: 'active'
-        }
-      ];
-    }
+  // Form state
+  const [formData, setFormData] = useState({
+    employee_id: '',
+    full_name: '',
+    work_email: '',
+    base_salary: '',
+    hourly_rate: '',
+    hire_date: '',
+    contract_type: 'mensual',
+    currency: 'CRC',
+    company_id: '',
+  });
 
-    // Default Horizonte Positivo employees
-    return [
-      {
-        id: '1',
-        cedula: '1-1354-0838',
-        firstName: 'Gabriel',
-        lastName: 'Cordero González',
-        email: 'gabriel@horizontepositivo.org',
-        phone: '8888-1234',
-        position: 'Director Ejecutivo',
-        department: 'Administración',
-        costCenter: 'Administración',
-        hireDate: '2020-03-01',
-        monthlySalary: 2424480,
-        currency: 'CRC',
-        status: 'active'
-      },
-      {
-        id: '2',
-        cedula: '1-1936-0602',
-        firstName: 'Krissya Paulina',
-        lastName: 'Gutiérrez Solís',
-        email: 'krissya@horizontepositivo.org',
-        phone: '7777-5678',
-        position: 'Soporte Interno',
-        department: 'Programas Sociales',
-        costCenter: 'Programas',
-        hireDate: '2021-06-15',
-        monthlySalary: 606120,
-        currency: 'CRC',
-        status: 'active'
-      },
-      {
-        id: '3',
-        cedula: '1-1691-0435',
-        firstName: 'David',
-        lastName: 'Marín Mora',
-        email: 'david@horizontepositivo.org',
-        phone: '6666-9876',
-        position: 'Coordinador de Programas',
-        department: 'Programas Sociales',
-        costCenter: 'Programas',
-        hireDate: '2021-01-10',
-        monthlySalary: 808160,
-        currency: 'CRC',
-        status: 'active'
-      },
-      {
-        id: '4',
-        cedula: '3-0470-0672',
-        firstName: 'Rebeca',
-        lastName: 'Gamboa Venegas',
-        email: 'rebeca@horizontepositivo.org',
-        phone: '8888-4321',
-        position: 'Contadora',
-        department: 'Finanzas',
-        costCenter: 'Administración',
-        hireDate: '2022-04-01',
-        monthlySalary: 631375,
-        currency: 'CRC',
-        status: 'active'
-      },
-      {
-        id: '5',
-        cedula: '3-0517-0207',
-        firstName: 'Jonathan',
-        lastName: 'Campos Carpio',
-        email: 'jonathan@horizontepositivo.org',
-        phone: '7777-8765',
-        position: 'Asistente Contable',
-        department: 'Finanzas',
-        costCenter: 'Administración',
-        hireDate: '2023-01-15',
-        monthlySalary: 909180,
-        currency: 'CRC',
-        status: 'active'
-      }
-    ];
-  };
-
-  // Initialize employees data on component mount
   useEffect(() => {
-    setEmployees(getEmployeesData());
-  }, [selectedCompany?.id]);
-  
-  const filteredEmployees = employees.filter(employee =>
-    `${employee.firstName} ${employee.lastName} ${employee.cedula} ${employee.email}`
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase())
-  );
+    fetchData();
+  }, []);
 
-  const handleEditEmployee = (employee: Employee) => {
-    setEditingEmployee({ ...employee });
-    setShowEditDialog(true);
+  const fetchData = async () => {
+    try {
+      // Fetch companies
+      const { data: companiesData, error: companiesError } = await supabase
+        .from('companies')
+        .select('id, display_name, base_currency')
+        .order('display_name');
+
+      if (companiesError) throw companiesError;
+      setCompanies(companiesData || []);
+
+      // Fetch employees
+      const { data: employeesData, error: employeesError } = await supabase
+        .from('employees')
+        .select('*')
+        .order('full_name');
+
+      if (employeesError) throw employeesError;
+      setEmployees(employeesData || []);
+    } catch (error: any) {
+      console.error('Error fetching data:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudieron cargar los datos",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSaveEmployee = () => {
-    if (!editingEmployee) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
 
-    setEmployees(prev => prev.map(emp => 
-      emp.id === editingEmployee.id ? editingEmployee : emp
-    ));
+    try {
+      const { error } = await supabase.from('employees').insert([{
+        employee_id: formData.employee_id,
+        company_id: formData.company_id,
+        full_name: formData.full_name,
+        work_email: formData.work_email,
+        base_salary: parseFloat(formData.base_salary),
+        hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
+        hire_date: formData.hire_date || null,
+        contract_type: formData.contract_type as 'mensual' | 'por_horas',
+        currency: formData.currency as 'CRC' | 'USD' | 'EUR' | 'GBP',
+        status: 'activo' as 'activo' | 'inactivo',
+      }]);
 
-    toast({
-      title: "Empleado actualizado",
-      description: "Los datos del empleado han sido actualizados correctamente",
+      if (error) throw error;
+
+      toast({
+        title: "¡Éxito!",
+        description: "Empleado creado correctamente",
+      });
+
+      setDialogOpen(false);
+      resetForm();
+      fetchData();
+    } catch (error: any) {
+      console.error('Error creating employee:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo crear el empleado",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      employee_id: '',
+      full_name: '',
+      work_email: '',
+      base_salary: '',
+      hourly_rate: '',
+      hire_date: '',
+      contract_type: 'mensual',
+      currency: 'CRC',
+      company_id: '',
     });
-
-    setShowEditDialog(false);
-    setEditingEmployee(null);
   };
 
-  const handleGenerateCertificate = (employee: Employee) => {
-    setSelectedEmployeeForCertificate(employee);
-    setShowCertificateDialog(true);
+  const getCompanyName = (companyId: string) => {
+    return companies.find(c => c.id === companyId)?.display_name || 'N/A';
   };
 
-  const generateWorkCertificate = () => {
-    if (!selectedEmployeeForCertificate) return;
-
-    // Here you would generate and download the work certificate
-    toast({
-      title: "Constancia generada",
-      description: `Constancia laboral generada para ${selectedEmployeeForCertificate.firstName} ${selectedEmployeeForCertificate.lastName}`,
-    });
-
-    setShowCertificateDialog(false);
-    setSelectedEmployeeForCertificate(null);
-  };
-
-  const calculateEmployeeMetrics = (employee: Employee) => {
-    const monthsWorked = Math.floor((new Date().getTime() - new Date(employee.hireDate).getTime()) / (1000 * 60 * 60 * 24 * 30));
-    const vacationDays = calculateVacationDays(monthsWorked);
-    const vacationAmount = (employee.monthlySalary / 30) * vacationDays;
-    const aguinaldo = calculateAguinaldo(employee.monthlySalary * 12, 12);
-    
-    return {
-      monthsWorked,
-      vacationDays: Math.round(vacationDays * 100) / 100,
-      vacationAmount,
-      aguinaldo
-    };
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gradient">
-            {t('nav.employees')}
-          </h1>
-          <p className="text-muted-foreground">
-            Gestión de empleados para {selectedCompany?.name}
-          </p>
+          <h1 className="text-3xl font-bold text-primary">Empleados</h1>
+          <p className="text-muted-foreground">Gestión de colaboradores del sistema</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Upload className="h-4 w-4" />
-            {t('common.import')} CSV
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Download className="h-4 w-4" />
-            {t('common.export')} CSV
-          </Button>
-          <Button size="sm" className="gap-2 gradient-navy text-white">
-            <Plus className="h-4 w-4" />
-            {t('common.add')} Empleado
-          </Button>
-        </div>
-      </div>
 
-      {/* Search and Filters */}
-      <Card className="card-elevated">
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nombre, cédula o email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Button variant="outline" size="sm">
-              {t('common.filter')}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        {(role === 'admin' || role === 'company_manager') && (
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-primary hover:bg-primary/90">
+                <Plus className="h-4 w-4 mr-2" />
+                Nuevo Empleado
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Agregar Nuevo Empleado</DialogTitle>
+                <DialogDescription>
+                  Complete la información del nuevo colaborador
+                </DialogDescription>
+              </DialogHeader>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="employee_id">ID Empleado *</Label>
+                    <Input
+                      id="employee_id"
+                      value={formData.employee_id}
+                      onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                      placeholder="EMP-001"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="company_id">Empresa *</Label>
+                    <Select
+                      value={formData.company_id}
+                      onValueChange={(value) => {
+                        const company = companies.find(c => c.id === value);
+                        setFormData({ 
+                          ...formData, 
+                          company_id: value,
+                          currency: company?.base_currency || 'CRC'
+                        });
+                      }}
+                      required
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione empresa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {companies.map((company) => (
+                          <SelectItem key={company.id} value={company.id}>
+                            {company.display_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="full_name">Nombre Completo *</Label>
+                  <Input
+                    id="full_name"
+                    value={formData.full_name}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                    placeholder="Juan Pérez Rodríguez"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="work_email">Correo Electrónico *</Label>
+                  <Input
+                    id="work_email"
+                    type="email"
+                    value={formData.work_email}
+                    onChange={(e) => setFormData({ ...formData, work_email: e.target.value })}
+                    placeholder="juan.perez@empresa.com"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="contract_type">Tipo de Contrato *</Label>
+                    <Select
+                      value={formData.contract_type}
+                      onValueChange={(value) => setFormData({ ...formData, contract_type: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="mensual">Mensual</SelectItem>
+                        <SelectItem value="por_horas">Por Horas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="currency">Moneda *</Label>
+                    <Select
+                      value={formData.currency}
+                      onValueChange={(value) => setFormData({ ...formData, currency: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CRC">CRC - Colones</SelectItem>
+                        <SelectItem value="USD">USD - Dólares</SelectItem>
+                        <SelectItem value="EUR">EUR - Euros</SelectItem>
+                        <SelectItem value="GBP">GBP - Libras</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="base_salary">Salario Base *</Label>
+                    <Input
+                      id="base_salary"
+                      type="number"
+                      step="0.01"
+                      value={formData.base_salary}
+                      onChange={(e) => setFormData({ ...formData, base_salary: e.target.value })}
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="hourly_rate">Tarifa por Hora</Label>
+                    <Input
+                      id="hourly_rate"
+                      type="number"
+                      step="0.01"
+                      value={formData.hourly_rate}
+                      onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="hire_date">Fecha de Contratación</Label>
+                  <Input
+                    id="hire_date"
+                    type="date"
+                    value={formData.hire_date}
+                    onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setDialogOpen(false)}
+                    disabled={saving}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={saving} className="bg-primary hover:bg-primary/90">
+                    {saving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Guardando...
+                      </>
+                    ) : (
+                      'Guardar Empleado'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
 
       {/* Employees Table */}
       <Card className="card-elevated">
         <CardHeader>
-          <CardTitle className="text-navy">Lista de Empleados</CardTitle>
+          <CardTitle className="text-primary">Lista de Empleados</CardTitle>
+          <CardDescription>
+            {employees.length} empleado{employees.length !== 1 ? 's' : ''} registrado{employees.length !== 1 ? 's' : ''}
+          </CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
+        <CardContent>
+          <div className="rounded-md border">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="font-semibold">{t('employee.cedula')}</TableHead>
-                  <TableHead className="font-semibold">{t('employee.name')}</TableHead>
-                  <TableHead className="font-semibold">{t('employee.position')}</TableHead>
-                  <TableHead className="font-semibold">{t('employee.department')}</TableHead>
-                  <TableHead className="font-semibold">{t('employee.hire_date')}</TableHead>
-                  <TableHead className="font-semibold text-right">{t('employee.salary')}</TableHead>
-                  <TableHead className="font-semibold text-center">{t('common.status')}</TableHead>
-                  <TableHead className="font-semibold text-center">{t('common.actions')}</TableHead>
+                <TableRow>
+                  <TableHead>ID</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Empresa</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Tipo Contrato</TableHead>
+                  <TableHead>Salario Base</TableHead>
+                  <TableHead>Moneda</TableHead>
+                  <TableHead>Vacaciones</TableHead>
+                  <TableHead>Estado</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredEmployees.map((employee) => {
-                  const metrics = calculateEmployeeMetrics(employee);
-                  return (
-                    <TableRow key={employee.id} className="hover:bg-muted/25">
-                      <TableCell className="font-mono">
-                        {employee.cedula}
-                      </TableCell>
+                {employees.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                      No hay empleados registrados. Agregue el primer empleado usando el botón "Nuevo Empleado".
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  employees.map((employee) => (
+                    <TableRow key={employee.id}>
+                      <TableCell className="font-mono text-xs">{employee.employee_id}</TableCell>
+                      <TableCell className="font-medium">{employee.full_name}</TableCell>
+                      <TableCell>{getCompanyName(employee.company_id)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{employee.work_email}</TableCell>
                       <TableCell>
-                        <div>
-                          <div className="font-medium">
-                            {employee.firstName} {employee.lastName}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {employee.email}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{employee.position}</TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{employee.department}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {employee.costCenter}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{formatDate(employee.hireDate)}</TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatCurrency(employee.monthlySalary, employee.currency)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge 
-                          variant={employee.status === 'active' ? 'default' : 'secondary'}
-                          className={employee.status === 'active' ? 'bg-green-100 text-green-800 hover:bg-green-100' : ''}
-                        >
-                          {employee.status === 'active' ? 'Activo' : 'Inactivo'}
+                        <Badge variant="outline">
+                          {employee.contract_type === 'mensual' ? 'Mensual' : 'Por Horas'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8"
-                            title="Editar empleado"
-                            onClick={() => handleEditEmployee(employee)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8"
-                            title="Constancia laboral"
-                            onClick={() => handleGenerateCertificate(employee)}
-                          >
-                            <FileText className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8"
-                            title="Cálculos actuales"
-                          >
-                            <Calculator className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            title="Eliminar empleado"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      <TableCell>{formatCurrency(employee.base_salary, employee.currency)}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{employee.currency}</Badge>
+                      </TableCell>
+                      <TableCell className="text-center">{employee.vac_balance_days.toFixed(2)} días</TableCell>
+                      <TableCell>
+                        <Badge variant={employee.status === 'activo' ? 'default' : 'secondary'}>
+                          {employee.status === 'activo' ? 'Activo' : 'Inactivo'}
+                        </Badge>
                       </TableCell>
                     </TableRow>
-                  );
-                })}
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
-
-      {/* Live Calculation Panel */}
-      <Card className="card-elevated">
-        <CardHeader>
-          <CardTitle className="text-navy flex items-center gap-2">
-            <Calculator className="h-5 w-5" />
-            Panel de Cálculo en Vivo
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="space-y-2">
-              <h3 className="font-semibold text-sm text-muted-foreground">VACACIONES ACUMULADAS</h3>
-              <div className="text-2xl font-bold text-teal">
-                {employees.reduce((acc, emp) => acc + calculateEmployeeMetrics(emp).vacationDays, 0).toFixed(1)} días
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {formatCurrency(employees.reduce((acc, emp) => acc + calculateEmployeeMetrics(emp).vacationAmount, 0), 'CRC')}
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <h3 className="font-semibold text-sm text-muted-foreground">AGUINALDO PROPORCIONAL</h3>
-              <div className="text-2xl font-bold text-teal">
-                {formatCurrency(employees.reduce((acc, emp) => acc + calculateEmployeeMetrics(emp).aguinaldo, 0), 'CRC')}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Período completo 2025
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <h3 className="font-semibold text-sm text-muted-foreground">NÓMINA MENSUAL</h3>
-              <div className="text-2xl font-bold text-teal">
-                {formatCurrency(employees.reduce((acc, emp) => acc + emp.monthlySalary, 0), 'CRC')}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Total bruto empleados
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <h3 className="font-semibold text-sm text-muted-foreground">EMPLEADOS ACTIVOS</h3>
-              <div className="text-2xl font-bold text-teal">
-                {employees.filter(emp => emp.status === 'active').length}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Total en planilla
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Edit Employee Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Editar Empleado</DialogTitle>
-            <DialogDescription>
-              Actualiza la información del empleado
-            </DialogDescription>
-          </DialogHeader>
-          {editingEmployee && (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="firstName">Nombre</Label>
-                <Input
-                  id="firstName"
-                  value={editingEmployee.firstName}
-                  onChange={(e) => setEditingEmployee({...editingEmployee, firstName: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label htmlFor="lastName">Apellidos</Label>
-                <Input
-                  id="lastName"
-                  value={editingEmployee.lastName}
-                  onChange={(e) => setEditingEmployee({...editingEmployee, lastName: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label htmlFor="cedula">Cédula</Label>
-                <Input
-                  id="cedula"
-                  value={editingEmployee.cedula}
-                  onChange={(e) => setEditingEmployee({...editingEmployee, cedula: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={editingEmployee.email}
-                  onChange={(e) => setEditingEmployee({...editingEmployee, email: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label htmlFor="position">Puesto</Label>
-                <Input
-                  id="position"
-                  value={editingEmployee.position}
-                  onChange={(e) => setEditingEmployee({...editingEmployee, position: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label htmlFor="department">Departamento</Label>
-                <Select 
-                  value={editingEmployee.department} 
-                  onValueChange={(value) => setEditingEmployee({...editingEmployee, department: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Administración">Administración</SelectItem>
-                    <SelectItem value="Programas Sociales">Programas Sociales</SelectItem>
-                    <SelectItem value="Finanzas">Finanzas</SelectItem>
-                    <SelectItem value="Campo">Campo</SelectItem>
-                    <SelectItem value="TI">TI</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="costCenter">Centro de Costo</Label>
-                <Select 
-                  value={editingEmployee.costCenter} 
-                  onValueChange={(value) => setEditingEmployee({...editingEmployee, costCenter: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Administración">Administración</SelectItem>
-                    <SelectItem value="Programas">Programas</SelectItem>
-                    <SelectItem value="Operaciones">Operaciones</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="hireDate">Fecha de Ingreso</Label>
-                <Input
-                  id="hireDate"
-                  type="date"
-                  value={editingEmployee.hireDate}
-                  onChange={(e) => setEditingEmployee({...editingEmployee, hireDate: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label htmlFor="salary">Salario Mensual</Label>
-                <Input
-                  id="salary"
-                  type="number"
-                  value={editingEmployee.monthlySalary}
-                  onChange={(e) => setEditingEmployee({...editingEmployee, monthlySalary: parseFloat(e.target.value)})}
-                />
-              </div>
-              <div>
-                <Label htmlFor="status">Estado</Label>
-                <Select 
-                  value={editingEmployee.status} 
-                  onValueChange={(value: 'active' | 'inactive') => setEditingEmployee({...editingEmployee, status: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Activo</SelectItem>
-                    <SelectItem value="inactive">Inactivo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-              <X className="h-4 w-4 mr-2" />
-              Cancelar
-            </Button>
-            <Button onClick={handleSaveEmployee}>
-              <Save className="h-4 w-4 mr-2" />
-              Guardar Cambios
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Work Certificate Dialog */}
-      <Dialog open={showCertificateDialog} onOpenChange={setShowCertificateDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Generar Constancia Laboral</DialogTitle>
-            <DialogDescription>
-              Constancia laboral para {selectedEmployeeForCertificate?.firstName} {selectedEmployeeForCertificate?.lastName}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedEmployeeForCertificate && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <Label className="font-semibold">Cédula:</Label>
-                  <p>{selectedEmployeeForCertificate.cedula}</p>
-                </div>
-                <div>
-                  <Label className="font-semibold">Puesto:</Label>
-                  <p>{selectedEmployeeForCertificate.position}</p>
-                </div>
-                <div>
-                  <Label className="font-semibold">Departamento:</Label>
-                  <p>{selectedEmployeeForCertificate.department}</p>
-                </div>
-                <div>
-                  <Label className="font-semibold">Fecha de Ingreso:</Label>
-                  <p>{formatDate(selectedEmployeeForCertificate.hireDate)}</p>
-                </div>
-                <div>
-                  <Label className="font-semibold">Salario:</Label>
-                  <p>{formatCurrency(selectedEmployeeForCertificate.monthlySalary, selectedEmployeeForCertificate.currency)}</p>
-                </div>
-                <div>
-                  <Label className="font-semibold">Estado:</Label>
-                  <Badge variant={selectedEmployeeForCertificate.status === 'active' ? 'default' : 'secondary'}>
-                    {selectedEmployeeForCertificate.status === 'active' ? 'Activo' : 'Inactivo'}
-                  </Badge>
-                </div>
-              </div>
-              
-              <div className="bg-muted p-4 rounded-lg">
-                <p className="text-sm text-muted-foreground">
-                  Se generará una constancia laboral oficial con la información del empleado, 
-                  incluyendo fecha de ingreso, puesto actual y salario.
-                </p>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCertificateDialog(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={generateWorkCertificate}>
-              <FileText className="h-4 w-4 mr-2" />
-              Generar Constancia
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

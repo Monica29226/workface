@@ -7,6 +7,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { Dashboard } from "@/pages/Dashboard";
 import { Employees } from "@/pages/Employees";
+import Projects from "@/pages/Projects";
 import { Contracts } from "@/pages/Contracts";
 import { Timesheets } from "@/pages/Timesheets";
 import { PayrollProcess } from "@/pages/PayrollProcess";
@@ -46,6 +47,7 @@ const App = () => (
                 >
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/employees" element={<Employees />} />
+                  <Route path="/projects" element={<Projects />} />
                   <Route path="/contracts" element={<Contracts />} />
                   <Route path="/timesheets" element={<Timesheets />} />
                   <Route path="/payroll-process" element={<PayrollProcess />} />
