@@ -21,7 +21,8 @@ import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { calcularLiquidacion, ResultadoLiquidacion } from "@/lib/liquidacion";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { estaBajoSalarioMinimo, getSalarioMinimoBase, getDiferenciaSalarioMinimo } from "@/lib/salariosMinimos2025";
 
 interface Employee {
   id: string;
@@ -471,19 +472,37 @@ export function Liquidations() {
           </div>
 
           {selectedEmployeeData && (
-            <div className="bg-muted p-4 rounded-lg space-y-2">
-              <h4 className="font-semibold">Información del Empleado</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Fecha de Ingreso:</span>
-                  <p className="font-medium">{new Date(selectedEmployeeData.hire_date).toLocaleDateString('es-CR')}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Salario Base:</span>
-                  <p className="font-medium">{formatCurrency(selectedEmployeeData.base_salary, 'CRC')}</p>
+            <>
+              <div className="bg-muted p-4 rounded-lg space-y-2">
+                <h4 className="font-semibold">Información del Empleado</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Fecha de Ingreso:</span>
+                    <p className="font-medium">{new Date(selectedEmployeeData.hire_date).toLocaleDateString('es-CR')}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Salario Base:</span>
+                    <p className="font-medium">{formatCurrency(selectedEmployeeData.base_salary, 'CRC')}</p>
+                  </div>
                 </div>
               </div>
-            </div>
+
+              {estaBajoSalarioMinimo(selectedEmployeeData.base_salary) && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>⚠️ Salario por debajo del mínimo legal</AlertTitle>
+                  <AlertDescription>
+                    El salario de este empleado ({formatCurrency(selectedEmployeeData.base_salary, 'CRC')}) está <strong>{formatCurrency(getDiferenciaSalarioMinimo(selectedEmployeeData.base_salary), 'CRC')}</strong> por debajo del salario mínimo legal vigente para Costa Rica 2025.
+                    <br />
+                    <br />
+                    <strong>Salario mínimo (Trabajador No Calificado): {formatCurrency(getSalarioMinimoBase(), 'CRC')}</strong>
+                    <br />
+                    <br />
+                    Según el Ministerio de Trabajo y Seguridad Social, todos los trabajadores deben recibir al menos el salario mínimo correspondiente a su categoría ocupacional. Esto podría resultar en sanciones legales para el empleador.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </>
           )}
 
           <div className="space-y-4">
