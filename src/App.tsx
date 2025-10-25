@@ -15,6 +15,7 @@ import { Payslips } from "@/pages/Payslips";
 import { Liquidations } from "@/pages/Liquidations";
 import { HorasProyecto } from "@/pages/HorasProyecto";
 import { Historico } from "@/pages/settings/Historico";
+import { Users as UsersPage } from "@/pages/Users";
 import CompanySelector from "./pages/CompanySelector";
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
@@ -58,6 +59,7 @@ const App = () => (
                   <Route path="/liquidations" element={<Liquidations />} />
                   <Route path="/reports" element={<div className="p-6 text-center text-muted-foreground">Reportes - En desarrollo</div>} />
                   <Route path="/historico" element={<Historico />} />
+                  <Route path="/users" element={<UsersPage />} />
                   <Route path="/email-center" element={<div className="p-6 text-center text-muted-foreground">Centro de Correos - En desarrollo</div>} />
                   <Route path="/settings/parameters" element={<div className="p-6 text-center text-muted-foreground">Parámetros - En desarrollo</div>} />
                   <Route path="/settings/admin" element={<div className="p-6 text-center text-muted-foreground">Administración - En desarrollo</div>} />

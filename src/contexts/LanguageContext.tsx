@@ -21,7 +21,10 @@ const translations = {
     'nav.liquidations': 'Liquidaciones',
     'nav.reports': 'Reportes',
     'nav.email_center': 'Centro Correos',
+    'nav.historico': 'Histórico',
+    'nav.users': 'Gestión Usuarios',
     'nav.parameters': 'Parámetros',
+    'nav.admin': 'Administración',
     'nav.manager': 'Administrador',
 
     // Dashboard
@@ -89,7 +92,10 @@ const translations = {
     'nav.liquidations': 'Severance',
     'nav.reports': 'Reports',
     'nav.email_center': 'Email Center',
+    'nav.historico': 'Historical',
+    'nav.users': 'User Management',
     'nav.parameters': 'Parameters',
+    'nav.admin': 'Administration',
     'nav.manager': 'Manager',
 
     // Dashboard

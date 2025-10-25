@@ -90,17 +90,17 @@ const navigationItems = [
     group: 'communications'
   },
   { 
+    title: 'nav.users', 
+    url: '/users', 
+    icon: UserCheck,
+    group: 'admin'
+  },
+  { 
     title: 'nav.parameters', 
     url: '/settings/parameters', 
     icon: Settings,
     group: 'admin'
   },
-  { 
-    title: 'nav.admin', 
-    url: '/settings/admin', 
-    icon: UserCheck,
-    group: 'admin'
-  }
 ];
 
 const groups = {
