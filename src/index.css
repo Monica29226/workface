@@ -19,13 +19,13 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 210 56% 23%;
 
-    /* Primary - Navy #1A3B5D */
-    --primary: 210 56% 23%;
-    --primary-foreground: 0 0% 97%;
+    /* Primary - Modern Blue */
+    --primary: 220 70% 50%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Beige #D9C8A9 */
-    --secondary: 39 40% 76%;
-    --secondary-foreground: 210 56% 23%;
+    /* Secondary - Warm Beige */
+    --secondary: 35 50% 70%;
+    --secondary-foreground: 220 70% 50%;
 
     /* Light gray muted */
     --muted: 0 0% 95%;
@@ -40,15 +40,15 @@ All colors MUST be HSL.
 
     --border: 210 17% 89%;
     --input: 210 17% 89%;
-    --ring: 210 56% 23%;
+    --ring: 220 70% 50%;
 
     --radius: 0.75rem;
 
     /* Custom design tokens for ACL Payroll CR */
-    --navy: 210 56% 23%;
-    --navy-light: 210 45% 35%;
-    --beige: 39 40% 76%;
-    --beige-dark: 39 30% 65%;
+    --navy: 220 70% 50%;
+    --navy-light: 220 65% 60%;
+    --beige: 35 50% 70%;
+    --beige-dark: 35 45% 60%;
     --gray-light: 0 0% 95%;
     --teal: 199 56% 40%;
     --teal-light: 199 50% 55%;
@@ -94,8 +94,8 @@ All colors MUST be HSL.
     --popover: 210 50% 15%;
     --popover-foreground: 0 0% 97%;
 
-    --primary: 39 40% 76%;
-    --primary-foreground: 210 56% 23%;
+    --primary: 35 50% 70%;
+    --primary-foreground: 220 70% 50%;
 
     --secondary: 199 56% 40%;
     --secondary-foreground: 0 0% 100%;
@@ -111,13 +111,13 @@ All colors MUST be HSL.
 
     --border: 210 40% 25%;
     --input: 210 40% 25%;
-    --ring: 39 40% 76%;
+    --ring: 35 50% 70%;
 
     /* Dark mode custom tokens */
-    --navy: 39 40% 76%;
-    --navy-light: 39 30% 85%;
-    --beige: 210 56% 10%;
-    --beige-dark: 210 40% 18%;
+    --navy: 35 50% 70%;
+    --navy-light: 35 45% 80%;
+    --beige: 220 70% 15%;
+    --beige-dark: 220 60% 20%;
     --gray-light: 210 40% 18%;
     --teal: 199 56% 40%;
     --teal-light: 199 50% 55%;
