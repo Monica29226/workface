@@ -23,17 +23,17 @@ All colors MUST be HSL.
     --primary: 220 70% 50%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Warm Beige */
-    --secondary: 35 50% 70%;
-    --secondary-foreground: 220 70% 50%;
+    /* Secondary - Navy Blue */
+    --secondary: 220 60% 30%;
+    --secondary-foreground: 0 0% 100%;
 
     /* Light gray muted */
     --muted: 0 0% 95%;
     --muted-foreground: 210 20% 40%;
 
-    /* Accent - Teal #2D7A9E */
-    --accent: 199 56% 40%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Light Blue */
+    --accent: 220 70% 95%;
+    --accent-foreground: 220 70% 50%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
@@ -47,11 +47,11 @@ All colors MUST be HSL.
     /* Custom design tokens for ACL Payroll CR */
     --navy: 220 70% 50%;
     --navy-light: 220 65% 60%;
-    --beige: 35 50% 70%;
-    --beige-dark: 35 45% 60%;
+    --beige: 220 60% 30%;
+    --beige-dark: 220 55% 25%;
     --gray-light: 0 0% 95%;
-    --teal: 199 56% 40%;
-    --teal-light: 199 50% 55%;
+    --teal: 220 70% 95%;
+    --teal-light: 220 70% 97%;
     
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--navy)), hsl(var(--navy-light)));
@@ -94,16 +94,16 @@ All colors MUST be HSL.
     --popover: 210 50% 15%;
     --popover-foreground: 0 0% 97%;
 
-    --primary: 35 50% 70%;
-    --primary-foreground: 220 70% 50%;
+    --primary: 220 60% 30%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 199 56% 40%;
+    --secondary: 220 70% 50%;
     --secondary-foreground: 0 0% 100%;
 
     --muted: 210 40% 18%;
     --muted-foreground: 210 10% 60%;
 
-    --accent: 199 56% 40%;
+    --accent: 220 60% 20%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84% 60%;
@@ -111,16 +111,16 @@ All colors MUST be HSL.
 
     --border: 210 40% 25%;
     --input: 210 40% 25%;
-    --ring: 35 50% 70%;
+    --ring: 220 70% 50%;
 
     /* Dark mode custom tokens */
-    --navy: 35 50% 70%;
-    --navy-light: 35 45% 80%;
-    --beige: 220 70% 15%;
-    --beige-dark: 220 60% 20%;
+    --navy: 220 70% 50%;
+    --navy-light: 220 65% 60%;
+    --beige: 220 60% 30%;
+    --beige-dark: 220 55% 25%;
     --gray-light: 210 40% 18%;
-    --teal: 199 56% 40%;
-    --teal-light: 199 50% 55%;
+    --teal: 220 60% 20%;
+    --teal-light: 220 55% 25%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
