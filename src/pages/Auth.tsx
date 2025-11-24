@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import logoACL from "@/assets/logotipo_acl.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -91,12 +92,11 @@ export default function Auth() {
         <div className="text-center">
           <div className="mb-8">
             <div className="inline-flex items-center justify-center mb-6">
-              <div className="text-white">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="text-6xl font-bold tracking-wider">ACL</div>
-                </div>
-                <div className="text-2xl font-light tracking-widest text-white/90">HALDERON</div>
-              </div>
+              <img 
+                src={logoACL} 
+                alt="ACL Halderon" 
+                className="w-[500px] h-auto max-w-full"
+              />
             </div>
           </div>
           <p className="text-white/70 text-sm">Sistema de Planillas Costa Rica</p>
