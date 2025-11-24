@@ -15,38 +15,118 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useCompany } from "@/contexts/CompanyContext";
 import { formatCurrency } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface KPIData {
+  grossPeriod: number;
+  totalDeductions: number;
+  netPay: number;
+  employerCharges: number;
+  activeEmployees: number;
+  avgCostEmployee: number;
+}
 
 export function Dashboard() {
   const { t } = useLanguage();
   const { selectedCompany } = useCompany();
   const navigate = useNavigate();
+  const [kpiData, setKpiData] = useState<KPIData>({
+    grossPeriod: 0,
+    totalDeductions: 0,
+    netPay: 0,
+    employerCharges: 0,
+    activeEmployees: 0,
+    avgCostEmployee: 0
+  });
+  const [loading, setLoading] = useState(true);
 
-  // Demo KPIs data based on selected company
-  const getKPIData = () => {
-    if (selectedCompany?.id === '550e8400-e29b-41d4-a716-446655440001') {
-      // Alturas de Tenorio data
-      return {
-        grossPeriod: 4261433,
-        totalDeductions: 613063,
-        netPay: 3648370,
-        employerCharges: 1107972,
-        activeEmployees: 3,
-        avgCostEmployee: 1788457
-      };
+  useEffect(() => {
+    if (selectedCompany?.id) {
+      loadDashboardData();
     }
-    
-    // Horizonte Positivo data (default)
-    return {
-      grossPeriod: 5469315,
-      totalDeductions: 563671,
-      netPay: 4905644,
-      employerCharges: 1421962,
-      activeEmployees: 5,
-      avgCostEmployee: 1093863
-    };
-  };
+  }, [selectedCompany?.id]);
 
-  const kpiData = getKPIData();
+  const loadDashboardData = async () => {
+    if (!selectedCompany?.id) return;
+    
+    setLoading(true);
+    try {
+      // Get the most recent approved or sent payroll batch
+      const { data: latestBatch } = await supabase
+        .from('payroll_batches')
+        .select('id, period_start, period_end')
+        .eq('company_id', selectedCompany.id)
+        .in('status', ['aprobado', 'enviado'])
+        .order('period_end', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (latestBatch) {
+        // Get payroll lines for the latest batch
+        const { data: payrollLines } = await supabase
+          .from('payroll_lines')
+          .select('gross_salary, deductions, net_pay, employer_contrib, currency, exchange_rate_to_base')
+          .eq('batch_id', latestBatch.id);
+
+        if (payrollLines) {
+          // Convert all to CRC for totals
+          let totalGross = 0;
+          let totalDeductions = 0;
+          let totalNetPay = 0;
+          let totalEmployerCharges = 0;
+
+          payrollLines.forEach(line => {
+            const rate = line.exchange_rate_to_base || 1;
+            const multiplier = line.currency === 'CRC' ? 1 : rate;
+            
+            totalGross += line.gross_salary * multiplier;
+            totalDeductions += (line.deductions || 0) * multiplier;
+            totalNetPay += line.net_pay * multiplier;
+            totalEmployerCharges += (line.employer_contrib || 0) * multiplier;
+          });
+
+          // Get active employees count
+          const { count: activeEmployeesCount } = await supabase
+            .from('employees')
+            .select('*', { count: 'exact', head: true })
+            .eq('company_id', selectedCompany.id)
+            .eq('status', 'activo');
+
+          const employeeCount = activeEmployeesCount || 1;
+          
+          setKpiData({
+            grossPeriod: totalGross,
+            totalDeductions: totalDeductions,
+            netPay: totalNetPay,
+            employerCharges: totalEmployerCharges,
+            activeEmployees: employeeCount,
+            avgCostEmployee: totalGross / employeeCount
+          });
+        }
+      } else {
+        // No payroll data yet, just show employee count
+        const { count: activeEmployeesCount } = await supabase
+          .from('employees')
+          .select('*', { count: 'exact', head: true })
+          .eq('company_id', selectedCompany.id)
+          .eq('status', 'activo');
+
+        setKpiData({
+          grossPeriod: 0,
+          totalDeductions: 0,
+          netPay: 0,
+          employerCharges: 0,
+          activeEmployees: activeEmployeesCount || 0,
+          avgCostEmployee: 0
+        });
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const kpiCards = [
     {
@@ -93,6 +173,19 @@ export function Dashboard() {
     }
   ];
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-2 text-muted-foreground">Cargando datos del dashboard...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -102,7 +195,7 @@ export function Dashboard() {
             ACL Payroll CR
           </h1>
           <p className="text-muted-foreground">
-            {selectedCompany?.name} - Sistema Multi-Empresa & Multi-Moneda
+            {selectedCompany?.legal_name || selectedCompany?.name} - Sistema Multi-Empresa & Multi-Moneda
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -147,7 +240,7 @@ export function Dashboard() {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Gross vs Deductions Chart */}
+        {/* Note: Charts would show real data when cost centers are implemented */}
         <Card className="card-elevated">
           <CardHeader>
             <CardTitle className="text-primary">
@@ -155,44 +248,8 @@ export function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {selectedCompany?.id === '550e8400-e29b-41d4-a716-446655440001' ? (
-                // Alturas de Tenorio data
-                <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Operaciones</span>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-green-600">₡3,301,433</span>
-                      <span className="text-sm text-red-600">₡400,000</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Administración</span>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-green-600">₡960,000</span>
-                      <span className="text-sm text-red-600">₡213,063</span>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                // Horizonte Positivo data
-                <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Administración</span>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-green-600">₡2,424,480</span>
-                      <span className="text-sm text-red-600">₡290,000</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Programas</span>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-green-600">₡3,044,835</span>
-                      <span className="text-sm text-red-600">₡273,671</span>
-                    </div>
-                  </div>
-                </>
-              )}
+            <div className="text-center text-muted-foreground py-8">
+              Datos de centros de costo disponibles cuando se procesen planillas
             </div>
           </CardContent>
         </Card>
@@ -205,34 +262,8 @@ export function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {selectedCompany?.id === '550e8400-e29b-41d4-a716-446655440001' ? (
-                <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Campo</span>
-                    <Badge variant="secondary">2</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Administración</span>
-                    <Badge variant="secondary">1</Badge>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Finanzas</span>
-                    <Badge variant="secondary">2</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Programas Sociales</span>
-                    <Badge variant="secondary">2</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Administración</span>
-                    <Badge variant="secondary">1</Badge>
-                  </div>
-                </>
-              )}
+            <div className="text-center text-muted-foreground py-8">
+              Datos de departamento disponibles cuando se configuren en empleados
             </div>
           </CardContent>
         </Card>
