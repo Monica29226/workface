@@ -77,6 +77,7 @@ serve(async (req) => {
               html: htmlTemplate,
               companyId,
               templateId,
+              attachmentUrl,
             },
           });
 
