@@ -70,8 +70,10 @@ serve(async (req) => {
         }
 
         // Send email via Resend
+        const fromEmail = Deno.env.get('RESEND_FROM_EMAIL') || 'Sistema de Planillas <onboarding@resend.dev>';
+        
         const emailData: any = {
-          from: from || 'Sistema de Planillas <onboarding@resend.dev>',
+          from: from || fromEmail,
           to: [recipient],
           subject,
           html,
