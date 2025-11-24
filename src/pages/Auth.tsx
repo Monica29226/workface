@@ -5,9 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Building2, Lock, Mail, User, AlertCircle } from "lucide-react";
+import { Building2, Lock, Mail, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Auth() {
@@ -15,15 +14,14 @@ export default function Auth() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showResetPassword, setShowResetPassword] = useState(false);
 
   // Login state
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-
-  // Signup state
-  const [signupEmail, setSignupEmail] = useState("");
-  const [signupPassword, setSignupPassword] = useState("");
-  const [signupFullName, setSignupFullName] = useState("");
+  
+  // Reset password state
+  const [resetEmail, setResetEmail] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,36 +55,29 @@ export default function Auth() {
     }
   };
 
-  const handleSignup = async (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: signupEmail,
-        password: signupPassword,
-        options: {
-          data: {
-            full_name: signupFullName,
-          },
-        },
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/auth`,
       });
 
       if (error) throw error;
 
-      if (data.user) {
-        toast({
-          title: "¡Cuenta creada!",
-          description: "Tu cuenta ha sido creada exitosamente. Iniciando sesión...",
-        });
-        navigate("/dashboard");
-      }
+      toast({
+        title: "¡Correo enviado!",
+        description: "Revisa tu correo electrónico para restablecer tu contraseña.",
+      });
+      setShowResetPassword(false);
+      setResetEmail("");
     } catch (err: any) {
-      setError(err.message || "Error al crear la cuenta");
+      setError(err.message || "Error al enviar correo de recuperación");
       toast({
         title: "Error",
-        description: err.message || "No se pudo crear la cuenta",
+        description: err.message || "No se pudo enviar el correo de recuperación",
         variant: "destructive",
       });
     } finally {
@@ -109,9 +100,13 @@ export default function Auth() {
         {/* Auth Card */}
         <Card className="card-elevated border-l-4 border-l-primary">
           <CardHeader>
-            <CardTitle>Acceso al Sistema</CardTitle>
+            <CardTitle>
+              {showResetPassword ? "Recuperar Contraseña" : "Acceso al Sistema"}
+            </CardTitle>
             <CardDescription>
-              Inicia sesión o crea tu cuenta para continuar
+              {showResetPassword 
+                ? "Ingresa tu correo para recibir instrucciones de recuperación"
+                : "Inicia sesión para continuar"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -122,128 +117,108 @@ export default function Auth() {
               </Alert>
             )}
 
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
-                <TabsTrigger value="signup">Registrarse</TabsTrigger>
-              </TabsList>
-
-              {/* Login Tab */}
-              <TabsContent value="login">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="login-email">Correo Electrónico</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="login-email"
-                        type="email"
-                        placeholder="tu@email.com"
-                        value={loginEmail}
-                        onChange={(e) => setLoginEmail(e.target.value)}
-                        className="pl-10"
-                        required
-                        disabled={loading}
-                      />
-                    </div>
+            {showResetPassword ? (
+              // Reset Password Form
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email">Correo Electrónico</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="reset-email"
+                      type="email"
+                      placeholder="tu@email.com"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      className="pl-10"
+                      required
+                      disabled={loading}
+                    />
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="login-password">Contraseña</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="login-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={loginPassword}
-                        onChange={(e) => setLoginPassword(e.target.value)}
-                        className="pl-10"
-                        required
-                        disabled={loading}
-                        minLength={6}
-                      />
-                    </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary/90"
+                  disabled={loading}
+                >
+                  {loading ? "Enviando..." : "Enviar Correo de Recuperación"}
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => {
+                    setShowResetPassword(false);
+                    setError(null);
+                    setResetEmail("");
+                  }}
+                  disabled={loading}
+                >
+                  Volver al inicio de sesión
+                </Button>
+              </form>
+            ) : (
+              // Login Form
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="login-email">Correo Electrónico</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="tu@email.com"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      className="pl-10"
+                      required
+                      disabled={loading}
+                    />
                   </div>
+                </div>
 
-                  <Button
-                    type="submit"
-                    className="w-full bg-primary hover:bg-primary/90"
-                    disabled={loading}
-                  >
-                    {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
-                  </Button>
-                </form>
-              </TabsContent>
-
-              {/* Signup Tab */}
-              <TabsContent value="signup">
-                <form onSubmit={handleSignup} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-name">Nombre Completo</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="signup-name"
-                        type="text"
-                        placeholder="Juan Pérez"
-                        value={signupFullName}
-                        onChange={(e) => setSignupFullName(e.target.value)}
-                        className="pl-10"
-                        required
-                        disabled={loading}
-                      />
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="login-password">Contraseña</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="login-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      className="pl-10"
+                      required
+                      disabled={loading}
+                      minLength={6}
+                    />
                   </div>
+                </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-email">Correo Electrónico</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="signup-email"
-                        type="email"
-                        placeholder="tu@email.com"
-                        value={signupEmail}
-                        onChange={(e) => setSignupEmail(e.target.value)}
-                        className="pl-10"
-                        required
-                        disabled={loading}
-                      />
-                    </div>
-                  </div>
+                <Button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary/90"
+                  disabled={loading}
+                >
+                  {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
+                </Button>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="signup-password">Contraseña</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="signup-password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={signupPassword}
-                        onChange={(e) => setSignupPassword(e.target.value)}
-                        className="pl-10"
-                        required
-                        disabled={loading}
-                        minLength={6}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Mínimo 6 caracteres
-                    </p>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full bg-primary hover:bg-primary/90"
-                    disabled={loading}
-                  >
-                    {loading ? "Creando cuenta..." : "Crear Cuenta"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+                <Button
+                  type="button"
+                  variant="link"
+                  className="w-full text-primary"
+                  onClick={() => {
+                    setShowResetPassword(true);
+                    setError(null);
+                  }}
+                  disabled={loading}
+                >
+                  ¿Olvidaste tu contraseña?
+                </Button>
+              </form>
+            )}
           </CardContent>
         </Card>
 
