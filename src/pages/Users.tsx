@@ -248,6 +248,7 @@ export function Users() {
       }
 
       let userId = editingUser?.id;
+      let temporaryPassword: string | null = null;
 
       // If new user, find or create profile
       if (!editingUser) {
@@ -260,15 +261,35 @@ export function Users() {
         if (profileError) throw profileError;
 
         if (!existingProfile) {
-          toast({
-            title: "Error",
-            description: "Usuario no encontrado. El usuario debe estar registrado primero.",
-            variant: "destructive",
-          });
-          return;
-        }
+          // Create new user via edge function
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session?.access_token}`,
+              },
+              body: JSON.stringify({
+                email: formData.email,
+                full_name: formData.full_name || formData.email,
+              }),
+            }
+          );
 
-        userId = existingProfile.id;
+          const result = await response.json();
+          
+          if (!response.ok || result.error) {
+            throw new Error(result.error || 'No se pudo crear el usuario');
+          }
+
+          userId = result.user.id;
+          temporaryPassword = result.temporary_password;
+        } else {
+          userId = existingProfile.id;
+        }
       }
 
       // Update role
@@ -309,9 +330,14 @@ export function Users() {
         await supabase.from('user_company_permissions').insert(permissions);
       }
 
+      const successMessage = temporaryPassword
+        ? `Usuario creado correctamente. Contraseña temporal: ${temporaryPassword}`
+        : `Permisos de ${formData.email} guardados correctamente`;
+
       toast({
-        title: editingUser ? "Usuario actualizado" : "Permisos asignados",
-        description: `Permisos de ${formData.email} guardados correctamente`,
+        title: editingUser ? "Usuario actualizado" : temporaryPassword ? "Usuario creado" : "Permisos asignados",
+        description: successMessage,
+        duration: temporaryPassword ? 10000 : 3000,
       });
 
       setIsDialogOpen(false);
@@ -574,7 +600,10 @@ export function Users() {
                   disabled={!!editingUser}
                 />
                 <p className="text-sm text-muted-foreground">
-                  El usuario debe estar registrado en el sistema
+                  {editingUser 
+                    ? "No se puede modificar el correo de un usuario existente"
+                    : "Si el usuario no existe, se creará automáticamente con una contraseña temporal"
+                  }
                 </p>
               </div>
 
