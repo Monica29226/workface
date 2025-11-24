@@ -54,8 +54,8 @@ serve(async (req) => {
       );
     }
 
-    // Check if batch is approved
-    if (batch.status !== 'aprobado') {
+    // Check if batch is approved or already sent (allow regeneration)
+    if (batch.status !== 'aprobado' && batch.status !== 'enviado') {
       return new Response(
         JSON.stringify({ error: "El lote debe estar aprobado para generar colillas" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
