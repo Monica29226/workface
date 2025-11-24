@@ -606,7 +606,17 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "company_manager" | "employee"
+      app_role:
+        | "admin"
+        | "company_manager"
+        | "employee"
+        | "ACL_SuperAdmin"
+        | "ACL_PayrollSpecialist"
+        | "ACL_Auditor"
+        | "Client_Admin"
+        | "Client_HR"
+        | "Client_Viewer"
+        | "Employee_Portal"
       contract_type: "mensual" | "por_horas"
       currency_type: "CRC" | "USD" | "EUR" | "GBP"
       employee_status: "activo" | "inactivo"
@@ -740,7 +750,18 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "company_manager", "employee"],
+      app_role: [
+        "admin",
+        "company_manager",
+        "employee",
+        "ACL_SuperAdmin",
+        "ACL_PayrollSpecialist",
+        "ACL_Auditor",
+        "Client_Admin",
+        "Client_HR",
+        "Client_Viewer",
+        "Employee_Portal",
+      ],
       contract_type: ["mensual", "por_horas"],
       currency_type: ["CRC", "USD", "EUR", "GBP"],
       employee_status: ["activo", "inactivo"],
