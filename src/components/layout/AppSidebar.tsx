@@ -117,6 +117,12 @@ const navigationItems: NavigationItem[] = [
     title: 'nav.create_company', 
     url: '/create-company', 
     icon: Plus,
+    group: 'admin'
+  },
+  { 
+    title: 'Cerrar Sesión', 
+    url: '/logout', 
+    icon: LogOut,
     group: 'admin',
     isAction: true
   },
@@ -177,15 +183,18 @@ export function AppSidebar() {
                       {item.isAction ? (
                         <button
                           onClick={() => {
-                            // TODO: Open create company dialog
-                            console.log("Create company");
+                            if (item.url === '/logout') {
+                              handleLogout();
+                            } else {
+                              navigate(item.url);
+                            }
                           }}
                           className="w-full flex items-center gap-2 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground px-2 py-1.5 rounded-md transition-colors"
-                          title={t(item.title)}
+                          title={item.title === 'Cerrar Sesión' ? item.title : t(item.title)}
                         >
                           <item.icon className="h-4 w-4 flex-shrink-0" />
                           {!collapsed && (
-                            <span className="truncate">{t(item.title)}</span>
+                            <span className="truncate">{item.title === 'Cerrar Sesión' ? item.title : t(item.title)}</span>
                           )}
                         </button>
                       ) : (
@@ -212,29 +221,18 @@ export function AppSidebar() {
         {/* Sistema de Planillas - Branding Section */}
         {!collapsed && (
           <SidebarGroup className="mt-auto border-t">
-            <div className="px-3 py-4 space-y-3">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="h-6 w-6 rounded-md bg-gradient-to-br from-navy to-teal flex items-center justify-center">
-                    <span className="text-white font-bold text-xs">ACL</span>
-                  </div>
-                  <h3 className="text-sm font-semibold text-sidebar-foreground">
-                    Sistema de Planillas
-                  </h3>
+            <div className="px-3 py-4">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="h-6 w-6 rounded-md bg-gradient-to-br from-navy to-teal flex items-center justify-center">
+                  <span className="text-white font-bold text-xs">ACL</span>
                 </div>
-                <p className="text-xs text-sidebar-foreground/60 pl-8">
-                  Multi-Compañía Costa Rica
-                </p>
+                <h3 className="text-sm font-semibold text-sidebar-foreground">
+                  Sistema de Planillas
+                </h3>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleLogout}
-                className="w-full justify-start text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Cerrar sesión
-              </Button>
+              <p className="text-xs text-sidebar-foreground/60 pl-8">
+                Multi-Compañía Costa Rica
+              </p>
             </div>
           </SidebarGroup>
         )}
