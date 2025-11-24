@@ -60,6 +60,7 @@ const App = () => (
                   <Route path="/reports" element={<div className="p-6 text-center text-muted-foreground">Reportes - En desarrollo</div>} />
                   <Route path="/historico" element={<Historico />} />
                   <Route path="/users" element={<UsersPage />} />
+                  <Route path="/create-company" element={<div className="p-6 text-center text-muted-foreground">Crear Empresa - En desarrollo</div>} />
                   <Route path="/email-center" element={<div className="p-6 text-center text-muted-foreground">Centro de Correos - En desarrollo</div>} />
                   <Route path="/settings/parameters" element={<div className="p-6 text-center text-muted-foreground">Parámetros - En desarrollo</div>} />
                   <Route path="/settings/admin" element={<div className="p-6 text-center text-muted-foreground">Administración - En desarrollo</div>} />
