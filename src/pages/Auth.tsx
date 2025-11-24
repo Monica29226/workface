@@ -86,24 +86,26 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-accent/5 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-primary/5 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo and Title */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-            <Building2 className="w-8 h-8 text-primary" />
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/10 backdrop-blur-sm mb-6 shadow-lg">
+            <Building2 className="w-10 h-10 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold text-primary mb-2">ACL Payroll CR</h1>
-          <p className="text-muted-foreground">Sistema Multi-Empresa & Multi-Moneda</p>
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-3">
+            ACL Payroll CR
+          </h1>
+          <p className="text-lg text-foreground/70">Sistema Multi-Empresa & Multi-Moneda</p>
         </div>
 
         {/* Auth Card */}
-        <Card className="card-elevated border-l-4 border-l-primary">
-          <CardHeader>
-            <CardTitle>
+        <Card className="shadow-xl border-2 backdrop-blur-sm bg-card/95">
+          <CardHeader className="space-y-2 pb-6">
+            <CardTitle className="text-2xl text-foreground">
               {showResetPassword ? "Recuperar Contraseña" : "Acceso al Sistema"}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-base text-muted-foreground">
               {showResetPassword 
                 ? "Ingresa tu correo para recibir instrucciones de recuperación"
                 : "Inicia sesión para continuar"}
@@ -199,7 +201,7 @@ export default function Auth() {
 
                 <Button
                   type="submit"
-                  className="w-full bg-primary hover:bg-primary/90"
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium h-11 shadow-md hover:shadow-lg transition-all"
                   disabled={loading}
                 >
                   {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
@@ -207,8 +209,8 @@ export default function Auth() {
 
                 <Button
                   type="button"
-                  variant="link"
-                  className="w-full text-primary"
+                  variant="ghost"
+                  className="w-full text-primary hover:text-primary/80 hover:bg-primary/5 font-medium"
                   onClick={() => {
                     setShowResetPassword(true);
                     setError(null);
@@ -223,7 +225,7 @@ export default function Auth() {
         </Card>
 
         {/* Footer */}
-        <p className="text-center text-sm text-muted-foreground mt-6">
+        <p className="text-center text-sm text-foreground/60 mt-8 font-medium">
           © 2025 ACL Accounting. Sistema de Planillas Costa Rica
         </p>
       </div>
