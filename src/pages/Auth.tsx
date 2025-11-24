@@ -4,9 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Building2, Lock, Mail, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Auth() {
@@ -86,148 +85,147 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-primary/5 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo and Title */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-primary/10 backdrop-blur-sm mb-6 shadow-lg">
-            <Building2 className="w-10 h-10 text-primary" />
+    <div className="min-h-screen flex">
+      {/* Left Side - Dark Blue with Logo */}
+      <div className="hidden lg:flex lg:w-1/2 bg-navy items-center justify-center p-12">
+        <div className="text-center">
+          <div className="mb-8">
+            <div className="inline-flex items-center justify-center mb-6">
+              <div className="text-white">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="text-6xl font-bold tracking-wider">ACL</div>
+                </div>
+                <div className="text-2xl font-light tracking-widest text-white/90">HALDERON</div>
+              </div>
+            </div>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-3">
-            ACL Payroll CR
-          </h1>
-          <p className="text-lg text-foreground/70">Sistema Multi-Empresa & Multi-Moneda</p>
+          <p className="text-white/70 text-sm">Sistema de Planillas Costa Rica</p>
         </div>
+      </div>
 
-        {/* Auth Card */}
-        <Card className="shadow-xl border-2 backdrop-blur-sm bg-card/95">
-          <CardHeader className="space-y-2 pb-6">
-            <CardTitle className="text-2xl text-foreground">
-              {showResetPassword ? "Recuperar Contraseña" : "Acceso al Sistema"}
-            </CardTitle>
-            <CardDescription className="text-base text-muted-foreground">
-              {showResetPassword 
-                ? "Ingresa tu correo para recibir instrucciones de recuperación"
-                : "Inicia sesión para continuar"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {error && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+      {/* Right Side - White with Login Form */}
+      <div className="flex-1 flex items-center justify-center p-8 bg-background">
+        <div className="w-full max-w-md">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-foreground mb-2">Acceso</h1>
+            <p className="text-muted-foreground">¿Ya tienes una cuenta?</p>
+          </div>
 
-            {showResetPassword ? (
-              // Reset Password Form
-              <form onSubmit={handleResetPassword} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="reset-email">Correo Electrónico</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="reset-email"
-                      type="email"
-                      placeholder="tu@email.com"
-                      value={resetEmail}
-                      onChange={(e) => setResetEmail(e.target.value)}
-                      className="pl-10"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-                <Button
-                  type="submit"
-                  className="w-full bg-primary hover:bg-primary/90"
+          {showResetPassword ? (
+            // Reset Password Form
+            <form onSubmit={handleResetPassword} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="reset-email" className="text-foreground">Correo Electrónico</Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  placeholder="tu@email.com"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  required
                   disabled={loading}
-                >
-                  {loading ? "Enviando..." : "Enviar Correo de Recuperación"}
-                </Button>
+                  className="h-11"
+                />
+              </div>
 
+              <Button
+                type="submit"
+                className="w-full h-11 bg-navy hover:bg-navy/90 text-white font-medium"
+                disabled={loading}
+              >
+                {loading ? "Enviando..." : "Enviar Correo de Recuperación"}
+              </Button>
+
+              <Button
+                type="button"
+                variant="link"
+                className="w-full text-navy"
+                onClick={() => {
+                  setShowResetPassword(false);
+                  setError(null);
+                  setResetEmail("");
+                }}
+                disabled={loading}
+              >
+                Volver al inicio de sesión
+              </Button>
+            </form>
+          ) : (
+            // Login Form
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="login-email" className="text-foreground">Correo</Label>
+                <Input
+                  id="login-email"
+                  type="email"
+                  placeholder="tu@email.com"
+                  value={loginEmail}
+                  onChange={(e) => setLoginEmail(e.target.value)}
+                  required
+                  disabled={loading}
+                  className="h-11"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="login-password" className="text-foreground">Contraseña</Label>
+                <Input
+                  id="login-password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  minLength={6}
+                  className="h-11"
+                />
+              </div>
+
+              <div className="flex justify-end">
                 <Button
                   type="button"
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => {
-                    setShowResetPassword(false);
-                    setError(null);
-                    setResetEmail("");
-                  }}
-                  disabled={loading}
-                >
-                  Volver al inicio de sesión
-                </Button>
-              </form>
-            ) : (
-              // Login Form
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Correo Electrónico</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="login-email"
-                      type="email"
-                      placeholder="tu@email.com"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
-                      className="pl-10"
-                      required
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Contraseña</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="login-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      className="pl-10"
-                      required
-                      disabled={loading}
-                      minLength={6}
-                    />
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium h-11 shadow-md hover:shadow-lg transition-all"
-                  disabled={loading}
-                >
-                  {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
-                </Button>
-
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full text-primary hover:text-primary/80 hover:bg-primary/5 font-medium"
+                  variant="link"
+                  className="text-navy hover:text-navy/80 p-0 h-auto font-normal"
                   onClick={() => {
                     setShowResetPassword(true);
                     setError(null);
                   }}
                   disabled={loading}
                 >
-                  ¿Olvidaste tu contraseña?
+                  Olvidé mi contraseña
                 </Button>
-              </form>
-            )}
-          </CardContent>
-        </Card>
+              </div>
 
-        {/* Footer */}
-        <p className="text-center text-sm text-foreground/60 mt-8 font-medium">
-          © 2025 ACL Accounting. Sistema de Planillas Costa Rica
-        </p>
+              <Button
+                type="submit"
+                className="w-full h-11 bg-navy hover:bg-navy/90 text-white font-medium"
+                disabled={loading}
+              >
+                {loading ? "Iniciando sesión..." : "Iniciar sesión"}
+              </Button>
+            </form>
+          )}
+
+          {/* Footer Links */}
+          <div className="mt-8 pt-6 border-t border-border">
+            <div className="flex justify-center gap-6 text-sm">
+              <button className="text-muted-foreground hover:text-foreground transition-colors">
+                Términos y Condiciones
+              </button>
+              <button className="text-muted-foreground hover:text-foreground transition-colors">
+                Políticas de Privacidad
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
