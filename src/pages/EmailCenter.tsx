@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,11 +37,14 @@ import {
   Clock,
   FileText,
   Users,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCompany } from "@/contexts/CompanyContext";
 import { formatDate } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface EmailTemplate {
   id: string;
@@ -54,100 +57,189 @@ interface EmailTemplate {
 
 interface EmailLog {
   id: string;
-  recipient: string;
-  recipientName: string;
+  company_id: string;
+  recipient_email: string;
+  recipient_name: string | null;
   subject: string;
-  template: string;
-  status: 'sent' | 'failed' | 'pending' | 'queued';
-  sentDate: string;
-  errorMessage?: string;
-  attachments?: string[];
+  status: string;
+  error_message: string | null;
+  sent_at: string | null;
+  attachment_url: string | null;
+  template_id: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export function EmailCenter() {
   const { t, language } = useLanguage();
   const { selectedCompany } = useCompany();
+  const { toast } = useToast();
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [activeTab, setActiveTab] = useState('send');
+  const [sending, setSending] = useState(false);
+  const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [loading, setLoading] = useState(false);
+  
+  // Form states
+  const [recipients, setRecipients] = useState("");
+  const [subject, setSubject] = useState("");
+  const [emailContent, setEmailContent] = useState("");
 
-  const emailTemplates: EmailTemplate[] = [
-    {
-      id: '1',
-      name: 'Colilla de Pago - Español',
-      subject: 'Colilla de Pago - {{empresa}} - {{periodo}}',
-      content: `Estimado/a {{empleado}},
-
-Esperamos que se encuentre bien. Adjunto encontrará su colilla de pago correspondiente al período {{periodo}}.
-
-**Resumen del pago:**
-- Salario Neto: {{neto}}
-- Período: {{periodo}}
-- Fecha de pago: {{fecha_pago}}
-
-Si tiene alguna consulta sobre su colilla de pago, no dude en contactarnos.
-
-Atentamente,
-Departamento de Recursos Humanos
-{{empresa}}`,
-      language: 'es',
-      type: 'payslip'
-    },
-    {
-      id: '2',
-      name: 'Payslip - English',
-      subject: 'Payslip - {{company}} - {{period}}',
-      content: `Dear {{employee}},
-
-Please find attached your payslip for the period {{period}}.
-
-**Payment Summary:**
-- Net Salary: {{net}}
-- Period: {{period}}
-- Payment Date: {{payment_date}}
-
-If you have any questions regarding your payslip, please don't hesitate to contact us.
-
-Best regards,
-Human Resources Department
-{{company}}`,
-      language: 'en',
-      type: 'payslip'
+  // Load email logs
+  useEffect(() => {
+    if (selectedCompany) {
+      loadEmailLogs();
     }
-  ];
+  }, [selectedCompany]);
 
-  const emailLogs: EmailLog[] = [
-    {
-      id: '1',
-      recipient: 'gabriel@horizontepositivo.org',
-      recipientName: 'Gabriel Cordero González',
-      subject: 'Colilla de Pago - Horizonte Positivo - Setiembre 2025',
-      template: 'Colilla de Pago - Español',
-      status: 'sent',
-      sentDate: '2025-09-30T10:30:00',
-      attachments: ['colilla_gabriel_202509.pdf']
-    },
-    {
-      id: '2',
-      recipient: 'krissya@horizontepositivo.org',
-      recipientName: 'Krissya Paulina Gutiérrez Solís',
-      subject: 'Colilla de Pago - Horizonte Positivo - Setiembre 2025',
-      template: 'Colilla de Pago - Español',
-      status: 'sent',
-      sentDate: '2025-09-30T10:31:00',
-      attachments: ['colilla_krissya_202509.pdf']
-    },
-    {
-      id: '3',
-      recipient: 'david@horizontepositivo.org',
-      recipientName: 'David Marín Mora',
-      subject: 'Colilla de Pago - Horizonte Positivo - Setiembre 2025',
-      template: 'Colilla de Pago - Español',
-      status: 'failed',
-      sentDate: '2025-09-30T10:32:00',
-      errorMessage: 'Email address not found',
-      attachments: ['colilla_david_202509.pdf']
+  const loadEmailLogs = async () => {
+    if (!selectedCompany) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('email_logs')
+        .select('*')
+        .eq('company_id', selectedCompany.id)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+      setEmailLogs(data || []);
+    } catch (error: any) {
+      console.error('Error loading email logs:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los registros de correos",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const handleSendEmail = async () => {
+    if (!selectedCompany) {
+      toast({
+        title: "Error",
+        description: "Seleccione una empresa primero",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!recipients || !subject || !emailContent) {
+      toast({
+        title: "Campos requeridos",
+        description: "Complete todos los campos antes de enviar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSending(true);
+    try {
+      const recipientList = recipients.split(',').map(r => r.trim()).filter(r => r);
+      
+      const { data, error } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: recipientList,
+          subject,
+          html: emailContent,
+          companyId: selectedCompany.id,
+          from: 'Sistema de Planillas <onboarding@resend.dev>',
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Correo enviado",
+        description: `Se enviaron ${data.totalSent} correos correctamente`,
+      });
+
+      // Clear form
+      setRecipients("");
+      setSubject("");
+      setEmailContent("");
+      setSelectedTemplate("");
+
+      // Reload logs
+      loadEmailLogs();
+    } catch (error: any) {
+      console.error('Error sending email:', error);
+      toast({
+        title: "Error al enviar",
+        description: error.message || "No se pudo enviar el correo",
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleBulkSend = async () => {
+    if (!selectedCompany) {
+      toast({
+        title: "Error",
+        description: "Seleccione una empresa primero",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!recipients || !subject || !emailContent) {
+      toast({
+        title: "Campos requeridos",
+        description: "Complete todos los campos antes de enviar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSending(true);
+    try {
+      const recipientList = recipients.split(',').map(r => {
+        const trimmed = r.trim();
+        return { email: trimmed };
+      }).filter(r => r.email);
+
+      const { data, error } = await supabase.functions.invoke('send-bulk-emails', {
+        body: {
+          recipients: recipientList,
+          subject,
+          htmlTemplate: emailContent,
+          companyId: selectedCompany.id,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Envío en proceso",
+        description: `Se están procesando ${data.queued} correos`,
+      });
+
+      // Clear form
+      setRecipients("");
+      setSubject("");
+      setEmailContent("");
+      setSelectedTemplate("");
+
+      // Reload logs after a delay
+      setTimeout(() => loadEmailLogs(), 2000);
+    } catch (error: any) {
+      console.error('Error sending bulk emails:', error);
+      toast({
+        title: "Error al enviar",
+        description: error.message || "No se pudieron enviar los correos",
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -158,6 +250,7 @@ Human Resources Department
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pendiente</Badge>;
       case 'queued':
+      case 'sending':
         return <Badge variant="secondary">En Cola</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
@@ -173,6 +266,7 @@ Human Resources Department
       case 'pending':
         return <Clock className="h-4 w-4 text-yellow-600" />;
       case 'queued':
+      case 'sending':
         return <RefreshCw className="h-4 w-4 text-blue-600" />;
       default:
         return <Clock className="h-4 w-4 text-gray-400" />;
@@ -181,7 +275,15 @@ Human Resources Department
 
   const sentCount = emailLogs.filter(log => log.status === 'sent').length;
   const failedCount = emailLogs.filter(log => log.status === 'failed').length;
-  const pendingCount = emailLogs.filter(log => log.status === 'pending').length;
+  const pendingCount = emailLogs.filter(log => log.status === 'pending' || log.status === 'queued' || log.status === 'sending').length;
+
+  if (!selectedCompany) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-muted-foreground">Seleccione una empresa para continuar</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -196,13 +298,9 @@ Human Resources Department
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Settings className="h-4 w-4" />
-            Configuración SMTP
-          </Button>
-          <Button size="sm" className="gap-2 gradient-navy text-white">
-            <Send className="h-4 w-4" />
-            Envío Masivo
+          <Button variant="outline" size="sm" className="gap-2" onClick={loadEmailLogs}>
+            <RefreshCw className="h-4 w-4" />
+            Actualizar
           </Button>
         </div>
       </div>
@@ -267,282 +365,175 @@ Human Resources Department
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="send">Enviar</TabsTrigger>
-              <TabsTrigger value="templates">Plantillas</TabsTrigger>
               <TabsTrigger value="history">Historial</TabsTrigger>
               <TabsTrigger value="config">Configuración</TabsTrigger>
             </TabsList>
 
             <TabsContent value="send" className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="emailType">Tipo de Envío</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar tipo..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="payslips">Colillas de Pago</SelectItem>
-                        <SelectItem value="notifications">Notificaciones</SelectItem>
-                        <SelectItem value="reminders">Recordatorios</SelectItem>
-                        <SelectItem value="custom">Personalizado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="template">Plantilla</Label>
-                    <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar plantilla..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {emailTemplates
-                          .filter(template => template.language === language)
-                          .map(template => (
-                            <SelectItem key={template.id} value={template.id}>
-                              {template.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="recipients">Destinatarios</Label>
-                    <Select>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar destinatarios..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos los Empleados</SelectItem>
-                        <SelectItem value="active">Solo Empleados Activos</SelectItem>
-                        <SelectItem value="cost_center">Por Centro de Costo</SelectItem>
-                        <SelectItem value="department">Por Departamento</SelectItem>
-                        <SelectItem value="custom">Selección Manual</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="recipients">Destinatarios (separados por comas)</Label>
+                  <Input
+                    id="recipients"
+                    placeholder="correo1@ejemplo.com, correo2@ejemplo.com"
+                    value={recipients}
+                    onChange={(e) => setRecipients(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Ingrese las direcciones de correo separadas por comas
+                  </p>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="p-4 bg-muted/25 rounded-lg">
-                    <h4 className="font-semibold mb-2">Vista Previa de la Plantilla</h4>
-                    {selectedTemplate ? (
-                      <div className="text-sm space-y-2">
-                        <div>
-                          <strong>Asunto:</strong> {emailTemplates.find(t => t.id === selectedTemplate)?.subject}
-                        </div>
-                        <div>
-                          <strong>Contenido:</strong>
-                          <div className="mt-2 p-2 bg-background rounded text-xs max-h-32 overflow-y-auto">
-                            {emailTemplates.find(t => t.id === selectedTemplate)?.content}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        Selecciona una plantilla para ver la vista previa
-                      </p>
-                    )}
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="subject">Asunto</Label>
+                  <Input 
+                    id="subject" 
+                    placeholder="Asunto del correo"
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                  />
+                </div>
 
-                  <Button className="w-full gradient-navy text-white">
-                    <Send className="h-4 w-4 mr-2" />
-                    Enviar Correos
+                <div className="space-y-2">
+                  <Label htmlFor="message">Mensaje (HTML)</Label>
+                  <Textarea
+                    id="message"
+                    placeholder="Escriba su mensaje aquí... (puede usar HTML)"
+                    className="min-h-[200px] font-mono text-sm"
+                    value={emailContent}
+                    onChange={(e) => setEmailContent(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Puede usar HTML para dar formato al correo
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button 
+                    className="flex-1" 
+                    onClick={handleSendEmail}
+                    disabled={sending || !recipients || !subject || !emailContent}
+                  >
+                    {sending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="mr-2 h-4 w-4" />
+                        Enviar Correo
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={handleBulkSend}
+                    disabled={sending || !recipients || !subject || !emailContent}
+                  >
+                    {sending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Mail className="mr-2 h-4 w-4" />
+                    )}
+                    Envío Masivo
                   </Button>
                 </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="templates" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Plantillas de Email</h3>
-                <Button size="sm" className="gap-2">
-                  <FileText className="h-4 w-4" />
-                  Nueva Plantilla
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {emailTemplates.map(template => (
-                  <Card key={template.id} className="card-elevated">
-                    <CardHeader className="pb-3">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-base">{template.name}</CardTitle>
-                        <Badge variant="outline">{template.language.toUpperCase()}</Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <p className="text-sm font-medium">Asunto:</p>
-                        <p className="text-sm text-muted-foreground">{template.subject}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Vista Previa:</p>
-                        <p className="text-xs text-muted-foreground line-clamp-3">
-                          {template.content.substring(0, 100)}...
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="flex-1">
-                          Editar
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1">
-                          Probar
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
               </div>
             </TabsContent>
 
             <TabsContent value="history" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Historial de Envíos</h3>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Actualizar
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Reenviar Fallidos
-                  </Button>
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold">Estado</TableHead>
-                      <TableHead className="font-semibold">Destinatario</TableHead>
-                      <TableHead className="font-semibold">Asunto</TableHead>
-                      <TableHead className="font-semibold">Plantilla</TableHead>
-                      <TableHead className="font-semibold">Fecha</TableHead>
-                      <TableHead className="font-semibold">Adjuntos</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {emailLogs.map(log => (
-                      <TableRow key={log.id} className="hover:bg-muted/25">
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {getStatusIcon(log.status)}
-                            {getStatusBadge(log.status)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{log.recipientName}</div>
-                            <div className="text-sm text-muted-foreground">{log.recipient}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {log.subject}
-                        </TableCell>
-                        <TableCell>{log.template}</TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {formatDate(log.sentDate)}
-                        </TableCell>
-                        <TableCell>
-                          {log.attachments && log.attachments.length > 0 ? (
-                            <Badge variant="secondary">{log.attachments.length} archivo(s)</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
+              ) : emailLogs.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Mail className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No hay registros de correos enviados</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold">Estado</TableHead>
+                        <TableHead className="font-semibold">Destinatario</TableHead>
+                        <TableHead className="font-semibold">Asunto</TableHead>
+                        <TableHead className="font-semibold">Fecha</TableHead>
+                        <TableHead className="font-semibold">Error</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {emailLogs.map(log => (
+                        <TableRow key={log.id} className="hover:bg-muted/25">
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {getStatusIcon(log.status)}
+                              {getStatusBadge(log.status)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              {log.recipient_name && (
+                                <div className="font-medium">{log.recipient_name}</div>
+                              )}
+                              <div className="text-sm text-muted-foreground">{log.recipient_email}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">
+                            {log.subject}
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">
+                            {log.sent_at ? formatDate(log.sent_at) : formatDate(log.created_at)}
+                          </TableCell>
+                          <TableCell>
+                            {log.error_message && (
+                              <span className="text-sm text-destructive">{log.error_message}</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </TabsContent>
 
-            <TabsContent value="config" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Configuración SMTP</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Servidor SMTP</Label>
-                      <Input placeholder="smtp.gmail.com" />
+            <TabsContent value="config" className="space-y-4">
+              <div className="space-y-4">
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-blue-900">Configuración de Resend API</h4>
+                      <p className="text-sm text-blue-800 mt-1">
+                        Para enviar correos, necesita configurar la API key de Resend en los secretos del sistema.
+                      </p>
+                      <p className="text-sm text-blue-800 mt-2">
+                        El secret debe llamarse: <code className="bg-blue-100 px-1 py-0.5 rounded">RESEND_API_KEY</code>
+                      </p>
+                      <p className="text-sm text-blue-800 mt-2">
+                        Puede agregar el secret desde la configuración de Cloud en la interfaz de Lovable.
+                      </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Puerto</Label>
-                        <Input placeholder="587" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Seguridad</Label>
-                        <Select>
-                          <SelectTrigger>
-                            <SelectValue placeholder="TLS" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="tls">TLS</SelectItem>
-                            <SelectItem value="ssl">SSL</SelectItem>
-                            <SelectItem value="none">Ninguna</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Email de Envío</Label>
-                      <Input placeholder="rrhh@empresa.com" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Contraseña/Token</Label>
-                      <Input type="password" placeholder="••••••••" />
-                    </div>
-                    <Button className="w-full">
-                      Guardar Configuración
-                    </Button>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Configuración Avanzada</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Límite de Envío por Hora</Label>
-                      <Input placeholder="100" type="number" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Reintentos en Caso de Fallo</Label>
-                      <Input placeholder="3" type="number" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Tiempo Entre Reintentos (minutos)</Label>
-                      <Input placeholder="30" type="number" />
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input type="checkbox" id="enableTracking" className="rounded" />
-                      <Label htmlFor="enableTracking">Habilitar seguimiento de lectura</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input type="checkbox" id="enableQueue" className="rounded" />
-                      <Label htmlFor="enableQueue">Usar cola de envío</Label>
-                    </div>
-
-                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />
-                        <div className="text-sm text-yellow-700">
-                          <strong>Importante:</strong> Configure correctamente el SMTP antes de enviar correos masivos.
-                          Recomendamos usar servicios como Gmail, Outlook o proveedores especializados.
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="space-y-2">
+                  <Label htmlFor="from_email">Email remitente de la empresa</Label>
+                  <Input
+                    id="from_email"
+                    placeholder="Sistema de Planillas <onboarding@resend.dev>"
+                    value="Sistema de Planillas <onboarding@resend.dev>"
+                    disabled
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Email predeterminado para el envío de correos
+                  </p>
+                </div>
               </div>
             </TabsContent>
           </Tabs>
