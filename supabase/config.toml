@@ -14,3 +14,9 @@ verify_jwt = true
 
 [functions.generate-payslips]
 verify_jwt = true
+
+[functions.update-payroll-line]
+verify_jwt = true
+
+[functions.recalculate-payroll-batch]
+verify_jwt = true

@@ -369,8 +369,62 @@ export type Database = {
           },
         ]
       }
+      payroll_line_changes: {
+        Row: {
+          changed_at: string | null
+          changed_by: string | null
+          created_at: string | null
+          field_name: string
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+          payroll_line_id: string | null
+          reason: string | null
+        }
+        Insert: {
+          changed_at?: string | null
+          changed_by?: string | null
+          created_at?: string | null
+          field_name: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          payroll_line_id?: string | null
+          reason?: string | null
+        }
+        Update: {
+          changed_at?: string | null
+          changed_by?: string | null
+          created_at?: string | null
+          field_name?: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          payroll_line_id?: string | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_line_changes_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_line_changes_payroll_line_id_fkey"
+            columns: ["payroll_line_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payroll_lines: {
         Row: {
+          absence_days: number | null
+          additional_bonuses: number | null
+          additional_deductions: number | null
           aguinaldo_accrued: number | null
           batch_id: string
           company_id: string
@@ -383,14 +437,22 @@ export type Database = {
           gross_salary: number
           id: string
           line_id: string
+          manual_adjustments: Json | null
           net_pay: number
           notes: string | null
           overtime: number | null
+          overtime_hours: number | null
           project_hours_amount: number | null
+          regular_hours: number | null
+          sick_leave_days: number | null
           updated_at: string
           vacation_accrued_days: number | null
+          vacation_days_taken: number | null
         }
         Insert: {
+          absence_days?: number | null
+          additional_bonuses?: number | null
+          additional_deductions?: number | null
           aguinaldo_accrued?: number | null
           batch_id: string
           company_id: string
@@ -403,14 +465,22 @@ export type Database = {
           gross_salary: number
           id?: string
           line_id: string
+          manual_adjustments?: Json | null
           net_pay: number
           notes?: string | null
           overtime?: number | null
+          overtime_hours?: number | null
           project_hours_amount?: number | null
+          regular_hours?: number | null
+          sick_leave_days?: number | null
           updated_at?: string
           vacation_accrued_days?: number | null
+          vacation_days_taken?: number | null
         }
         Update: {
+          absence_days?: number | null
+          additional_bonuses?: number | null
+          additional_deductions?: number | null
           aguinaldo_accrued?: number | null
           batch_id?: string
           company_id?: string
@@ -423,12 +493,17 @@ export type Database = {
           gross_salary?: number
           id?: string
           line_id?: string
+          manual_adjustments?: Json | null
           net_pay?: number
           notes?: string | null
           overtime?: number | null
+          overtime_hours?: number | null
           project_hours_amount?: number | null
+          regular_hours?: number | null
+          sick_leave_days?: number | null
           updated_at?: string
           vacation_accrued_days?: number | null
+          vacation_days_taken?: number | null
         }
         Relationships: [
           {

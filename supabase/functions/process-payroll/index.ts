@@ -12,6 +12,7 @@ interface ProcessPayrollRequest {
   periodEnd: string;
   frequency: 'mensual' | 'quincenal' | 'semanal';
   exchangeRate?: number;
+  copyFromBatchId?: string; // Optional: copy data from previous batch
 }
 
 serve(async (req) => {
@@ -130,6 +131,29 @@ serve(async (req) => {
       return 0.3125; // semanal
     };
 
+    // Check if we should copy from a previous batch
+    let previousLines: any[] = [];
+    if (copyFromBatchId) {
+      console.log('Copying from previous batch:', copyFromBatchId);
+      const { data: prevLines, error: prevError } = await supabaseClient
+        .from('payroll_lines')
+        .select('*')
+        .eq('batch_id', copyFromBatchId);
+
+      if (prevError) {
+        console.error("Error fetching previous lines:", prevError);
+      } else {
+        previousLines = prevLines || [];
+        console.log('Found', previousLines.length, 'previous lines to copy');
+      }
+    }
+
+    // Create map of previous line data by employee_id
+    const previousLineMap: Record<string, any> = {};
+    previousLines.forEach(line => {
+      previousLineMap[line.employee_id] = line;
+    });
+
     // Get time entries for this period
     const { data: timeEntries, error: timeError } = await supabaseClient
       .from('time_entries')
@@ -156,15 +180,26 @@ serve(async (req) => {
 
     // Create payroll lines for each employee
     const payrollLines = employees.map(employee => {
+      // Check if we have previous data for this employee
+      const prevLine = previousLineMap[employee.id];
       const baseSalary = Number(employee.base_salary);
       const hourlyRate = Number(employee.hourly_rate || 0);
       const projectHours = timeByEmployee[employee.id] || 0;
       const projectHoursAmount = hourlyRate > 0 ? projectHours * hourlyRate : 0;
       
-      const grossSalary = baseSalary + projectHoursAmount;
+      // Use previous line data if available (for copying from previous month)
+      const regularHours = prevLine?.regular_hours || 0;
+      const overtimeHours = prevLine?.overtime_hours || 0;
+      const additionalBonuses = prevLine?.additional_bonuses || 0;
+      const additionalDeductions = prevLine?.additional_deductions || 0;
+      const absenceDays = 0; // Reset for new month
+      const vacationDaysTaken = 0; // Reset for new month
+      const sickLeaveDays = 0; // Reset for new month
+      
+      const grossSalary = baseSalary + projectHoursAmount + additionalBonuses;
       const ccss = calculateCCSS(grossSalary);
       const incomeTax = calculateIncomeTax(grossSalary);
-      const totalDeductions = ccss + incomeTax;
+      const totalDeductions = ccss + incomeTax + additionalDeductions;
       const netPay = grossSalary - totalDeductions;
       
       // Employer contributions (26% approx: CCSS 26.17%)
@@ -188,7 +223,16 @@ serve(async (req) => {
         vacation_accrued_days: vacationDays,
         currency: employee.currency,
         exchange_rate_to_base: employee.currency === company.base_currency ? 1.0 : exchangeRate,
-        notes: projectHours > 0 ? `${projectHours} horas de proyecto` : null
+        notes: projectHours > 0 ? `${projectHours} horas de proyecto` : null,
+        // Copy or initialize manual tracking fields
+        regular_hours: regularHours,
+        overtime_hours: overtimeHours,
+        absence_days: absenceDays,
+        vacation_days_taken: vacationDaysTaken,
+        sick_leave_days: sickLeaveDays,
+        additional_bonuses: additionalBonuses,
+        additional_deductions: additionalDeductions,
+        manual_adjustments: prevLine?.manual_adjustments || {}
       };
     });
 
