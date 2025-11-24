@@ -1,1 +1,10 @@
 project_id = "eployozkxxqalgmfrylw"
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.send-bulk-emails]
+verify_jwt = false
+
+[functions.create-user]
+verify_jwt = true

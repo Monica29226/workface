@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, UserPlus, Trash2, Edit, ChevronRight, ChevronLeft } from "lucide-react";
+import { Search, UserPlus, Trash2, Edit, ChevronRight, ChevronLeft, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -93,6 +93,7 @@ export function Users() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [dialogStep, setDialogStep] = useState(1);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Form data
   const [formData, setFormData] = useState<UserFormData>({
@@ -227,6 +228,9 @@ export function Users() {
   };
 
   const handleSaveUser = async () => {
+    if (isSaving) return;
+    
+    setIsSaving(true);
     try {
       // Validation
       if (!formData.email) {
@@ -264,13 +268,19 @@ export function Users() {
           // Create new user via edge function
           const { data: { session } } = await supabase.auth.getSession();
           
+          if (!session) {
+            throw new Error('No hay una sesión activa');
+          }
+          
+          console.log('Creating new user:', formData.email);
+          
           const response = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
             {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session?.access_token}`,
+                'Authorization': `Bearer ${session.access_token}`,
               },
               body: JSON.stringify({
                 email: formData.email,
@@ -281,12 +291,22 @@ export function Users() {
 
           const result = await response.json();
           
+          console.log('Create user response:', result);
+          
           if (!response.ok || result.error) {
-            throw new Error(result.error || 'No se pudo crear el usuario');
+            const errorMsg = result.error || 'No se pudo crear el usuario';
+            console.error('Error creating user:', errorMsg);
+            throw new Error(errorMsg);
+          }
+
+          if (!result.user?.id) {
+            throw new Error('No se recibió el ID del usuario creado');
           }
 
           userId = result.user.id;
           temporaryPassword = result.temporary_password;
+          
+          console.log('User created successfully:', userId);
         } else {
           userId = existingProfile.id;
         }
@@ -331,24 +351,29 @@ export function Users() {
       }
 
       const successMessage = temporaryPassword
-        ? `Usuario creado correctamente. Contraseña temporal: ${temporaryPassword}`
-        : `Permisos de ${formData.email} guardados correctamente`;
+        ? `Usuario creado exitosamente. Contraseña temporal: ${temporaryPassword}\n\nEnvíe esta contraseña al usuario para su primer acceso.`
+        : editingUser 
+          ? `Usuario ${formData.email} actualizado correctamente`
+          : `Permisos asignados a ${formData.email}`;
 
       toast({
-        title: editingUser ? "Usuario actualizado" : temporaryPassword ? "Usuario creado" : "Permisos asignados",
+        title: editingUser ? "Usuario actualizado" : temporaryPassword ? "¡Usuario creado!" : "Permisos asignados",
         description: successMessage,
-        duration: temporaryPassword ? 10000 : 3000,
+        duration: temporaryPassword ? 15000 : 3000,
       });
 
       setIsDialogOpen(false);
       fetchUsers();
     } catch (error) {
       console.error('Error saving user:', error);
+      const errorMessage = error instanceof Error ? error.message : 'No se pudo guardar el usuario';
       toast({
         title: "Error",
-        description: "No se pudo guardar el usuario",
+        description: errorMessage,
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -469,7 +494,7 @@ export function Users() {
         </div>
         <Button onClick={openNewUserDialog} className="gap-2">
           <UserPlus className="h-4 w-4" />
-          Asignar Permisos
+          Crear Nuevo Usuario
         </Button>
       </div>
 
@@ -570,8 +595,13 @@ export function Users() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {editingUser ? `Editar Permisos - ${formData.email}` : 'Asignar Permisos a Usuario'}
+              {editingUser ? `Editar Usuario - ${formData.email}` : 'Crear Nuevo Usuario'}
             </DialogTitle>
+            {!editingUser && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Complete los siguientes pasos para crear un nuevo usuario en el sistema
+              </p>
+            )}
           </DialogHeader>
 
           <Tabs value={`step-${dialogStep}`} className="w-full">
@@ -803,12 +833,19 @@ export function Users() {
                 </p>
               )}
 
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={() => setDialogStep(2)}>
+               <div className="flex justify-between pt-4">
+                <Button variant="outline" onClick={() => setDialogStep(2)} disabled={isSaving}>
                   <ChevronLeft className="h-4 w-4 mr-2" /> Anterior
                 </Button>
-                <Button onClick={handleSaveUser}>
-                  {editingUser ? 'Actualizar Permisos' : 'Asignar Permisos'}
+                <Button onClick={handleSaveUser} disabled={isSaving}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      {editingUser ? 'Actualizando...' : 'Creando usuario...'}
+                    </>
+                  ) : (
+                    editingUser ? 'Actualizar Usuario' : 'Crear Usuario'
+                  )}
                 </Button>
               </div>
             </TabsContent>
