@@ -167,6 +167,25 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
+        
+        {/* Sistema de Planillas - Branding Section */}
+        {!collapsed && (
+          <SidebarGroup className="mt-auto border-t">
+            <div className="px-3 py-4">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="h-6 w-6 rounded-md bg-gradient-to-br from-navy to-teal flex items-center justify-center">
+                  <span className="text-white font-bold text-xs">ACL</span>
+                </div>
+                <h3 className="text-sm font-semibold text-sidebar-foreground">
+                  Sistema de Planillas
+                </h3>
+              </div>
+              <p className="text-xs text-sidebar-foreground/60 pl-8">
+                Multi-Compañía Costa Rica
+              </p>
+            </div>
+          </SidebarGroup>
+        )}
       </SidebarContent>
     </Sidebar>
   );
