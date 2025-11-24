@@ -65,23 +65,60 @@ export function Historico() {
     
     setLoading(true);
     try {
-      let query = supabase
-        .from('historical_payroll' as any)
-        .select('*')
+      // Load payroll lines from approved/sent batches
+      const { data: payrollLines, error } = await supabase
+        .from('payroll_lines')
+        .select(`
+          *,
+          employee:employees!inner(
+            full_name,
+            employee_id,
+            work_email
+          ),
+          batch:payroll_batches!inner(
+            period_start,
+            period_end,
+            batch_id,
+            status,
+            base_currency
+          )
+        `)
         .eq('company_id', selectedCompany.id)
-        .order('periodo', { ascending: true });
-
-      if (periodFilter.desde) {
-        query = query.gte('periodo', periodFilter.desde);
-      }
-      if (periodFilter.hasta) {
-        query = query.lte('periodo', periodFilter.hasta);
-      }
-
-      const { data: result, error } = await query;
+        .in('batch.status', ['aprobado', 'enviado']);
 
       if (error) throw error;
-      setData((result as any) || []);
+
+      // Transform to historical payroll format
+      const historicalData: HistoricalPayroll[] = (payrollLines || []).map((line: any) => {
+        const periodo = line.batch.period_start.substring(0, 7); // YYYY-MM format
+        
+        return {
+          id: line.id,
+          company_id: line.company_id,
+          employee_id: line.employee_id,
+          cedula: line.employee.employee_id,
+          nombre: line.employee.full_name,
+          email: line.employee.work_email,
+          centro_costo: '', // TODO: Add cost center if available
+          proyecto: '', // TODO: Add project if available
+          periodo: periodo,
+          total_crc: line.currency === 'CRC' ? line.net_pay : (line.net_pay * (line.exchange_rate_to_base || 1)),
+          total_usd: line.currency === 'USD' ? line.net_pay : (line.net_pay / (line.exchange_rate_to_base || 1)),
+          tc: line.exchange_rate_to_base || 1,
+          fuente: 'payroll_lines'
+        };
+      });
+
+      // Apply period filters
+      let filtered = historicalData;
+      if (periodFilter.desde) {
+        filtered = filtered.filter(item => item.periodo >= periodFilter.desde);
+      }
+      if (periodFilter.hasta) {
+        filtered = filtered.filter(item => item.periodo <= periodFilter.hasta);
+      }
+
+      setData(filtered);
     } catch (error) {
       console.error('Error loading historical data:', error);
       toast({
