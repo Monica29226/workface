@@ -17,6 +17,7 @@ import { HorasProyecto } from "@/pages/HorasProyecto";
 import { Historico } from "@/pages/settings/Historico";
 import { Users as UsersPage } from "@/pages/Users";
 import CompanySelector from "./pages/CompanySelector";
+import CreateCompany from "./pages/CreateCompany";
 import Auth from "./pages/Auth";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -60,7 +61,7 @@ const App = () => (
                   <Route path="/reports" element={<div className="p-6 text-center text-muted-foreground">Reportes - En desarrollo</div>} />
                   <Route path="/historico" element={<Historico />} />
                   <Route path="/users" element={<UsersPage />} />
-                  <Route path="/create-company" element={<div className="p-6 text-center text-muted-foreground">Crear Empresa - En desarrollo</div>} />
+                  <Route path="/create-company" element={<CreateCompany />} />
                   <Route path="/email-center" element={<div className="p-6 text-center text-muted-foreground">Centro de Correos - En desarrollo</div>} />
                   <Route path="/settings/parameters" element={<div className="p-6 text-center text-muted-foreground">Parámetros - En desarrollo</div>} />
                   <Route path="/settings/admin" element={<div className="p-6 text-center text-muted-foreground">Administración - En desarrollo</div>} />
