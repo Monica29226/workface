@@ -193,18 +193,60 @@ export function Payslips() {
   }, [displayData]);
 
   const handleGenerateNew = async () => {
-    toast({
-      title: "Generando colillas",
-      description: `Se generarán colillas para ${monthNames[selectedMonth - 1]} ${selectedYear}`,
-    });
-    
-    setTimeout(() => {
+    if (!selectedCompany) return;
+
+    // Check if there's an approved batch for the selected period
+    const { data: approvedBatches, error: batchError } = await supabase
+      .from('payroll_batches')
+      .select('*')
+      .eq('company_id', selectedCompany.id)
+      .eq('status', 'aprobado')
+      .gte('period_end', `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`)
+      .lt('period_end', `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`)
+      .limit(1);
+
+    if (batchError) {
+      console.error('Error checking batches:', batchError);
+      toast({
+        title: "Error",
+        description: "No se pudo verificar planillas aprobadas",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!approvedBatches || approvedBatches.length === 0) {
+      toast({
+        title: "No hay planilla aprobada",
+        description: `No existe una planilla aprobada para ${monthNames[selectedMonth - 1]} ${selectedYear}. Debes crear y aprobar una planilla primero en "Proceso de Planilla".`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const batch = approvedBatches[0];
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-payslips', {
+        body: { batchId: batch.id },
+      });
+
+      if (error) throw error;
+
       toast({
         title: "Colillas generadas",
-        description: "Las colillas se han generado correctamente",
+        description: data.message,
       });
+
       fetchPayslips();
-    }, 1500);
+    } catch (error: any) {
+      console.error('Error generating payslips:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudieron generar las colillas",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSendEmail = async (payslip: PayslipData) => {
