@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -14,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, UserPlus, Shield, Building2, Trash2, Edit } from "lucide-react";
+import { Search, UserPlus, Trash2, Edit, ChevronRight, ChevronLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -28,8 +30,57 @@ interface User {
     id: string;
     name: string;
     role: string;
+    permissions?: CompanyPermission;
   }>;
 }
+
+interface CompanyPermission {
+  permission_level: string;
+  can_manage_employees: boolean;
+  can_manage_projects: boolean;
+  can_manage_payroll: boolean;
+  can_view_reports: boolean;
+  can_manage_parameters: boolean;
+  project_scope: string;
+  project_ids: string[];
+}
+
+interface UserFormData {
+  email: string;
+  full_name: string;
+  user_type: 'internal' | 'external';
+  global_role: string;
+  companies: Array<{
+    company_id: string;
+    permission_level: string;
+    can_manage_employees: boolean;
+    can_manage_projects: boolean;
+    can_manage_payroll: boolean;
+    can_view_reports: boolean;
+    can_manage_parameters: boolean;
+    project_scope: string;
+    project_ids: string[];
+  }>;
+}
+
+const INTERNAL_ROLES = [
+  { value: 'ACL_SuperAdmin', label: 'ACL Super Admin' },
+  { value: 'ACL_PayrollSpecialist', label: 'ACL Especialista en Nómina' },
+  { value: 'ACL_Auditor', label: 'ACL Auditor' },
+];
+
+const EXTERNAL_ROLES = [
+  { value: 'Client_Admin', label: 'Admin Cliente' },
+  { value: 'Client_HR', label: 'RRHH Cliente' },
+  { value: 'Client_Viewer', label: 'Visor Cliente' },
+  { value: 'Employee_Portal', label: 'Portal Empleado' },
+];
+
+const PERMISSION_LEVELS = [
+  { value: 'Admin', label: 'Admin' },
+  { value: 'Completo', label: 'Completo' },
+  { value: 'Solo lectura', label: 'Solo lectura' },
+];
 
 export function Users() {
   const { toast } = useToast();
@@ -37,12 +88,21 @@ export function Users() {
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newUserEmail, setNewUserEmail] = useState("");
-  const [newUserRole, setNewUserRole] = useState<"admin" | "company_manager" | "employee">("employee");
-  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  
+  // Dialog states
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [dialogStep, setDialogStep] = useState(1);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  
+  // Form data
+  const [formData, setFormData] = useState<UserFormData>({
+    email: '',
+    full_name: '',
+    user_type: 'external',
+    global_role: 'Client_Viewer',
+    companies: [],
+  });
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('');
 
   useEffect(() => {
     fetchUsers();
@@ -51,21 +111,18 @@ export function Users() {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      // Fetch all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*');
 
       if (profilesError) throw profilesError;
 
-      // Fetch user roles
       const { data: roles, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id, role');
 
       if (rolesError) throw rolesError;
 
-      // Fetch company access
       const { data: companyAccess, error: accessError } = await supabase
         .from('company_users')
         .select(`
@@ -76,16 +133,36 @@ export function Users() {
 
       if (accessError) throw accessError;
 
-      // Combine data
+      const { data: permissions, error: permError } = await supabase
+        .from('user_company_permissions')
+        .select('*');
+
+      if (permError) throw permError;
+
       const usersData: User[] = (profiles || []).map(profile => {
         const userRole = roles?.find(r => r.user_id === profile.id);
         const userCompanies = (companyAccess || [])
           .filter(ca => ca.user_id === profile.id)
-          .map(ca => ({
-            id: (ca.company as any).id,
-            name: (ca.company as any).display_name,
-            role: ca.role
-          }));
+          .map(ca => {
+            const perm = permissions?.find(
+              p => p.user_id === profile.id && p.company_id === (ca.company as any).id
+            );
+            return {
+              id: (ca.company as any).id,
+              name: (ca.company as any).display_name,
+              role: ca.role,
+              permissions: perm ? {
+                permission_level: perm.permission_level,
+                can_manage_employees: perm.can_manage_employees,
+                can_manage_projects: perm.can_manage_projects,
+                can_manage_payroll: perm.can_manage_payroll,
+                can_view_reports: perm.can_view_reports,
+                can_manage_parameters: perm.can_manage_parameters,
+                project_scope: perm.project_scope,
+                project_ids: perm.project_ids || [],
+              } : undefined,
+            };
+          });
 
         return {
           id: profile.id,
@@ -109,138 +186,141 @@ export function Users() {
     }
   };
 
-  const handleAddUser = async () => {
-    if (!newUserEmail) {
-      toast({
-        title: "Error",
-        description: "Ingresa un correo electrónico",
-        variant: "destructive",
-      });
-      return;
-    }
+  const openNewUserDialog = () => {
+    setEditingUser(null);
+    setFormData({
+      email: '',
+      full_name: '',
+      user_type: 'external',
+      global_role: 'Client_Viewer',
+      companies: [],
+    });
+    setDialogStep(1);
+    setIsDialogOpen(true);
+  };
 
+  const openEditDialog = (user: User) => {
+    setEditingUser(user);
+    const userType = ['ACL_SuperAdmin', 'ACL_PayrollSpecialist', 'ACL_Auditor'].includes(user.role || '')
+      ? 'internal'
+      : 'external';
+    
+    setFormData({
+      email: user.email,
+      full_name: user.full_name,
+      user_type: userType,
+      global_role: user.role || 'Client_Viewer',
+      companies: user.companies.map(c => ({
+        company_id: c.id,
+        permission_level: c.permissions?.permission_level || 'Solo lectura',
+        can_manage_employees: c.permissions?.can_manage_employees || false,
+        can_manage_projects: c.permissions?.can_manage_projects || false,
+        can_manage_payroll: c.permissions?.can_manage_payroll || false,
+        can_view_reports: c.permissions?.can_view_reports || true,
+        can_manage_parameters: c.permissions?.can_manage_parameters || false,
+        project_scope: c.permissions?.project_scope || 'all',
+        project_ids: c.permissions?.project_ids || [],
+      })),
+    });
+    setDialogStep(1);
+    setIsDialogOpen(true);
+  };
+
+  const handleSaveUser = async () => {
     try {
-      // Find user by email - search in profiles instead
-      const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .eq('email', newUserEmail)
-        .single();
-
-      if (profileError || !profiles) {
+      // Validation
+      if (!formData.email) {
         toast({
           title: "Error",
-          description: "Usuario no encontrado. El usuario debe estar registrado primero.",
+          description: "El correo electrónico es requerido",
           variant: "destructive",
         });
         return;
       }
 
-      // Assign role
-      const { error: roleError } = await supabase
-        .from('user_roles')
-        .insert({
-          user_id: profiles.id,
-          role: newUserRole
+      if (formData.user_type === 'external' && formData.companies.length === 0) {
+        toast({
+          title: "Error",
+          description: "Los usuarios externos deben tener al menos una empresa asignada",
+          variant: "destructive",
         });
-
-      if (roleError && !roleError.message.includes('duplicate')) {
-        throw roleError;
+        return;
       }
 
-      // Assign company access
-      if (selectedCompanies.length > 0) {
-        const companyRole = newUserRole === 'admin' ? 'admin' : 'company_manager';
-        const companyAccess = selectedCompanies.map(companyId => ({
-          user_id: profiles.id,
-          company_id: companyId,
-          role: companyRole as "admin" | "company_manager" | "employee"
-        }));
+      let userId = editingUser?.id;
 
-        const { error: accessError } = await supabase
-          .from('company_users')
-          .insert(companyAccess);
+      // If new user, find or create profile
+      if (!editingUser) {
+        const { data: existingProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('email', formData.email)
+          .maybeSingle();
 
-        if (accessError && !accessError.message.includes('duplicate')) {
-          throw accessError;
+        if (profileError) throw profileError;
+
+        if (!existingProfile) {
+          toast({
+            title: "Error",
+            description: "Usuario no encontrado. El usuario debe estar registrado primero.",
+            variant: "destructive",
+          });
+          return;
         }
+
+        userId = existingProfile.id;
       }
 
-      toast({
-        title: "Usuario configurado",
-        description: `Permisos asignados a ${newUserEmail}`,
-      });
-
-      setIsAddDialogOpen(false);
-      setNewUserEmail("");
-      setNewUserRole("employee");
-      setSelectedCompanies([]);
-      fetchUsers();
-    } catch (error) {
-      console.error('Error adding user:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo configurar el usuario",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleEditUser = (user: User) => {
-    setEditingUser(user);
-    setSelectedCompanies(user.companies.map(c => c.id));
-    setNewUserRole((user.role as any) || "employee");
-    setIsEditDialogOpen(true);
-  };
-
-  const handleUpdateUser = async () => {
-    if (!editingUser) return;
-
-    try {
       // Update role
-      const { error: roleError } = await supabase
+      await supabase
         .from('user_roles')
         .upsert({
-          user_id: editingUser.id,
-          role: newUserRole
+          user_id: userId!,
+          role: formData.global_role as any
         });
 
-      if (roleError) throw roleError;
+      // Remove old company access and permissions
+      await supabase.from('company_users').delete().eq('user_id', userId);
+      await supabase.from('user_company_permissions').delete().eq('user_id', userId);
 
-      // Remove old company access
-      await supabase
-        .from('company_users')
-        .delete()
-        .eq('user_id', editingUser.id);
-
-      // Add new company access
-      if (selectedCompanies.length > 0) {
-        const companyRole = newUserRole === 'admin' ? 'admin' : 'company_manager';
-        const companyAccess = selectedCompanies.map(companyId => ({
-          user_id: editingUser.id,
-          company_id: companyId,
-          role: companyRole as "admin" | "company_manager" | "employee"
+      // Add new company access and permissions
+      if (formData.companies.length > 0) {
+        const companyAccess = formData.companies.map(c => ({
+          user_id: userId!,
+          company_id: c.company_id,
+          role: (formData.global_role === 'ACL_SuperAdmin' ? 'admin' : 'company_manager') as any,
         }));
 
-        await supabase
-          .from('company_users')
-          .insert(companyAccess);
+        await supabase.from('company_users').insert(companyAccess);
+
+        const permissions = formData.companies.map(c => ({
+          user_id: userId!,
+          company_id: c.company_id,
+          permission_level: c.permission_level,
+          can_manage_employees: c.can_manage_employees,
+          can_manage_projects: c.can_manage_projects,
+          can_manage_payroll: c.can_manage_payroll,
+          can_view_reports: c.can_view_reports,
+          can_manage_parameters: c.can_manage_parameters,
+          project_scope: c.project_scope,
+          project_ids: c.project_ids,
+        }));
+
+        await supabase.from('user_company_permissions').insert(permissions);
       }
 
       toast({
-        title: "Usuario actualizado",
-        description: `Permisos de ${editingUser.email} actualizados`,
+        title: editingUser ? "Usuario actualizado" : "Permisos asignados",
+        description: `Permisos de ${formData.email} guardados correctamente`,
       });
 
-      setIsEditDialogOpen(false);
-      setEditingUser(null);
-      setSelectedCompanies([]);
+      setIsDialogOpen(false);
       fetchUsers();
     } catch (error) {
-      console.error('Error updating user:', error);
+      console.error('Error saving user:', error);
       toast({
         title: "Error",
-        description: "No se pudo actualizar el usuario",
+        description: "No se pudo guardar el usuario",
         variant: "destructive",
       });
     }
@@ -250,21 +330,13 @@ export function Users() {
     if (!confirm(`¿Eliminar todos los permisos de ${userEmail}?`)) return;
 
     try {
-      // Remove role
-      await supabase
-        .from('user_roles')
-        .delete()
-        .eq('user_id', userId);
-
-      // Remove company access
-      await supabase
-        .from('company_users')
-        .delete()
-        .eq('user_id', userId);
+      await supabase.from('user_roles').delete().eq('user_id', userId);
+      await supabase.from('company_users').delete().eq('user_id', userId);
+      await supabase.from('user_company_permissions').delete().eq('user_id', userId);
 
       toast({
         title: "Permisos eliminados",
-        description: `Permisos de ${userEmail} eliminados`,
+        description: `Permisos de ${userEmail} eliminados correctamente`,
       });
 
       fetchUsers();
@@ -278,23 +350,77 @@ export function Users() {
     }
   };
 
-  const getRoleBadge = (role?: string) => {
-    switch (role) {
-      case 'admin':
-        return <Badge className="bg-red-100 text-red-800">Admin</Badge>;
-      case 'company_manager':
-        return <Badge className="bg-blue-100 text-blue-800">Manager</Badge>;
-      case 'employee':
-        return <Badge className="bg-green-100 text-green-800">Empleado</Badge>;
-      default:
-        return <Badge variant="outline">Sin rol</Badge>;
+  const addCompanyToForm = () => {
+    if (!selectedCompanyId) return;
+    
+    if (formData.companies.find(c => c.company_id === selectedCompanyId)) {
+      toast({
+        title: "Empresa ya agregada",
+        description: "Esta empresa ya está en la lista",
+        variant: "destructive",
+      });
+      return;
     }
+
+    setFormData({
+      ...formData,
+      companies: [
+        ...formData.companies,
+        {
+          company_id: selectedCompanyId,
+          permission_level: 'Solo lectura',
+          can_manage_employees: false,
+          can_manage_projects: false,
+          can_manage_payroll: false,
+          can_view_reports: true,
+          can_manage_parameters: false,
+          project_scope: 'all',
+          project_ids: [],
+        },
+      ],
+    });
+    setSelectedCompanyId('');
+  };
+
+  const removeCompanyFromForm = (companyId: string) => {
+    setFormData({
+      ...formData,
+      companies: formData.companies.filter(c => c.company_id !== companyId),
+    });
+  };
+
+  const updateCompanyPermission = (companyId: string, updates: Partial<CompanyPermission>) => {
+    setFormData({
+      ...formData,
+      companies: formData.companies.map(c =>
+        c.company_id === companyId ? { ...c, ...updates } : c
+      ),
+    });
+  };
+
+  const getRoleBadge = (role?: string) => {
+    const roleConfig: Record<string, { color: string; label: string }> = {
+      ACL_SuperAdmin: { color: 'bg-red-100 text-red-800', label: 'Super Admin' },
+      ACL_PayrollSpecialist: { color: 'bg-purple-100 text-purple-800', label: 'Especialista' },
+      ACL_Auditor: { color: 'bg-orange-100 text-orange-800', label: 'Auditor' },
+      Client_Admin: { color: 'bg-blue-100 text-blue-800', label: 'Admin' },
+      Client_HR: { color: 'bg-cyan-100 text-cyan-800', label: 'RRHH' },
+      Client_Viewer: { color: 'bg-green-100 text-green-800', label: 'Visor' },
+      Employee_Portal: { color: 'bg-gray-100 text-gray-800', label: 'Empleado' },
+    };
+
+    const config = role ? roleConfig[role] : null;
+    if (!config) return <Badge variant="outline">Sin rol</Badge>;
+
+    return <Badge className={config.color}>{config.label}</Badge>;
   };
 
   const filteredUsers = users.filter(user =>
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.full_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const roleOptions = formData.user_type === 'internal' ? INTERNAL_ROLES : EXTERNAL_ROLES;
 
   if (isLoading) {
     return (
@@ -312,84 +438,13 @@ export function Users() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gradient">
-            Gestión de Usuarios
-          </h1>
-          <p className="text-muted-foreground">
-            Administra roles y acceso a empresas
-          </p>
+          <h1 className="text-2xl font-bold">Gestión de Usuarios</h1>
+          <p className="text-muted-foreground">Administra roles y acceso a empresas</p>
         </div>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 bg-navy hover:bg-navy/90 text-white">
-              <UserPlus className="h-4 w-4" />
-              Asignar Permisos
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Asignar Permisos a Usuario</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Correo Electrónico</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="usuario@ejemplo.com"
-                  value={newUserEmail}
-                  onChange={(e) => setNewUserEmail(e.target.value)}
-                />
-                <p className="text-sm text-muted-foreground">
-                  El usuario debe estar registrado en el sistema
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="role">Rol</Label>
-                <Select value={newUserRole} onValueChange={(value: any) => setNewUserRole(value)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="company_manager">Manager de Empresa</SelectItem>
-                    <SelectItem value="employee">Empleado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Empresas con Acceso</Label>
-                <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-2">
-                  {companies.map(company => (
-                    <label key={company.id} className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedCompanies.includes(company.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedCompanies([...selectedCompanies, company.id]);
-                          } else {
-                            setSelectedCompanies(selectedCompanies.filter(id => id !== company.id));
-                          }
-                        }}
-                        className="rounded"
-                      />
-                      <span className="text-sm">{company.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleAddUser}>
-                Asignar Permisos
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={openNewUserDialog} className="gap-2">
+          <UserPlus className="h-4 w-4" />
+          Asignar Permisos
+        </Button>
       </div>
 
       {/* Search */}
@@ -439,9 +494,7 @@ export function Users() {
                           <div className="text-sm text-muted-foreground">{user.email}</div>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        {getRoleBadge(user.role)}
-                      </TableCell>
+                      <TableCell>{getRoleBadge(user.role)}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {user.companies.length === 0 ? (
@@ -461,7 +514,7 @@ export function Users() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => handleEditUser(user)}
+                            onClick={() => openEditDialog(user)}
                             title="Editar permisos"
                           >
                             <Edit className="h-4 w-4" />
@@ -486,57 +539,251 @@ export function Users() {
         </CardContent>
       </Card>
 
-      {/* Edit User Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
+      {/* Multi-step Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Editar Permisos de {editingUser?.email}</DialogTitle>
+            <DialogTitle>
+              {editingUser ? `Editar Permisos - ${formData.email}` : 'Asignar Permisos a Usuario'}
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-role">Rol</Label>
-              <Select value={newUserRole} onValueChange={(value: any) => setNewUserRole(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                  <SelectItem value="company_manager">Manager de Empresa</SelectItem>
-                  <SelectItem value="employee">Empleado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Empresas con Acceso</Label>
-              <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-2">
-                {companies.map(company => (
-                  <label key={company.id} className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedCompanies.includes(company.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedCompanies([...selectedCompanies, company.id]);
-                        } else {
-                          setSelectedCompanies(selectedCompanies.filter(id => id !== company.id));
-                        }
-                      }}
-                      className="rounded"
-                    />
-                    <span className="text-sm">{company.name}</span>
-                  </label>
-                ))}
+
+          <Tabs value={`step-${dialogStep}`} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="step-1" onClick={() => setDialogStep(1)}>
+                1. Datos Básicos
+              </TabsTrigger>
+              <TabsTrigger value="step-2" onClick={() => setDialogStep(2)} disabled={!formData.email}>
+                2. Rol y Tipo
+              </TabsTrigger>
+              <TabsTrigger value="step-3" onClick={() => setDialogStep(3)} disabled={!formData.global_role}>
+                3. Empresas y Permisos
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Step 1: Basic Data */}
+            <TabsContent value="step-1" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Correo Electrónico *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="usuario@ejemplo.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  disabled={!!editingUser}
+                />
+                <p className="text-sm text-muted-foreground">
+                  El usuario debe estar registrado en el sistema
+                </p>
               </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleUpdateUser}>
-              Guardar Cambios
-            </Button>
-          </DialogFooter>
+
+              <div className="space-y-2">
+                <Label htmlFor="full_name">Nombre Completo</Label>
+                <Input
+                  id="full_name"
+                  placeholder="Nombre completo del usuario"
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                />
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={() => setDialogStep(2)}>
+                  Siguiente <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </TabsContent>
+
+            {/* Step 2: Role and Type */}
+            <TabsContent value="step-2" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Tipo de Usuario *</Label>
+                <Select
+                  value={formData.user_type}
+                  onValueChange={(value: 'internal' | 'external') => {
+                    setFormData({
+                      ...formData,
+                      user_type: value,
+                      global_role: value === 'internal' ? 'ACL_PayrollSpecialist' : 'Client_Viewer',
+                    });
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="internal">Interno ACL</SelectItem>
+                    <SelectItem value="external">Cliente Externo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Rol Global *</Label>
+                <Select
+                  value={formData.global_role}
+                  onValueChange={(value) => setFormData({ ...formData, global_role: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roleOptions.map(role => (
+                      <SelectItem key={role.value} value={role.value}>
+                        {role.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex justify-between">
+                <Button variant="outline" onClick={() => setDialogStep(1)}>
+                  <ChevronLeft className="h-4 w-4 mr-2" /> Anterior
+                </Button>
+                <Button onClick={() => setDialogStep(3)}>
+                  Siguiente <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </TabsContent>
+
+            {/* Step 3: Companies and Permissions */}
+            <TabsContent value="step-3" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Asignar Empresas</Label>
+                <div className="flex gap-2">
+                  <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Seleccionar empresa..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies
+                        .filter(c => !formData.companies.find(fc => fc.company_id === c.id))
+                        .map(company => (
+                          <SelectItem key={company.id} value={company.id}>
+                            {company.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button onClick={addCompanyToForm} variant="outline">
+                    Agregar
+                  </Button>
+                </div>
+              </div>
+
+              {formData.companies.length > 0 && (
+                <div className="space-y-3 border rounded-lg p-4">
+                  {formData.companies.map(companyPerm => {
+                    const company = companies.find(c => c.id === companyPerm.company_id);
+                    return (
+                      <Card key={companyPerm.company_id}>
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-base">{company?.name}</CardTitle>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeCompanyFromForm(companyPerm.company_id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          <div>
+                            <Label className="text-sm">Nivel de Permiso</Label>
+                            <Select
+                              value={companyPerm.permission_level}
+                              onValueChange={(value) =>
+                                updateCompanyPermission(companyPerm.company_id, { permission_level: value })
+                              }
+                            >
+                              <SelectTrigger className="mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {PERMISSION_LEVELS.map(level => (
+                                  <SelectItem key={level.value} value={level.value}>
+                                    {level.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label className="text-sm">Módulos Habilitados</Label>
+                            <div className="space-y-2">
+                              {[
+                                { key: 'can_manage_employees', label: 'Gestionar Empleados' },
+                                { key: 'can_manage_projects', label: 'Gestionar Proyectos' },
+                                { key: 'can_manage_payroll', label: 'Gestionar Planillas' },
+                                { key: 'can_view_reports', label: 'Ver Reportes' },
+                                { key: 'can_manage_parameters', label: 'Gestionar Parámetros' },
+                              ].map(module => (
+                                <div key={module.key} className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`${companyPerm.company_id}-${module.key}`}
+                                    checked={companyPerm[module.key as keyof typeof companyPerm] as boolean}
+                                    onCheckedChange={(checked) =>
+                                      updateCompanyPermission(companyPerm.company_id, {
+                                        [module.key]: checked,
+                                      } as any)
+                                    }
+                                  />
+                                  <Label
+                                    htmlFor={`${companyPerm.company_id}-${module.key}`}
+                                    className="text-sm font-normal cursor-pointer"
+                                  >
+                                    {module.label}
+                                  </Label>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div>
+                            <Label className="text-sm">Alcance de Proyectos</Label>
+                            <Select
+                              value={companyPerm.project_scope}
+                              onValueChange={(value) =>
+                                updateCompanyPermission(companyPerm.company_id, { project_scope: value })
+                              }
+                            >
+                              <SelectTrigger className="mt-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">Todos los proyectos</SelectItem>
+                                <SelectItem value="specific">Proyectos específicos</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
+
+              {formData.user_type === 'external' && formData.companies.length === 0 && (
+                <p className="text-sm text-destructive">
+                  * Los usuarios externos deben tener al menos una empresa asignada
+                </p>
+              )}
+
+              <div className="flex justify-between pt-4">
+                <Button variant="outline" onClick={() => setDialogStep(2)}>
+                  <ChevronLeft className="h-4 w-4 mr-2" /> Anterior
+                </Button>
+                <Button onClick={handleSaveUser}>
+                  {editingUser ? 'Actualizar Permisos' : 'Asignar Permisos'}
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </div>
