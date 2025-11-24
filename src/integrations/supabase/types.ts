@@ -549,6 +549,69 @@ export type Database = {
           },
         ]
       }
+      user_company_permissions: {
+        Row: {
+          can_manage_employees: boolean | null
+          can_manage_parameters: boolean | null
+          can_manage_payroll: boolean | null
+          can_manage_projects: boolean | null
+          can_view_reports: boolean | null
+          company_id: string
+          created_at: string | null
+          id: string
+          permission_level: string
+          project_ids: string[] | null
+          project_scope: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          can_manage_employees?: boolean | null
+          can_manage_parameters?: boolean | null
+          can_manage_payroll?: boolean | null
+          can_manage_projects?: boolean | null
+          can_view_reports?: boolean | null
+          company_id: string
+          created_at?: string | null
+          id?: string
+          permission_level: string
+          project_ids?: string[] | null
+          project_scope?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          can_manage_employees?: boolean | null
+          can_manage_parameters?: boolean | null
+          can_manage_payroll?: boolean | null
+          can_manage_projects?: boolean | null
+          can_view_reports?: boolean | null
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          permission_level?: string
+          project_ids?: string[] | null
+          project_scope?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_company_permissions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_company_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           company_id: string | null
