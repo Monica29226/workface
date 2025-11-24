@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -26,7 +27,10 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
-  Plus
+  Plus,
+  RefreshCw,
+  Edit,
+  XCircle
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -34,6 +38,7 @@ import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { EditablePayrollRow } from "@/components/payroll/EditablePayrollRow";
 
 interface PayrollBatch {
   id: string;
@@ -67,12 +72,15 @@ export function PayrollProcess() {
   const [payrollLines, setPayrollLines] = useState<PayrollLine[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [editingLineId, setEditingLineId] = useState<string | null>(null);
 
   // New batch form
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
   const [frequency, setFrequency] = useState<'mensual' | 'quincenal' | 'semanal'>('mensual');
   const [exchangeRate, setExchangeRate] = useState(510.27);
+  const [copyFromPrevious, setCopyFromPrevious] = useState(false);
+  const [previousBatchId, setPreviousBatchId] = useState<string>("");
 
   useEffect(() => {
     if (selectedCompany) {
@@ -164,6 +172,7 @@ export function PayrollProcess() {
           periodEnd,
           frequency,
           exchangeRate,
+          copyFromBatchId: copyFromPrevious ? previousBatchId : undefined,
         },
       });
 
@@ -180,6 +189,8 @@ export function PayrollProcess() {
       // Clear form
       setPeriodStart("");
       setPeriodEnd("");
+      setCopyFromPrevious(false);
+      setPreviousBatchId("");
     } catch (error: any) {
       console.error('Error processing payroll:', error);
       toast({
@@ -255,6 +266,95 @@ export function PayrollProcess() {
       toast({
         title: "Error",
         description: error.message || "No se pudieron generar las colillas",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleUnapprove = async () => {
+    if (!selectedBatch) return;
+
+    setIsProcessing(true);
+    try {
+      const { error } = await supabase
+        .from('payroll_batches')
+        .update({ status: 'calculado' })
+        .eq('id', selectedBatch);
+
+      if (error) throw error;
+
+      toast({
+        title: "Planilla desaprobada",
+        description: "Ahora puedes editar las líneas de planilla",
+      });
+
+      fetchBatches();
+      fetchPayrollLines();
+    } catch (error) {
+      console.error('Error unapproving batch:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo desaprobar la planilla",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleUpdateLine = async (lineId: string, updates: any) => {
+    try {
+      const { error } = await supabase.functions.invoke('update-payroll-line', {
+        body: {
+          lineId,
+          updates,
+          reason: 'Edición manual desde interfaz'
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Línea actualizada",
+        description: "Los cambios se guardaron correctamente",
+      });
+
+      setEditingLineId(null);
+      fetchPayrollLines();
+    } catch (error: any) {
+      console.error('Error updating line:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar la línea",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRecalculate = async () => {
+    if (!selectedBatch) return;
+
+    setIsProcessing(true);
+    try {
+      const { error } = await supabase.functions.invoke('recalculate-payroll-batch', {
+        body: { batchId: selectedBatch },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Planilla recalculada",
+        description: "Todos los totales han sido actualizados",
+      });
+
+      fetchPayrollLines();
+    } catch (error: any) {
+      console.error('Error recalculating batch:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo recalcular la planilla",
         variant: "destructive",
       });
     } finally {
@@ -355,6 +455,38 @@ export function PayrollProcess() {
               />
             </div>
           </div>
+          
+          {/* Copy from previous month option */}
+          <div className="space-y-4 border-t pt-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="copy-previous" 
+                checked={copyFromPrevious}
+                onCheckedChange={(checked) => setCopyFromPrevious(checked as boolean)}
+              />
+              <Label htmlFor="copy-previous" className="cursor-pointer">
+                Copiar datos del mes anterior (horas, bonos, deducciones)
+              </Label>
+            </div>
+            
+            {copyFromPrevious && batches.length > 0 && (
+              <div className="space-y-2">
+                <Label>Seleccionar planilla base</Label>
+                <Select value={previousBatchId} onValueChange={setPreviousBatchId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar planilla anterior" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {batches.map(batch => (
+                      <SelectItem key={batch.id} value={batch.id}>
+                        {batch.batch_id} - {new Date(batch.period_start).toLocaleDateString('es-CR')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
           <Button 
             onClick={handleCreateBatch} 
             disabled={isProcessing || !periodStart || !periodEnd}
@@ -418,20 +550,42 @@ export function PayrollProcess() {
                 {currentBatch && (
                   <div className="flex gap-2">
                     {currentBatch.status === 'calculado' && (
-                      <Button onClick={handleApprove} disabled={isProcessing} className="gap-2">
-                        <CheckCircle className="h-4 w-4" />
-                        Aprobar Planilla
-                      </Button>
+                      <>
+                        <Button 
+                          onClick={handleRecalculate} 
+                          disabled={isProcessing} 
+                          variant="outline"
+                          className="gap-2"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                          Recalcular
+                        </Button>
+                        <Button onClick={handleApprove} disabled={isProcessing} className="gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          Aprobar Planilla
+                        </Button>
+                      </>
                     )}
                     {currentBatch.status === 'aprobado' && (
-                      <Button onClick={handleGeneratePayslips} disabled={isProcessing} className="gap-2">
-                        {isProcessing ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <FileText className="h-4 w-4" />
-                        )}
-                        Generar Colillas
-                      </Button>
+                      <>
+                        <Button 
+                          onClick={handleUnapprove} 
+                          disabled={isProcessing} 
+                          variant="outline"
+                          className="gap-2"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Desaprobar
+                        </Button>
+                        <Button onClick={handleGeneratePayslips} disabled={isProcessing} className="gap-2">
+                          {isProcessing ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <FileText className="h-4 w-4" />
+                          )}
+                          Generar Colillas
+                        </Button>
+                      </>
                     )}
                   </div>
                 )}
@@ -499,7 +653,17 @@ export function PayrollProcess() {
               {/* Payroll Lines Table */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Detalle de Planilla ({payrollLines.length} empleados)</CardTitle>
+                  <CardTitle className="flex items-center justify-between">
+                    <span>Detalle de Planilla ({payrollLines.length} empleados)</span>
+                    {currentBatch?.status === 'calculado' && (
+                      <div className="flex items-center gap-2">
+                        <Edit className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          Haz clic en una fila para editarla
+                        </span>
+                      </div>
+                    )}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
@@ -507,40 +671,57 @@ export function PayrollProcess() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Empleado</TableHead>
+                          <TableHead className="text-right">Horas</TableHead>
+                          <TableHead className="text-right">Ausencias/Vac</TableHead>
                           <TableHead className="text-right">Bruto</TableHead>
                           <TableHead className="text-right">Deducciones</TableHead>
                           <TableHead className="text-right">Neto</TableHead>
                           <TableHead className="text-right">Cargas Patronales</TableHead>
-                          <TableHead className="text-right">Aguinaldo</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {payrollLines.map((line) => (
-                          <TableRow key={line.id}>
-                            <TableCell>
-                              <div>
-                                <div className="font-medium">{line.employee.full_name}</div>
-                                <div className="text-sm text-muted-foreground">
-                                  {line.employee.employee_id}
+                          currentBatch?.status === 'calculado' ? (
+                            <EditablePayrollRow
+                              key={line.id}
+                              line={line}
+                              isEditing={editingLineId === line.id}
+                              onStartEdit={() => setEditingLineId(line.id)}
+                              onSave={handleUpdateLine}
+                              onCancel={() => setEditingLineId(null)}
+                            />
+                          ) : (
+                            <TableRow key={line.id}>
+                              <TableCell>
+                                <div>
+                                  <div className="font-medium">{line.employee.full_name}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {line.employee.employee_id}
+                                  </div>
                                 </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                              {formatCurrency(Number(line.gross_salary), line.currency)}
-                            </TableCell>
-                            <TableCell className="text-right font-mono text-orange-600">
-                              {formatCurrency(Number(line.deductions), line.currency)}
-                            </TableCell>
-                            <TableCell className="text-right font-mono font-semibold text-green-600">
-                              {formatCurrency(Number(line.net_pay), line.currency)}
-                            </TableCell>
-                            <TableCell className="text-right font-mono text-blue-600">
-                              {formatCurrency(Number(line.employer_contrib), line.currency)}
-                            </TableCell>
-                            <TableCell className="text-right font-mono text-primary">
-                              {formatCurrency(Number(line.aguinaldo_accrued), line.currency)}
-                            </TableCell>
-                          </TableRow>
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-xs">
+                                <div>H.Reg: {(line as any).regular_hours || 0}</div>
+                                <div className="text-muted-foreground">H.Extra: {(line as any).overtime_hours || 0}</div>
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-xs">
+                                <div>Aus: {(line as any).absence_days || 0}</div>
+                                <div className="text-muted-foreground">Vac: {(line as any).vacation_days_taken || 0}</div>
+                              </TableCell>
+                              <TableCell className="text-right font-mono">
+                                {formatCurrency(Number(line.gross_salary), line.currency)}
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-orange-600">
+                                {formatCurrency(Number(line.deductions), line.currency)}
+                              </TableCell>
+                              <TableCell className="text-right font-mono font-semibold text-green-600">
+                                {formatCurrency(Number(line.net_pay), line.currency)}
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-blue-600">
+                                {formatCurrency(Number(line.employer_contrib), line.currency)}
+                              </TableCell>
+                            </TableRow>
+                          )
                         ))}
                       </TableBody>
                     </Table>
