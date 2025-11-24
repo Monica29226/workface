@@ -12,9 +12,12 @@ import {
   Mail,
   Settings,
   UserCheck,
-  Plus
+  Plus,
+  LogOut
 } from "lucide-react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 
 import {
   Sidebar,
@@ -129,9 +132,15 @@ const groups = {
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
   const { t } = useLanguage();
   const currentPath = location.pathname;
   const collapsed = state === "collapsed";
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
 
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive 
@@ -203,18 +212,29 @@ export function AppSidebar() {
         {/* Sistema de Planillas - Branding Section */}
         {!collapsed && (
           <SidebarGroup className="mt-auto border-t">
-            <div className="px-3 py-4">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="h-6 w-6 rounded-md bg-gradient-to-br from-navy to-teal flex items-center justify-center">
-                  <span className="text-white font-bold text-xs">ACL</span>
+            <div className="px-3 py-4 space-y-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-6 w-6 rounded-md bg-gradient-to-br from-navy to-teal flex items-center justify-center">
+                    <span className="text-white font-bold text-xs">ACL</span>
+                  </div>
+                  <h3 className="text-sm font-semibold text-sidebar-foreground">
+                    Sistema de Planillas
+                  </h3>
                 </div>
-                <h3 className="text-sm font-semibold text-sidebar-foreground">
-                  Sistema de Planillas
-                </h3>
+                <p className="text-xs text-sidebar-foreground/60 pl-8">
+                  Multi-Compañía Costa Rica
+                </p>
               </div>
-              <p className="text-xs text-sidebar-foreground/60 pl-8">
-                Multi-Compañía Costa Rica
-              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="w-full justify-start text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Cerrar sesión
+              </Button>
             </div>
           </SidebarGroup>
         )}
