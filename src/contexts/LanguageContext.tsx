@@ -25,6 +25,7 @@ const translations = {
     'nav.historico': 'Histórico',
     'nav.users': 'Gestión Usuarios',
     'nav.parameters': 'Parámetros',
+    'nav.create_company': 'Crear Empresa',
     'nav.admin': 'Administración',
     'nav.manager': 'Administrador',
 
@@ -97,6 +98,7 @@ const translations = {
     'nav.historico': 'Historical',
     'nav.users': 'User Management',
     'nav.parameters': 'Parameters',
+    'nav.create_company': 'Create Company',
     'nav.admin': 'Administration',
     'nav.manager': 'Manager',
 

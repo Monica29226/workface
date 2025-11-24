@@ -1,4 +1,4 @@
-import { Languages, Moon, Sun, Plus } from "lucide-react";
+import { Languages, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
@@ -20,23 +20,6 @@ export function AppHeader() {
       <div className="container flex h-14 items-center justify-between">
         <div className="flex items-center gap-4">
           <SidebarTrigger className="h-8 w-8" />
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-navy to-teal flex items-center justify-center">
-              <span className="text-white font-bold text-sm">ACL</span>
-            </div>
-            <Button 
-              variant="default" 
-              size="sm" 
-              className="gap-2 bg-primary hover:bg-primary/90"
-              onClick={() => {
-                // TODO: Open create company dialog
-                console.log("Create company");
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Crear Empresa</span>
-            </Button>
-          </div>
         </div>
 
         <div className="flex items-center gap-4">
