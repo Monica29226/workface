@@ -11,7 +11,8 @@ import {
   BarChart3,
   Mail,
   Settings,
-  UserCheck
+  UserCheck,
+  Plus
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
@@ -28,7 +29,15 @@ import {
 } from "@/components/ui/sidebar";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const navigationItems = [
+interface NavigationItem {
+  title: string;
+  url: string;
+  icon: any;
+  group: string;
+  isAction?: boolean;
+}
+
+const navigationItems: NavigationItem[] = [
   { 
     title: 'nav.dashboard', 
     url: '/dashboard', 
@@ -101,6 +110,13 @@ const navigationItems = [
     icon: Settings,
     group: 'admin'
   },
+  { 
+    title: 'nav.create_company', 
+    url: '/create-company', 
+    icon: Plus,
+    group: 'admin',
+    isAction: true
+  },
 ];
 
 const groups = {
@@ -148,18 +164,34 @@ export function AppSidebar() {
               <SidebarMenu>
                 {items.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink 
-                        to={item.url} 
-                        end 
-                        className={getNavCls}
-                        title={t(item.title)}
-                      >
-                        <item.icon className="h-4 w-4 flex-shrink-0" />
-                        {!collapsed && (
-                          <span className="truncate">{t(item.title)}</span>
-                        )}
-                      </NavLink>
+                    <SidebarMenuButton asChild={!item.isAction}>
+                      {item.isAction ? (
+                        <button
+                          onClick={() => {
+                            // TODO: Open create company dialog
+                            console.log("Create company");
+                          }}
+                          className="w-full flex items-center gap-2 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground px-2 py-1.5 rounded-md transition-colors"
+                          title={t(item.title)}
+                        >
+                          <item.icon className="h-4 w-4 flex-shrink-0" />
+                          {!collapsed && (
+                            <span className="truncate">{t(item.title)}</span>
+                          )}
+                        </button>
+                      ) : (
+                        <NavLink 
+                          to={item.url} 
+                          end 
+                          className={getNavCls}
+                          title={t(item.title)}
+                        >
+                          <item.icon className="h-4 w-4 flex-shrink-0" />
+                          {!collapsed && (
+                            <span className="truncate">{t(item.title)}</span>
+                          )}
+                        </NavLink>
+                      )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
