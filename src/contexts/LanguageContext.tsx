@@ -13,6 +13,7 @@ const translations = {
     // Navigation
     'nav.dashboard': 'Panel Principal',
     'nav.employees': 'Empleados',
+    'nav.projects': 'Proyectos',
     'nav.contracts': 'Contratos',
     'nav.timesheets': 'Distribución Jornada',
     'nav.payroll_process': 'Proceso Planilla',
@@ -84,6 +85,7 @@ const translations = {
     // Navigation
     'nav.dashboard': 'Dashboard',
     'nav.employees': 'Employees',
+    'nav.projects': 'Projects',
     'nav.contracts': 'Contracts',
     'nav.timesheets': 'Timesheets',
     'nav.payroll_process': 'Payroll Process',
