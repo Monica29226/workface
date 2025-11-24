@@ -45,8 +45,8 @@ All colors MUST be HSL.
     --radius: 0.75rem;
 
     /* Custom design tokens for ACL Payroll CR */
-    --navy: 220 70% 50%;
-    --navy-light: 220 65% 60%;
+    --navy: 210 56% 23%;
+    --navy-light: 210 50% 35%;
     --beige: 220 60% 30%;
     --beige-dark: 220 55% 25%;
     --gray-light: 0 0% 95%;
@@ -114,8 +114,8 @@ All colors MUST be HSL.
     --ring: 220 70% 50%;
 
     /* Dark mode custom tokens */
-    --navy: 220 70% 50%;
-    --navy-light: 220 65% 60%;
+    --navy: 210 56% 23%;
+    --navy-light: 210 50% 35%;
     --beige: 220 60% 30%;
     --beige-dark: 220 55% 25%;
     --gray-light: 210 40% 18%;
