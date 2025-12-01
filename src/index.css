@@ -8,60 +8,66 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* ACL Payroll CR - Multi-Empresa & Multi-Moneda */
-    /* Primary: #1A3B5D, Secondary: #D9C8A9, Neutral: #F7F7F7, Accent: #2D7A9E */
-    --background: 0 0% 97%;
-    --foreground: 210 56% 23%;
+    /* ACL Payroll CR - Professional Corporate Palette */
+    /* Clean, modern, and professional color scheme */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 210 56% 23%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 56% 23%;
+    --popover-foreground: 222 47% 11%;
 
-    /* Primary - Modern Blue */
-    --primary: 220 70% 50%;
+    /* Primary - Professional Blue (inspired by corporate identity) */
+    --primary: 214 84% 56%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Navy Blue */
-    --secondary: 220 60% 30%;
+    /* Secondary - Soft Slate */
+    --secondary: 217 33% 17%;
     --secondary-foreground: 0 0% 100%;
 
-    /* Light gray muted */
-    --muted: 0 0% 95%;
-    --muted-foreground: 210 20% 40%;
+    /* Muted backgrounds */
+    --muted: 214 32% 91%;
+    --muted-foreground: 215 16% 47%;
 
     /* Accent - Light Blue */
-    --accent: 220 70% 95%;
-    --accent-foreground: 220 70% 50%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 214 84% 56%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 17% 89%;
-    --input: 210 17% 89%;
-    --ring: 220 70% 50%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 214 84% 56%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
     /* Custom design tokens for ACL Payroll CR */
-    --navy: 210 56% 23%;
-    --navy-light: 210 50% 35%;
-    --beige: 220 60% 30%;
-    --beige-dark: 220 55% 25%;
-    --gray-light: 0 0% 95%;
-    --teal: 220 70% 95%;
-    --teal-light: 220 70% 97%;
+    --navy: 217 33% 17%;
+    --navy-light: 217 33% 25%;
+    --slate: 215 16% 47%;
+    --slate-light: 220 9% 60%;
+    --blue-50: 214 100% 97%;
+    --blue-100: 214 95% 93%;
+    --blue-500: 214 84% 56%;
+    
+    /* Success, Warning, Info colors */
+    --success: 142 76% 36%;
+    --warning: 38 92% 50%;
+    --info: 199 89% 48%;
     
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--navy)), hsl(var(--navy-light)));
-    --gradient-accent: linear-gradient(135deg, hsl(var(--teal)), hsl(var(--teal-light)));
-    --gradient-subtle: linear-gradient(180deg, hsl(var(--beige)), hsl(var(--beige-dark)));
+    --gradient-primary: linear-gradient(135deg, hsl(214 84% 56%), hsl(214 100% 70%));
+    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(214 32% 97%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(214 32% 98%));
     
     /* Shadows */
-    --shadow-soft: 0 4px 20px -2px hsl(var(--navy) / 0.1);
-    --shadow-card: 0 8px 25px -5px hsl(var(--navy) / 0.15);
-    --shadow-strong: 0 20px 50px -10px hsl(var(--navy) / 0.25);
+    --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(222 47% 11% / 0.1);
+    --shadow-lg: 0 10px 15px -3px hsl(222 47% 11% / 0.1);
+    --shadow-xl: 0 20px 25px -5px hsl(222 47% 11% / 0.1);
     
     /* Animations */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -85,42 +91,42 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 210 56% 10%;
-    --foreground: 0 0% 97%;
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
 
-    --card: 210 50% 15%;
-    --card-foreground: 0 0% 97%;
+    --card: 217 33% 17%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 210 50% 15%;
-    --popover-foreground: 0 0% 97%;
+    --popover: 217 33% 17%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 220 60% 30%;
+    --primary: 214 84% 56%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 70% 50%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 217 33% 25%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 210 40% 18%;
-    --muted-foreground: 210 10% 60%;
+    --muted: 215 28% 17%;
+    --muted-foreground: 217 10% 64%;
 
-    --accent: 220 60% 20%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 217 33% 22%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 40% 25%;
-    --input: 210 40% 25%;
-    --ring: 220 70% 50%;
+    --border: 215 28% 22%;
+    --input: 215 28% 22%;
+    --ring: 214 84% 56%;
 
     /* Dark mode custom tokens */
-    --navy: 210 56% 23%;
-    --navy-light: 210 50% 35%;
-    --beige: 220 60% 30%;
-    --beige-dark: 220 55% 25%;
-    --gray-light: 210 40% 18%;
-    --teal: 220 60% 20%;
-    --teal-light: 220 55% 25%;
+    --navy: 217 33% 17%;
+    --navy-light: 217 33% 25%;
+    --slate: 217 10% 64%;
+    --slate-light: 220 9% 70%;
+    --blue-50: 217 33% 22%;
+    --blue-100: 215 28% 25%;
+    --blue-500: 214 84% 56%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -162,22 +168,23 @@ All colors MUST be HSL.
 @layer components {
   /* Custom component styles */
   .card-elevated {
-    background: var(--gradient-subtle);
-    box-shadow: var(--shadow-card);
+    background: var(--gradient-card);
+    box-shadow: var(--shadow-md);
     transition: var(--transition-smooth);
+    border: 1px solid hsl(214 32% 91%);
   }
   
   .card-elevated:hover {
-    box-shadow: var(--shadow-strong);
+    box-shadow: var(--shadow-lg);
     transform: translateY(-2px);
   }
   
-  .gradient-navy {
+  .gradient-primary {
     background: var(--gradient-primary);
   }
   
-  .gradient-teal {
-    background: var(--gradient-accent);
+  .gradient-subtle {
+    background: var(--gradient-subtle);
   }
   
   .text-gradient {
