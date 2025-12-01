@@ -40,7 +40,7 @@ serve(async (req) => {
       );
     }
 
-    const { companyId, periodStart, periodEnd, frequency, exchangeRate = 1.0 }: ProcessPayrollRequest = await req.json();
+    const { companyId, periodStart, periodEnd, frequency, exchangeRate = 1.0, copyFromBatchId }: ProcessPayrollRequest = await req.json();
 
     console.log("Processing payroll for company:", companyId);
 
