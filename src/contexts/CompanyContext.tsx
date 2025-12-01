@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Company {
   id: string;
@@ -27,42 +28,79 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load companies from localStorage or default
-    const savedCompanyId = localStorage.getItem('selectedCompanyId');
-    const defaultCompanies: Company[] = [
-      {
-        id: '550e8400-e29b-41d4-a716-446655440000',
-        name: 'Horizonte Positivo',
-        legal_name: 'Asociación Horizonte Positivo',
-        juridical_id: '3-002-674691',
-        primary_color: '#0B2B4C',
-        accent_color: '#2A9D8F',
-        light_color: '#F5EFE6'
-      },
-      {
-        id: '550e8400-e29b-41d4-a716-446655440001',
-        name: 'Alturas de Tenorio',
-        legal_name: 'Alturas de Tenorio S.A.',
-        juridical_id: '3-101-555555',
-        primary_color: '#0B2B4C',
-        accent_color: '#2A9D8F',
-        light_color: '#F5EFE6'
-      }
-    ];
-
-    setCompanies(defaultCompanies);
-    
-    if (savedCompanyId) {
-      const savedCompany = defaultCompanies.find(c => c.id === savedCompanyId);
-      if (savedCompany) {
-        setSelectedCompany(savedCompany);
-      }
-    } else {
-      setSelectedCompany(defaultCompanies[0]);
-    }
-    
-    setIsLoading(false);
+    loadCompanies();
   }, []);
+
+  const loadCompanies = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      // Get companies the user has access to
+      const { data: companyUsers, error: companyUsersError } = await supabase
+        .from('company_users')
+        .select('company_id')
+        .eq('user_id', user.id);
+
+      if (companyUsersError) throw companyUsersError;
+
+      if (!companyUsers || companyUsers.length === 0) {
+        setCompanies([]);
+        setSelectedCompany(null);
+        setIsLoading(false);
+        return;
+      }
+
+      // Get company details
+      const companyIds = companyUsers.map(cu => cu.company_id);
+      const { data: companiesData, error: companiesError } = await supabase
+        .from('companies')
+        .select('*')
+        .in('id', companyIds);
+
+      if (companiesError) throw companiesError;
+
+      // Map to Company interface
+      const mappedCompanies: Company[] = (companiesData || []).map(c => ({
+        id: c.id,
+        name: c.display_name,
+        legal_name: c.display_name,
+        juridical_id: c.tax_id || '',
+        logo_url: c.logo_url || undefined,
+        primary_color: '#0B2B4C',
+        accent_color: '#2A9D8F',
+        light_color: '#F5EFE6'
+      }));
+
+      setCompanies(mappedCompanies);
+
+      // Restore saved company or select first
+      const savedCompanyId = localStorage.getItem('selectedCompanyId');
+      if (savedCompanyId) {
+        const savedCompany = mappedCompanies.find(c => c.id === savedCompanyId);
+        if (savedCompany) {
+          setSelectedCompany(savedCompany);
+        } else if (mappedCompanies.length > 0) {
+          setSelectedCompany(mappedCompanies[0]);
+        }
+      } else if (mappedCompanies.length > 0) {
+        setSelectedCompany(mappedCompanies[0]);
+      }
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error loading companies:', error);
+      setCompanies([]);
+      setSelectedCompany(null);
+      setIsLoading(false);
+    }
+  };
 
   const handleSetSelectedCompany = (company: Company | null) => {
     setSelectedCompany(company);
