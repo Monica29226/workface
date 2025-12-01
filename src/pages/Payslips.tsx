@@ -250,24 +250,144 @@ export function Payslips() {
   };
 
   const handleSendEmail = async (payslip: PayslipData) => {
-    toast({
-      title: "Enviando colilla",
-      description: `Enviando colilla a ${payslip.email}...`,
-    });
-    
-    setTimeout(() => {
+    if (!selectedCompany) return;
+
+    try {
+      // First, find the payslip record in the database
+      const { data: payslipRecord, error: payslipError } = await supabase
+        .from('payslips')
+        .select('id, employee_id, payslip_id')
+        .eq('employee_id', payslip.employeeId)
+        .eq('company_id', selectedCompany.id)
+        .single();
+
+      if (payslipError || !payslipRecord) {
+        toast({
+          title: "Error",
+          description: "No se encontró la colilla en la base de datos",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Generate PDF first
+      const { data: pdfData, error: pdfError } = await supabase.functions.invoke('generate-payslip-pdf', {
+        body: { payslipId: payslipRecord.id },
+      });
+
+      if (pdfError) throw pdfError;
+
+      // Send email with PDF
+      const { error: emailError } = await supabase.functions.invoke('send-email', {
+        body: {
+          to: payslip.email,
+          subject: `Colilla de Pago - ${selectedCompany.name} - ${payslip.period}`,
+          html: `
+            <h2>Colilla de Pago</h2>
+            <p>Estimado/a ${payslip.employeeName},</p>
+            <p>Adjunto encontrará su colilla de pago correspondiente al período de ${payslip.period}.</p>
+            <p><strong>Salario Neto:</strong> ${formatCurrency(payslip.netSalary, payslip.currency)}</p>
+            <p>Saludos,<br>${selectedCompany.name}</p>
+          `,
+          companyId: selectedCompany.id,
+        },
+      });
+
+      if (emailError) throw emailError;
+
+      // Update payslip status
+      await supabase
+        .from('payslips')
+        .update({ sent_at: new Date().toISOString() })
+        .eq('id', payslipRecord.id);
+
       toast({
         title: "Colilla enviada",
         description: `Colilla enviada correctamente a ${payslip.email}`,
       });
-    }, 1000);
+
+      fetchPayslips();
+    } catch (error: any) {
+      console.error('Error sending email:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo enviar la colilla",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleDownloadPDF = (payslip: PayslipData) => {
-    toast({
-      title: "Descargando PDF",
-      description: `Generando PDF de ${payslip.employeeName}...`,
-    });
+  const handleDownloadPDF = async (payslip: PayslipData) => {
+    if (!selectedCompany) return;
+
+    try {
+      // Find the payslip record in the database
+      const { data: payslipRecord, error: payslipError } = await supabase
+        .from('payslips')
+        .select('id')
+        .eq('employee_id', payslip.employeeId)
+        .eq('company_id', selectedCompany.id)
+        .single();
+
+      if (payslipError || !payslipRecord) {
+        toast({
+          title: "Error",
+          description: "No se encontró la colilla en la base de datos",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Generate and download PDF
+      const { data, error } = await supabase.functions.invoke('generate-payslip-pdf', {
+        body: { payslipId: payslipRecord.id },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "PDF generado",
+        description: `PDF de ${payslip.employeeName} generado correctamente`,
+      });
+    } catch (error: any) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo generar el PDF",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBulkSend = async () => {
+    if (!selectedCompany || filteredPayslips.length === 0) {
+      toast({
+        title: "No hay colillas",
+        description: "No hay colillas para enviar en el período seleccionado",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      let sentCount = 0;
+      for (const payslip of filteredPayslips) {
+        await handleSendEmail(payslip);
+        sentCount++;
+      }
+
+      toast({
+        title: "Envío masivo completado",
+        description: `Se enviaron ${sentCount} colillas correctamente`,
+      });
+    } catch (error: any) {
+      console.error('Error in bulk send:', error);
+      toast({
+        title: "Error",
+        description: "Hubo un error en el envío masivo",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {
@@ -312,7 +432,7 @@ export function Payslips() {
             <Archive className="h-4 w-4" />
             ZIP Colillas
           </Button>
-          <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleBulkSend}>
             <Mail className="h-4 w-4" />
             Envío Masivo
           </Button>
