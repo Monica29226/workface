@@ -73,6 +73,7 @@ export function PayrollProcess() {
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
+  const [activeEmployees, setActiveEmployees] = useState<number>(0);
 
   // New batch form
   const [periodStart, setPeriodStart] = useState("");
@@ -85,8 +86,26 @@ export function PayrollProcess() {
   useEffect(() => {
     if (selectedCompany) {
       fetchBatches();
+      fetchActiveEmployees();
     }
   }, [selectedCompany]);
+
+  const fetchActiveEmployees = async () => {
+    if (!selectedCompany) return;
+
+    try {
+      const { count, error } = await supabase
+        .from('employees')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_id', selectedCompany.id)
+        .eq('status', 'activo');
+
+      if (error) throw error;
+      setActiveEmployees(count || 0);
+    } catch (error) {
+      console.error('Error fetching active employees:', error);
+    }
+  };
 
   useEffect(() => {
     if (selectedBatch) {
@@ -158,6 +177,15 @@ export function PayrollProcess() {
       toast({
         title: "Datos incompletos",
         description: "Completa todos los campos requeridos",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (activeEmployees === 0) {
+      toast({
+        title: "No hay empleados activos",
+        description: "Debes agregar al menos un empleado activo antes de crear una planilla",
         variant: "destructive",
       });
       return;
@@ -409,12 +437,33 @@ export function PayrollProcess() {
       {/* Create New Batch */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5" />
-            Crear Nueva Planilla
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Crear Nueva Planilla
+            </div>
+            <Badge variant={activeEmployees > 0 ? "default" : "destructive"}>
+              {activeEmployees} empleados activos
+            </Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {activeEmployees === 0 && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                <span>No hay empleados activos. Debes agregar empleados antes de crear una planilla.</span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => window.location.href = '/employees'}
+                  className="ml-2"
+                >
+                  Ir a Empleados
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="space-y-2">
               <Label>Fecha Inicio *</Label>
@@ -489,7 +538,7 @@ export function PayrollProcess() {
           </div>
           <Button 
             onClick={handleCreateBatch} 
-            disabled={isProcessing || !periodStart || !periodEnd}
+            disabled={isProcessing || !periodStart || !periodEnd || activeEmployees === 0}
             className="gap-2"
           >
             {isProcessing ? (
