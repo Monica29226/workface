@@ -23,3 +23,9 @@ verify_jwt = true
 
 [functions.recalculate-payroll-batch]
 verify_jwt = true
+
+[functions.facial-recognition]
+verify_jwt = false
+
+[functions.test-email]
+verify_jwt = false
