@@ -42,6 +42,7 @@ serve(async (req) => {
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
+      .limit(1)
       .maybeSingle();
 
     if (roleError || !roleData || !['admin', 'ACL_SuperAdmin'].includes(roleData.role)) {
