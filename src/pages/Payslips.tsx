@@ -56,7 +56,7 @@ export function Payslips() {
   const [selectedYear, setSelectedYear] = useState("2025");
   const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedCurrency, setSelectedCurrency] = useState<'CRC' | 'USD'>('CRC');
-  const [selectedMonth, setSelectedMonth] = useState(9); // September
+  const [selectedMonth, setSelectedMonth] = useState<number | 'all'>('all'); // 'all' = todos los meses
   const [payslips, setPayslips] = useState<PayslipData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -149,7 +149,9 @@ export function Payslips() {
         .includes(searchTerm.toLowerCase());
       
       const matchesYear = payslip.year.toString() === selectedYear;
-      const matchesMonth = viewMode === 'monthly' ? payslip.month === selectedMonth : true;
+      const matchesMonth = viewMode === 'monthly' 
+        ? (selectedMonth === 'all' || payslip.month === selectedMonth) 
+        : true;
       
       return matchesSearch && matchesYear && matchesMonth;
     });
@@ -194,6 +196,15 @@ export function Payslips() {
 
   const handleGenerateNew = async () => {
     if (!selectedCompany) return;
+
+    if (selectedMonth === 'all') {
+      toast({
+        title: "Selecciona un mes",
+        description: "Debes seleccionar un mes específico para generar colillas",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Check if there's an approved batch for the selected period
     const { data: approvedBatches, error: batchError } = await supabase
@@ -467,11 +478,12 @@ export function Payslips() {
               </SelectContent>
             </Select>
             {viewMode === 'monthly' && (
-              <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
+              <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(value === 'all' ? 'all' : parseInt(value))}>
                 <SelectTrigger className="w-40">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all">Todos los meses</SelectItem>
                   {monthNames.map((month, index) => (
                     <SelectItem key={index} value={(index + 1).toString()}>
                       {month}
@@ -558,7 +570,11 @@ export function Payslips() {
       <Card>
         <CardHeader>
           <CardTitle>
-            Colillas Generadas - {viewMode === 'yearly' ? `Año ${selectedYear}` : `${monthNames[selectedMonth - 1]} ${selectedYear}`}
+            Colillas Generadas - {viewMode === 'yearly' 
+              ? `Año ${selectedYear}` 
+              : selectedMonth === 'all' 
+                ? `Año ${selectedYear}` 
+                : `${monthNames[selectedMonth - 1]} ${selectedYear}`}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
