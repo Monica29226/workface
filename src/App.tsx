@@ -15,6 +15,9 @@ import { Payslips } from "@/pages/Payslips";
 import { Liquidations } from "@/pages/Liquidations";
 import { HorasProyecto } from "@/pages/HorasProyecto";
 import { Historico } from "@/pages/settings/Historico";
+import { Parameters } from "@/pages/settings/Parameters";
+import { CostCenters } from "@/pages/CostCenters";
+import { VacationReport } from "@/pages/reports/VacationReport";
 import { Users as UsersPage } from "@/pages/Users";
 import CompanySelector from "./pages/CompanySelector";
 import CreateCompany from "./pages/CreateCompany";
@@ -54,16 +57,16 @@ const App = () => (
                   <Route path="/timesheets" element={<Timesheets />} />
                   <Route path="/payroll-process" element={<PayrollProcess />} />
                   <Route path="/payslips" element={<Payslips />} />
-                  <Route path="/cost-centers" element={<div className="p-6 text-center text-muted-foreground">Centros de Costo - En desarrollo</div>} />
+                  <Route path="/cost-centers" element={<CostCenters />} />
                   <Route path="/liquidaciones" element={<Liquidations />} />
                   <Route path="/horas-proyecto" element={<HorasProyecto />} />
                   <Route path="/liquidations" element={<Liquidations />} />
-                  <Route path="/reports" element={<div className="p-6 text-center text-muted-foreground">Reportes - En desarrollo</div>} />
+                  <Route path="/reports/vacations" element={<VacationReport />} />
                   <Route path="/historico" element={<Historico />} />
                   <Route path="/users" element={<UsersPage />} />
                   <Route path="/create-company" element={<CreateCompany />} />
                   <Route path="/email-center" element={<div className="p-6 text-center text-muted-foreground">Centro de Correos - En desarrollo</div>} />
-                  <Route path="/settings/parameters" element={<div className="p-6 text-center text-muted-foreground">Parámetros - En desarrollo</div>} />
+                  <Route path="/settings/parameters" element={<Parameters />} />
                   <Route path="/settings/admin" element={<div className="p-6 text-center text-muted-foreground">Administración - En desarrollo</div>} />
                   <Route path="/company-selector" element={<CompanySelector />} />
                 </Route>

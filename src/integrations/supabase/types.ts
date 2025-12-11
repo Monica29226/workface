@@ -94,6 +94,128 @@ export type Database = {
         }
         Relationships: []
       }
+      company_parameters: {
+        Row: {
+          aguinaldo_rate: number
+          banco_popular_obrero: number
+          banco_popular_patronal: number
+          ccss_obrero_ivm: number
+          ccss_obrero_sem: number
+          ccss_obrero_total: number
+          ccss_patronal_ivm: number
+          ccss_patronal_sem: number
+          ccss_patronal_total: number
+          cesantia_rate: number
+          company_id: string
+          created_at: string
+          fodesaf_rate: number
+          id: string
+          imas_rate: number
+          ina_rate: number
+          ins_riesgos_trabajo: number
+          renta_bracket_1_limit: number
+          renta_bracket_1_rate: number
+          renta_bracket_2_limit: number
+          renta_bracket_2_rate: number
+          renta_bracket_3_limit: number
+          renta_bracket_3_rate: number
+          renta_bracket_4_limit: number
+          renta_bracket_4_rate: number
+          renta_bracket_5_rate: number
+          salario_minimo_referencia: number
+          updated_at: string
+          vacaciones_rate: number
+          vacation_days_domestic: number
+          vacation_days_standard: number
+          vacation_domestic_monthly_accrual: number
+          vacation_expiry_months: number
+          vacation_monthly_accrual: number
+          vacation_weeks_required: number
+        }
+        Insert: {
+          aguinaldo_rate?: number
+          banco_popular_obrero?: number
+          banco_popular_patronal?: number
+          ccss_obrero_ivm?: number
+          ccss_obrero_sem?: number
+          ccss_obrero_total?: number
+          ccss_patronal_ivm?: number
+          ccss_patronal_sem?: number
+          ccss_patronal_total?: number
+          cesantia_rate?: number
+          company_id: string
+          created_at?: string
+          fodesaf_rate?: number
+          id?: string
+          imas_rate?: number
+          ina_rate?: number
+          ins_riesgos_trabajo?: number
+          renta_bracket_1_limit?: number
+          renta_bracket_1_rate?: number
+          renta_bracket_2_limit?: number
+          renta_bracket_2_rate?: number
+          renta_bracket_3_limit?: number
+          renta_bracket_3_rate?: number
+          renta_bracket_4_limit?: number
+          renta_bracket_4_rate?: number
+          renta_bracket_5_rate?: number
+          salario_minimo_referencia?: number
+          updated_at?: string
+          vacaciones_rate?: number
+          vacation_days_domestic?: number
+          vacation_days_standard?: number
+          vacation_domestic_monthly_accrual?: number
+          vacation_expiry_months?: number
+          vacation_monthly_accrual?: number
+          vacation_weeks_required?: number
+        }
+        Update: {
+          aguinaldo_rate?: number
+          banco_popular_obrero?: number
+          banco_popular_patronal?: number
+          ccss_obrero_ivm?: number
+          ccss_obrero_sem?: number
+          ccss_obrero_total?: number
+          ccss_patronal_ivm?: number
+          ccss_patronal_sem?: number
+          ccss_patronal_total?: number
+          cesantia_rate?: number
+          company_id?: string
+          created_at?: string
+          fodesaf_rate?: number
+          id?: string
+          imas_rate?: number
+          ina_rate?: number
+          ins_riesgos_trabajo?: number
+          renta_bracket_1_limit?: number
+          renta_bracket_1_rate?: number
+          renta_bracket_2_limit?: number
+          renta_bracket_2_rate?: number
+          renta_bracket_3_limit?: number
+          renta_bracket_3_rate?: number
+          renta_bracket_4_limit?: number
+          renta_bracket_4_rate?: number
+          renta_bracket_5_rate?: number
+          salario_minimo_referencia?: number
+          updated_at?: string
+          vacaciones_rate?: number
+          vacation_days_domestic?: number
+          vacation_days_standard?: number
+          vacation_domestic_monthly_accrual?: number
+          vacation_expiry_months?: number
+          vacation_monthly_accrual?: number
+          vacation_weeks_required?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_parameters_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_users: {
         Row: {
           company_id: string
@@ -132,6 +254,47 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_centers: {
+        Row: {
+          code: string
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_centers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -240,12 +403,79 @@ export type Database = {
           },
         ]
       }
+      employee_vacations: {
+        Row: {
+          accrual_start_date: string | null
+          company_id: string
+          created_at: string
+          daily_rate: number | null
+          days_accrued: number
+          days_pending: number | null
+          days_taken: number
+          employee_id: string
+          expiry_date: string | null
+          id: string
+          notes: string | null
+          pending_amount: number | null
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          accrual_start_date?: string | null
+          company_id: string
+          created_at?: string
+          daily_rate?: number | null
+          days_accrued?: number
+          days_pending?: number | null
+          days_taken?: number
+          employee_id: string
+          expiry_date?: string | null
+          id?: string
+          notes?: string | null
+          pending_amount?: number | null
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          accrual_start_date?: string | null
+          company_id?: string
+          created_at?: string
+          daily_rate?: number | null
+          days_accrued?: number
+          days_pending?: number | null
+          days_taken?: number
+          employee_id?: string
+          expiry_date?: string | null
+          id?: string
+          notes?: string | null
+          pending_amount?: number | null
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_vacations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_vacations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           aguinaldo_base_12m: number | null
           base_salary: number
           company_id: string
           contract_type: Database["public"]["Enums"]["contract_type"]
+          cost_center_id: string | null
           created_at: string
           currency: Database["public"]["Enums"]["currency_type"]
           employee_id: string
@@ -264,6 +494,7 @@ export type Database = {
           base_salary: number
           company_id: string
           contract_type: Database["public"]["Enums"]["contract_type"]
+          cost_center_id?: string | null
           created_at?: string
           currency?: Database["public"]["Enums"]["currency_type"]
           employee_id: string
@@ -282,6 +513,7 @@ export type Database = {
           base_salary?: number
           company_id?: string
           contract_type?: Database["public"]["Enums"]["contract_type"]
+          cost_center_id?: string | null
           created_at?: string
           currency?: Database["public"]["Enums"]["currency_type"]
           employee_id?: string
@@ -301,6 +533,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
             referencedColumns: ["id"]
           },
           {
@@ -428,6 +667,7 @@ export type Database = {
           aguinaldo_accrued: number | null
           batch_id: string
           company_id: string
+          cost_center_id: string | null
           created_at: string
           currency: Database["public"]["Enums"]["currency_type"]
           deductions: number | null
@@ -456,6 +696,7 @@ export type Database = {
           aguinaldo_accrued?: number | null
           batch_id: string
           company_id: string
+          cost_center_id?: string | null
           created_at?: string
           currency?: Database["public"]["Enums"]["currency_type"]
           deductions?: number | null
@@ -484,6 +725,7 @@ export type Database = {
           aguinaldo_accrued?: number | null
           batch_id?: string
           company_id?: string
+          cost_center_id?: string | null
           created_at?: string
           currency?: Database["public"]["Enums"]["currency_type"]
           deductions?: number | null
@@ -518,6 +760,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_lines_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
             referencedColumns: ["id"]
           },
           {

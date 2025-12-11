@@ -13,7 +13,8 @@ import {
   Settings,
   UserCheck,
   Plus,
-  LogOut
+  LogOut,
+  Calendar
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -87,6 +88,12 @@ const navigationItems: NavigationItem[] = [
     title: 'nav.cost_centers', 
     url: '/cost-centers', 
     icon: Building2,
+    group: 'reports'
+  },
+  { 
+    title: 'nav.vacation_report', 
+    url: '/reports/vacations', 
+    icon: Calendar,
     group: 'reports'
   },
   { 
