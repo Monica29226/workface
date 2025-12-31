@@ -464,6 +464,13 @@ export type Database = {
             foreignKeyName: "employee_vacations_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
+            referencedRelation: "employee_safe_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_vacations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
@@ -773,6 +780,13 @@ export type Database = {
             foreignKeyName: "payroll_lines_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
+            referencedRelation: "employee_safe_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_lines_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
@@ -831,6 +845,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payslips_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employee_safe_view"
             referencedColumns: ["id"]
           },
           {
@@ -965,6 +986,13 @@ export type Database = {
             foreignKeyName: "time_entries_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
+            referencedRelation: "employee_safe_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_entries_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
             referencedRelation: "employees"
             referencedColumns: ["id"]
           },
@@ -1040,6 +1068,60 @@ export type Database = {
           },
         ]
       }
+      user_invitations: {
+        Row: {
+          accepted_at: string | null
+          company_id: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
+          token: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          company_id?: string | null
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          status?: string
+          token?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          company_id?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_invitations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_invitations_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           company_id: string | null
@@ -1079,11 +1161,170 @@ export type Database = {
           },
         ]
       }
+      vacation_requests: {
+        Row: {
+          company_id: string
+          created_at: string
+          days_requested: number
+          employee_id: string
+          end_date: string
+          id: string
+          reason: string | null
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          days_requested: number
+          employee_id: string
+          end_date: string
+          id?: string
+          reason?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          days_requested?: number
+          employee_id?: string
+          end_date?: string
+          id?: string
+          reason?: string | null
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vacation_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vacation_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employee_safe_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vacation_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vacation_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      employee_safe_view: {
+        Row: {
+          aguinaldo_base_12m: number | null
+          base_salary: number | null
+          company_id: string | null
+          contract_type: Database["public"]["Enums"]["contract_type"] | null
+          cost_center_id: string | null
+          created_at: string | null
+          currency: Database["public"]["Enums"]["currency_type"] | null
+          employee_id: string | null
+          full_name: string | null
+          hire_date: string | null
+          hourly_rate: number | null
+          id: string | null
+          status: Database["public"]["Enums"]["employee_status"] | null
+          updated_at: string | null
+          user_id: string | null
+          vac_balance_days: number | null
+          work_email: string | null
+        }
+        Insert: {
+          aguinaldo_base_12m?: number | null
+          base_salary?: never
+          company_id?: string | null
+          contract_type?: Database["public"]["Enums"]["contract_type"] | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          currency?: Database["public"]["Enums"]["currency_type"] | null
+          employee_id?: string | null
+          full_name?: string | null
+          hire_date?: string | null
+          hourly_rate?: never
+          id?: string | null
+          status?: Database["public"]["Enums"]["employee_status"] | null
+          updated_at?: string | null
+          user_id?: string | null
+          vac_balance_days?: number | null
+          work_email?: string | null
+        }
+        Update: {
+          aguinaldo_base_12m?: number | null
+          base_salary?: never
+          company_id?: string | null
+          contract_type?: Database["public"]["Enums"]["contract_type"] | null
+          cost_center_id?: string | null
+          created_at?: string | null
+          currency?: Database["public"]["Enums"]["currency_type"] | null
+          employee_id?: string | null
+          full_name?: string | null
+          hire_date?: string | null
+          hourly_rate?: never
+          id?: string | null
+          status?: Database["public"]["Enums"]["employee_status"] | null
+          updated_at?: string | null
+          user_id?: string | null
+          vac_balance_days?: number | null
+          work_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "cost_centers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      can_access_salary_data: { Args: { _user_id: string }; Returns: boolean }
       has_company_access: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
