@@ -19,12 +19,12 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    /* Primary - Professional Blue (inspired by corporate identity) */
-    --primary: 214 84% 56%;
+    /* Primary - Corporate Navy Blue (#1e3a8a) */
+    --primary: 222 89% 33%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Soft Slate */
-    --secondary: 217 33% 17%;
+    /* Secondary - Bright Blue (#3b82f6) */
+    --secondary: 217 91% 60%;
     --secondary-foreground: 0 0% 100%;
 
     /* Muted backgrounds */

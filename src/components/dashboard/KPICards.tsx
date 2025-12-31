@@ -80,32 +80,37 @@ export function KPICards({ language }: KPICardsProps) {
         const isNegative = kpi.trend === "down";
         
         return (
-          <Card key={index} className="card-elevated">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Card 
+            key={index} 
+            className="bg-card border border-border rounded-xl p-6 shadow-[0_4px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)] hover:-translate-y-0.5 transition-all duration-200"
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-0 pb-3">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {kpi.title}
               </CardTitle>
-              <Icon className={`h-4 w-4 ${kpi.color}`} />
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Icon className={`h-5 w-5 ${kpi.color}`} />
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold mb-1">
+            <CardContent className="p-0">
+              <div className="text-3xl font-bold mb-2 text-foreground">
                 {kpi.value}
                 {kpi.suffix && <span className="text-sm font-normal text-muted-foreground ml-1">{kpi.suffix}</span>}
               </div>
               {kpi.change !== "0" && (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   {isPositive ? (
-                    <TrendingUp className="h-3 w-3 text-green-600" />
+                    <TrendingUp className="h-3.5 w-3.5 text-green-600" />
                   ) : isNegative ? (
-                    <TrendingDown className="h-3 w-3 text-red-600" />
+                    <TrendingDown className="h-3.5 w-3.5 text-red-600" />
                   ) : null}
                   <Badge 
                     variant={isPositive ? "default" : isNegative ? "destructive" : "secondary"}
-                    className="text-xs px-1.5 py-0.5"
+                    className="text-xs px-2 py-0.5 font-medium"
                   >
                     {kpi.change}
                   </Badge>
-                  <span className="text-xs text-muted-foreground ml-1">
+                  <span className="text-xs text-muted-foreground">
                     {t.compared}
                   </span>
                 </div>
