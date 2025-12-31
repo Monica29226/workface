@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, UserPlus, Trash2, Edit, ChevronRight, ChevronLeft, Loader2 } from "lucide-react";
+import { Search, UserPlus, Trash2, Edit, ChevronRight, ChevronLeft, Loader2, Mail, RefreshCw, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -95,6 +95,14 @@ export function Users() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   
+  // Invitation states
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("Client_Viewer");
+  const [inviteCompanyId, setInviteCompanyId] = useState("");
+  const [isSendingInvite, setIsSendingInvite] = useState(false);
+  const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
+  
   // Form data
   const [formData, setFormData] = useState<UserFormData>({
     email: '',
@@ -107,6 +115,7 @@ export function Users() {
 
   useEffect(() => {
     fetchUsers();
+    fetchPendingInvitations();
   }, []);
 
   const fetchUsers = async () => {
@@ -185,6 +194,126 @@ export function Users() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchPendingInvitations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_invitations')
+        .select(`
+          *,
+          company:companies(display_name),
+          inviter:profiles!user_invitations_invited_by_fkey(full_name, email)
+        `)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setPendingInvitations(data || []);
+    } catch (error) {
+      console.error('Error fetching invitations:', error);
+    }
+  };
+
+  const handleSendInvitation = async () => {
+    if (!inviteEmail) {
+      toast({
+        title: "Error",
+        description: "El correo electrónico es requerido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSendingInvite(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No hay una sesión activa");
+
+      const companyName = inviteCompanyId 
+        ? companies.find(c => c.id === inviteCompanyId)?.name 
+        : undefined;
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-invitation`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            email: inviteEmail,
+            role: inviteRole,
+            company_id: inviteCompanyId || null,
+            company_name: companyName,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || result.error) {
+        throw new Error(result.error || 'Error al enviar la invitación');
+      }
+
+      toast({
+        title: "Invitación enviada",
+        description: `Se envió una invitación a ${inviteEmail}`,
+      });
+
+      setIsInviteDialogOpen(false);
+      setInviteEmail("");
+      setInviteRole("Client_Viewer");
+      setInviteCompanyId("");
+      fetchPendingInvitations();
+    } catch (error) {
+      console.error('Error sending invitation:', error);
+      const errorMessage = error instanceof Error ? error.message : 'No se pudo enviar la invitación';
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingInvite(false);
+    }
+  };
+
+  const handleCancelInvitation = async (invitationId: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_invitations')
+        .update({ status: 'cancelled' })
+        .eq('id', invitationId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Invitación cancelada",
+        description: "La invitación ha sido cancelada",
+      });
+      fetchPendingInvitations();
+    } catch (error) {
+      console.error('Error cancelling invitation:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo cancelar la invitación",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleResendInvitation = async (invitation: any) => {
+    setInviteEmail(invitation.email);
+    setInviteRole(invitation.role);
+    setInviteCompanyId(invitation.company_id || "");
+    
+    // Cancel old one first
+    await handleCancelInvitation(invitation.id);
+    
+    // Send new one
+    handleSendInvitation();
   };
 
   const openNewUserDialog = () => {
@@ -492,11 +621,63 @@ export function Users() {
           <h1 className="text-2xl font-bold">Gestión de Usuarios</h1>
           <p className="text-muted-foreground">Administra roles y acceso a empresas</p>
         </div>
-        <Button onClick={openNewUserDialog} className="gap-2">
-          <UserPlus className="h-4 w-4" />
-          Crear Nuevo Usuario
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsInviteDialogOpen(true)} className="gap-2">
+            <Mail className="h-4 w-4" />
+            Invitar Usuario
+          </Button>
+          <Button onClick={openNewUserDialog} className="gap-2">
+            <UserPlus className="h-4 w-4" />
+            Crear Nuevo Usuario
+          </Button>
+        </div>
       </div>
+
+      {/* Pending Invitations */}
+      {pendingInvitations.length > 0 && (
+        <Card className="border-yellow-200 bg-yellow-50/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Mail className="h-4 w-4 text-yellow-600" />
+              Invitaciones Pendientes ({pendingInvitations.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-2">
+              {pendingInvitations.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between p-3 bg-white rounded-lg border">
+                  <div>
+                    <p className="font-medium">{inv.email}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Rol: {inv.role} {inv.company?.display_name && `• ${inv.company.display_name}`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8"
+                      onClick={() => handleResendInvitation(inv)}
+                      title="Reenviar invitación"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-destructive"
+                      onClick={() => handleCancelInvitation(inv.id)}
+                      title="Cancelar invitación"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Search */}
       <Card>
@@ -850,6 +1031,62 @@ export function Users() {
               </div>
             </TabsContent>
           </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invitation Dialog */}
+      <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Invitar Usuario</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="invite-email">Correo Electrónico *</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                placeholder="usuario@ejemplo.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Rol</Label>
+              <Select value={inviteRole} onValueChange={setInviteRole}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[...INTERNAL_ROLES, ...EXTERNAL_ROLES].map(role => (
+                    <SelectItem key={role.value} value={role.value}>{role.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Empresa (opcional)</Label>
+              <Select value={inviteCompanyId} onValueChange={setInviteCompanyId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin empresa específica" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Sin empresa específica</SelectItem>
+                  {companies.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSendInvitation} disabled={isSendingInvite}>
+              {isSendingInvite ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Enviando...</> : <>
+                <Mail className="h-4 w-4 mr-2" />Enviar Invitación
+              </>}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
