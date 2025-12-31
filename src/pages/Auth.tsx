@@ -1,27 +1,92 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import logoACL from "@/assets/logotipo_acl.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Auth() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showResetPassword, setShowResetPassword] = useState(false);
+  
+  // Invitation flow state
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
+  const [inviteData, setInviteData] = useState<any>(null);
+  const [isLoadingInvite, setIsLoadingInvite] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
 
   // Login state
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   
+  // Signup state (for invitation)
+  const [signupPassword, setSignupPassword] = useState("");
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState("");
+  const [signupFullName, setSignupFullName] = useState("");
+  
   // Reset password state
   const [resetEmail, setResetEmail] = useState("");
+
+  // Check for invitation token in URL
+  useEffect(() => {
+    const token = searchParams.get('invite');
+    if (token) {
+      setInviteToken(token);
+      loadInvitationData(token);
+    }
+  }, [searchParams]);
+
+  const loadInvitationData = async (token: string) => {
+    setIsLoadingInvite(true);
+    try {
+      const { data, error } = await supabase
+        .from('user_invitations')
+        .select(`
+          id,
+          email,
+          role,
+          status,
+          expires_at,
+          company:companies(display_name)
+        `)
+        .eq('token', token)
+        .single();
+
+      if (error || !data) {
+        setError("Invitación no válida o expirada");
+        setInviteToken(null);
+        return;
+      }
+
+      if (data.status !== 'pending') {
+        setError("Esta invitación ya ha sido utilizada");
+        setInviteToken(null);
+        return;
+      }
+
+      if (new Date(data.expires_at) < new Date()) {
+        setError("Esta invitación ha expirado");
+        setInviteToken(null);
+        return;
+      }
+
+      setInviteData(data);
+      setShowSignup(true);
+    } catch (err) {
+      console.error("Error loading invitation:", err);
+      setError("Error al cargar la invitación");
+    } finally {
+      setIsLoadingInvite(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,6 +113,69 @@ export default function Auth() {
       toast({
         title: "Error",
         description: err.message || "No se pudo iniciar sesión",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inviteToken) return;
+
+    if (signupPassword !== signupConfirmPassword) {
+      setError("Las contraseñas no coinciden");
+      return;
+    }
+
+    if (signupPassword.length < 6) {
+      setError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/accept-invitation`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            token: inviteToken,
+            password: signupPassword,
+            fullName: signupFullName || undefined,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || result.error) {
+        throw new Error(result.error || 'Error al crear la cuenta');
+      }
+
+      toast({
+        title: "¡Cuenta creada!",
+        description: "Ya puede iniciar sesión con su correo y contraseña.",
+      });
+
+      // Clear invitation state and show login
+      setInviteToken(null);
+      setInviteData(null);
+      setShowSignup(false);
+      setLoginEmail(inviteData?.email || '');
+      setSignupPassword("");
+      setSignupConfirmPassword("");
+    } catch (err: any) {
+      setError(err.message || "Error al crear la cuenta");
+      toast({
+        title: "Error",
+        description: err.message || "No se pudo crear la cuenta",
         variant: "destructive",
       });
     } finally {
@@ -85,6 +213,18 @@ export default function Auth() {
     }
   };
 
+  // Loading invitation state
+  if (isLoadingInvite) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Cargando invitación...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Dark Blue with Logo */}
@@ -103,115 +243,223 @@ export default function Auth() {
         </div>
       </div>
 
-      {/* Right Side - White with Login Form */}
+      {/* Right Side - White with Login/Signup Form */}
       <div className="flex-1 flex items-center justify-center p-8 bg-background">
         <div className="w-full max-w-md">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">Acceso</h1>
-            <p className="text-muted-foreground">¿Ya tienes una cuenta?</p>
-          </div>
+          {/* Signup form for invited users */}
+          {showSignup && inviteData ? (
+            <>
+              <div className="mb-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <CheckCircle className="h-6 w-6 text-emerald-500" />
+                  <span className="text-sm text-emerald-600 font-medium">Invitación válida</span>
+                </div>
+                <h1 className="text-3xl font-bold text-foreground mb-2">Crear Cuenta</h1>
+                <p className="text-muted-foreground">
+                  Completa tu registro para acceder a{' '}
+                  <strong>{inviteData.company?.display_name || 'ACL Payroll'}</strong>
+                </p>
+              </div>
 
-          {error && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+              {error && (
+                <Alert variant="destructive" className="mb-6">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-          {showResetPassword ? (
+              <form onSubmit={handleSignup} className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-foreground">Correo Electrónico</Label>
+                  <Input
+                    type="email"
+                    value={inviteData.email}
+                    disabled
+                    className="h-11 bg-muted"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-name" className="text-foreground">Nombre Completo</Label>
+                  <Input
+                    id="signup-name"
+                    type="text"
+                    placeholder="Tu nombre completo"
+                    value={signupFullName}
+                    onChange={(e) => setSignupFullName(e.target.value)}
+                    disabled={loading}
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-password" className="text-foreground">Contraseña</Label>
+                  <Input
+                    id="signup-password"
+                    type="password"
+                    placeholder="Mínimo 6 caracteres"
+                    value={signupPassword}
+                    onChange={(e) => setSignupPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                    minLength={6}
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-confirm" className="text-foreground">Confirmar Contraseña</Label>
+                  <Input
+                    id="signup-confirm"
+                    type="password"
+                    placeholder="Repite tu contraseña"
+                    value={signupConfirmPassword}
+                    onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                    minLength={6}
+                    className="h-11"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-11 bg-navy hover:bg-navy/90 text-white font-medium"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Creando cuenta...
+                    </>
+                  ) : (
+                    "Crear Cuenta y Acceder"
+                  )}
+                </Button>
+              </form>
+            </>
+          ) : showResetPassword ? (
             // Reset Password Form
-            <form onSubmit={handleResetPassword} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="reset-email" className="text-foreground">Correo Electrónico</Label>
-                <Input
-                  id="reset-email"
-                  type="email"
-                  placeholder="tu@email.com"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  required
-                  disabled={loading}
-                  className="h-11"
-                />
+            <>
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold text-foreground mb-2">Recuperar Contraseña</h1>
+                <p className="text-muted-foreground">Te enviaremos un correo para restablecer tu contraseña</p>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full h-11 bg-navy hover:bg-navy/90 text-white font-medium"
-                disabled={loading}
-              >
-                {loading ? "Enviando..." : "Enviar Correo de Recuperación"}
-              </Button>
+              {error && (
+                <Alert variant="destructive" className="mb-6">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
 
-              <Button
-                type="button"
-                variant="link"
-                className="w-full text-navy"
-                onClick={() => {
-                  setShowResetPassword(false);
-                  setError(null);
-                  setResetEmail("");
-                }}
-                disabled={loading}
-              >
-                Volver al inicio de sesión
-              </Button>
-            </form>
-          ) : (
-            // Login Form
-            <form onSubmit={handleLogin} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="login-email" className="text-foreground">Correo</Label>
-                <Input
-                  id="login-email"
-                  type="email"
-                  placeholder="tu@email.com"
-                  value={loginEmail}
-                  onChange={(e) => setLoginEmail(e.target.value)}
-                  required
+              <form onSubmit={handleResetPassword} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email" className="text-foreground">Correo Electrónico</Label>
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="tu@email.com"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    required
+                    disabled={loading}
+                    className="h-11"
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-11 bg-navy hover:bg-navy/90 text-white font-medium"
                   disabled={loading}
-                  className="h-11"
-                />
-              </div>
+                >
+                  {loading ? "Enviando..." : "Enviar Correo de Recuperación"}
+                </Button>
 
-              <div className="space-y-2">
-                <Label htmlFor="login-password" className="text-foreground">Contraseña</Label>
-                <Input
-                  id="login-password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  required
-                  disabled={loading}
-                  minLength={6}
-                  className="h-11"
-                />
-              </div>
-
-              <div className="flex justify-end">
                 <Button
                   type="button"
                   variant="link"
-                  className="text-navy hover:text-navy/80 p-0 h-auto font-normal"
+                  className="w-full text-navy"
                   onClick={() => {
-                    setShowResetPassword(true);
+                    setShowResetPassword(false);
                     setError(null);
+                    setResetEmail("");
                   }}
                   disabled={loading}
                 >
-                  Olvidé mi contraseña
+                  Volver al inicio de sesión
                 </Button>
+              </form>
+            </>
+          ) : (
+            // Login Form
+            <>
+              <div className="mb-8">
+                <h1 className="text-3xl font-bold text-foreground mb-2">Acceso</h1>
+                <p className="text-muted-foreground">¿Ya tienes una cuenta?</p>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full h-11 bg-navy hover:bg-navy/90 text-white font-medium"
-                disabled={loading}
-              >
-                {loading ? "Iniciando sesión..." : "Iniciar sesión"}
-              </Button>
-            </form>
+              {error && (
+                <Alert variant="destructive" className="mb-6">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <form onSubmit={handleLogin} className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="login-email" className="text-foreground">Correo</Label>
+                  <Input
+                    id="login-email"
+                    type="email"
+                    placeholder="tu@email.com"
+                    value={loginEmail}
+                    onChange={(e) => setLoginEmail(e.target.value)}
+                    required
+                    disabled={loading}
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="login-password" className="text-foreground">Contraseña</Label>
+                  <Input
+                    id="login-password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    required
+                    disabled={loading}
+                    minLength={6}
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="text-navy hover:text-navy/80 p-0 h-auto font-normal"
+                    onClick={() => {
+                      setShowResetPassword(true);
+                      setError(null);
+                    }}
+                    disabled={loading}
+                  >
+                    Olvidé mi contraseña
+                  </Button>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="w-full h-11 bg-navy hover:bg-navy/90 text-white font-medium"
+                  disabled={loading}
+                >
+                  {loading ? "Iniciando sesión..." : "Iniciar sesión"}
+                </Button>
+              </form>
+            </>
           )}
 
           {/* Footer Links */}
