@@ -97,6 +97,12 @@ const navigationItems: NavigationItem[] = [
     group: 'reports'
   },
   { 
+    title: 'Aprobar Vacaciones', 
+    url: '/vacation-approval', 
+    icon: UserCheck,
+    group: 'reports'
+  },
+  { 
     title: 'nav.liquidations', 
     url: '/liquidations', 
     icon: DollarSign,

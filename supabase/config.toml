@@ -29,3 +29,15 @@ verify_jwt = false
 
 [functions.test-email]
 verify_jwt = false
+
+[functions.send-invitation]
+verify_jwt = true
+
+[functions.send-payslip-email]
+verify_jwt = true
+
+[functions.accrue-vacation]
+verify_jwt = true
+
+[functions.accept-invitation]
+verify_jwt = false
