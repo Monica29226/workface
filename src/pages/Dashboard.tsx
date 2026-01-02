@@ -76,21 +76,51 @@ export function Dashboard() {
     
     setLoading(true);
     try {
-      // Get the most recent approved or sent payroll batch
-      const { data: latestBatch } = await supabase
-        .from('payroll_batches')
-        .select('id, period_start, period_end, status, batch_id')
-        .eq('company_id', selectedCompany.id)
-        .in('status', ['aprobado', 'enviado', 'calculado'])
-        .order('period_end', { ascending: false })
-        .limit(1)
-        .single();
+      // Execute all queries in parallel for better performance
+      const [batchResult, employeesResult, vacationsResult, payslipsResult] = await Promise.all([
+        // Query 1: Latest batch - using maybeSingle() to handle empty results
+        supabase
+          .from('payroll_batches')
+          .select('id, period_start, period_end, status, batch_id')
+          .eq('company_id', selectedCompany.id)
+          .in('status', ['aprobado', 'enviado', 'calculado'])
+          .order('period_end', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        
+        // Query 2: Active employees count
+        supabase
+          .from('employees')
+          .select('*', { count: 'exact', head: true })
+          .eq('company_id', selectedCompany.id)
+          .eq('status', 'activo'),
+        
+        // Query 3: Pending vacation requests
+        supabase
+          .from('vacation_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('company_id', selectedCompany.id)
+          .eq('status', 'pending'),
+        
+        // Query 4: Payslips not sent yet
+        supabase
+          .from('payslips')
+          .select('*', { count: 'exact', head: true })
+          .eq('company_id', selectedCompany.id)
+          .is('sent_at', null)
+      ]);
+
+      const latestBatch = batchResult.data;
+      const activeEmployeesCount = employeesResult.count;
+      const pendingVacations = vacationsResult.count;
+      const pendingPayslips = payslipsResult.count;
 
       let totalGross = 0;
       let totalDeductions = 0;
       let totalNetPay = 0;
       let totalEmployerCharges = 0;
 
+      // Only fetch payroll lines if we have a batch
       if (latestBatch) {
         const { data: payrollLines } = await supabase
           .from('payroll_lines')
@@ -110,27 +140,6 @@ export function Dashboard() {
         }
       }
 
-      // Get active employees count
-      const { count: activeEmployeesCount } = await supabase
-        .from('employees')
-        .select('*', { count: 'exact', head: true })
-        .eq('company_id', selectedCompany.id)
-        .eq('status', 'activo');
-
-      // Get pending vacation requests
-      const { count: pendingVacations } = await supabase
-        .from('vacation_requests')
-        .select('*', { count: 'exact', head: true })
-        .eq('company_id', selectedCompany.id)
-        .eq('status', 'pending');
-
-      // Get payslips not sent yet
-      const { count: pendingPayslips } = await supabase
-        .from('payslips')
-        .select('*', { count: 'exact', head: true })
-        .eq('company_id', selectedCompany.id)
-        .is('sent_at', null);
-
       const employeeCount = activeEmployeesCount || 1;
       
       setKpiData({
@@ -138,8 +147,8 @@ export function Dashboard() {
         totalDeductions: totalDeductions,
         netPay: totalNetPay,
         employerCharges: totalEmployerCharges,
-        activeEmployees: employeeCount,
-        avgCostEmployee: totalGross / employeeCount,
+        activeEmployees: activeEmployeesCount || 0,
+        avgCostEmployee: employeeCount > 0 ? totalGross / employeeCount : 0,
         pendingVacations: pendingVacations || 0,
         pendingPayslips: pendingPayslips || 0
       });
