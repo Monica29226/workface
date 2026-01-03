@@ -41,3 +41,9 @@ verify_jwt = true
 
 [functions.accept-invitation]
 verify_jwt = false
+
+[functions.resend-credentials]
+verify_jwt = true
+
+[functions.get-users-auth-info]
+verify_jwt = true
