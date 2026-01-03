@@ -27,7 +27,10 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
+    const rawFromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
+    // Extract just the email if it's in "Name <email>" format
+    const emailMatch = rawFromEmail.match(/<(.+)>/);
+    const fromEmail = emailMatch ? emailMatch[1] : rawFromEmail.replace(/^[^<]*<|>.*$/g, '').trim() || rawFromEmail;
 
     // Verify authorization
     const authHeader = req.headers.get("Authorization");
