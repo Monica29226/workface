@@ -11,8 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader2, Search, Edit, Trash2 } from "lucide-react";
+import { Plus, Loader2, Search, Edit, Trash2, Upload } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { ImportEmployeesDialog } from "@/components/employees/ImportEmployeesDialog";
 
 interface Employee {
   id: string;
@@ -44,6 +45,7 @@ export function Employees() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCompany, setFilterCompany] = useState<string>("all");
@@ -255,19 +257,24 @@ export function Employees() {
           </p>
         </div>
         {(role === 'admin' || role === 'company_manager') && (
-          <Dialog open={dialogOpen} onOpenChange={(open) => {
-            setDialogOpen(open);
-            if (!open) {
-              setEditingEmployee(null);
-              resetForm();
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Nuevo Empleado
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" />
+              Importar desde Excel
+            </Button>
+            <Dialog open={dialogOpen} onOpenChange={(open) => {
+              setDialogOpen(open);
+              if (!open) {
+                setEditingEmployee(null);
+                resetForm();
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nuevo Empleado
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingEmployee ? 'Editar Empleado' : 'Nuevo Empleado'}</DialogTitle>
@@ -438,8 +445,16 @@ export function Employees() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         )}
       </div>
+
+      <ImportEmployeesDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        companyId={selectedCompany?.id || ''}
+        onImportComplete={fetchData}
+      />
 
       <Card>
         <CardHeader>

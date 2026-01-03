@@ -1,0 +1,455 @@
+import { useState, useRef } from "react";
+import * as XLSX from "xlsx";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertTriangle, Loader2 } from "lucide-react";
+
+interface ImportRow {
+  employee_id: string;
+  full_name: string;
+  work_email: string;
+  base_salary: number;
+  hire_date: string | null;
+  contract_type: string;
+  currency: string;
+  isValid: boolean;
+  errors: string[];
+  rowNumber: number;
+}
+
+interface ImportEmployeesDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  companyId: string;
+  onImportComplete: () => void;
+}
+
+const REQUIRED_COLUMNS = ['employee_id', 'full_name', 'work_email', 'base_salary'];
+const OPTIONAL_COLUMNS = ['hire_date', 'contract_type', 'currency'];
+const VALID_CONTRACT_TYPES = ['mensual', 'por_horas'];
+const VALID_CURRENCIES = ['CRC', 'USD', 'EUR', 'GBP'];
+
+export function ImportEmployeesDialog({ 
+  open, 
+  onOpenChange, 
+  companyId,
+  onImportComplete 
+}: ImportEmployeesDialogProps) {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [step, setStep] = useState<'upload' | 'preview' | 'importing' | 'complete'>('upload');
+  const [parsedData, setParsedData] = useState<ImportRow[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [importResults, setImportResults] = useState<{ success: number; failed: number; errors: string[] }>({
+    success: 0,
+    failed: 0,
+    errors: []
+  });
+
+  const resetState = () => {
+    setStep('upload');
+    setParsedData([]);
+    setProgress(0);
+    setImportResults({ success: 0, failed: 0, errors: [] });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validateDate = (dateStr: string | null | undefined): string | null => {
+    if (!dateStr || dateStr === '') return null;
+    
+    // Try parsing various date formats
+    const date = new Date(dateStr);
+    if (!isNaN(date.getTime())) {
+      return date.toISOString().split('T')[0];
+    }
+    
+    // Try DD/MM/YYYY format
+    const parts = String(dateStr).split(/[\/\-\.]/);
+    if (parts.length === 3) {
+      const [day, month, year] = parts;
+      const parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate.toISOString().split('T')[0];
+      }
+    }
+    
+    return null;
+  };
+
+  const validateRow = (row: Record<string, any>, rowNumber: number): ImportRow => {
+    const errors: string[] = [];
+    
+    // Validate required fields
+    const employeeId = String(row.employee_id || '').trim();
+    const fullName = String(row.full_name || '').trim();
+    const workEmail = String(row.work_email || '').trim();
+    const baseSalaryRaw = row.base_salary;
+    
+    if (!employeeId) errors.push('ID Empleado es requerido');
+    if (!fullName) errors.push('Nombre completo es requerido');
+    if (!workEmail) errors.push('Email es requerido');
+    else if (!validateEmail(workEmail)) errors.push('Email inválido');
+    
+    // Validate salary
+    const baseSalary = parseFloat(String(baseSalaryRaw).replace(/[^0-9.-]/g, ''));
+    if (isNaN(baseSalary) || baseSalary <= 0) {
+      errors.push('Salario base debe ser un número positivo');
+    }
+    
+    // Validate hire date
+    const hireDate = validateDate(row.hire_date);
+    if (row.hire_date && !hireDate) {
+      errors.push('Fecha de contratación inválida');
+    }
+    
+    // Validate contract type
+    let contractType = String(row.contract_type || 'mensual').toLowerCase().trim();
+    if (!VALID_CONTRACT_TYPES.includes(contractType)) {
+      contractType = 'mensual';
+    }
+    
+    // Validate currency
+    let currency = String(row.currency || 'CRC').toUpperCase().trim();
+    if (!VALID_CURRENCIES.includes(currency)) {
+      currency = 'CRC';
+    }
+    
+    return {
+      employee_id: employeeId,
+      full_name: fullName,
+      work_email: workEmail,
+      base_salary: isNaN(baseSalary) ? 0 : baseSalary,
+      hire_date: hireDate,
+      contract_type: contractType,
+      currency: currency,
+      isValid: errors.length === 0,
+      errors,
+      rowNumber
+    };
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+    if (!['xlsx', 'xls', 'csv'].includes(fileExt || '')) {
+      toast({
+        title: "Error",
+        description: "Por favor selecciona un archivo Excel (.xlsx, .xls) o CSV",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false });
+
+      if (jsonData.length === 0) {
+        toast({
+          title: "Error",
+          description: "El archivo está vacío",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check for required columns
+      const firstRow = jsonData[0] as Record<string, any>;
+      const columns = Object.keys(firstRow).map(c => c.toLowerCase().trim());
+      const missingColumns = REQUIRED_COLUMNS.filter(col => !columns.includes(col));
+      
+      if (missingColumns.length > 0) {
+        toast({
+          title: "Columnas faltantes",
+          description: `El archivo debe contener: ${missingColumns.join(', ')}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Normalize column names and validate data
+      const normalizedData = jsonData.map((row: any, index) => {
+        const normalizedRow: Record<string, any> = {};
+        Object.keys(row).forEach(key => {
+          normalizedRow[key.toLowerCase().trim()] = row[key];
+        });
+        return validateRow(normalizedRow, index + 2); // +2 because Excel rows start at 1 and first row is header
+      });
+
+      setParsedData(normalizedData);
+      setStep('preview');
+    } catch (error) {
+      console.error('Error parsing file:', error);
+      toast({
+        title: "Error",
+        description: "Error al leer el archivo. Verifica el formato.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleImport = async () => {
+    const validRows = parsedData.filter(row => row.isValid);
+    if (validRows.length === 0) {
+      toast({
+        title: "Error",
+        description: "No hay filas válidas para importar",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setImporting(true);
+    setStep('importing');
+    
+    let success = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    for (let i = 0; i < validRows.length; i++) {
+      const row = validRows[i];
+      
+      try {
+        const { error } = await supabase.from('employees').insert({
+          employee_id: row.employee_id,
+          company_id: companyId,
+          full_name: row.full_name,
+          work_email: row.work_email,
+          base_salary: row.base_salary,
+          hire_date: row.hire_date,
+          contract_type: row.contract_type as 'mensual' | 'por_horas',
+          currency: row.currency as 'CRC' | 'USD' | 'EUR' | 'GBP',
+          status: 'activo'
+        });
+
+        if (error) {
+          failed++;
+          errors.push(`Fila ${row.rowNumber}: ${error.message}`);
+        } else {
+          success++;
+        }
+      } catch (err: any) {
+        failed++;
+        errors.push(`Fila ${row.rowNumber}: ${err.message}`);
+      }
+
+      setProgress(Math.round(((i + 1) / validRows.length) * 100));
+    }
+
+    setImportResults({ success, failed, errors });
+    setImporting(false);
+    setStep('complete');
+
+    if (success > 0) {
+      onImportComplete();
+    }
+  };
+
+  const validCount = parsedData.filter(row => row.isValid).length;
+  const invalidCount = parsedData.filter(row => !row.isValid).length;
+
+  return (
+    <Dialog open={open} onOpenChange={(open) => {
+      if (!open) resetState();
+      onOpenChange(open);
+    }}>
+      <DialogContent className="max-w-4xl max-h-[90vh]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileSpreadsheet className="h-5 w-5" />
+            Importar Empleados desde Excel
+          </DialogTitle>
+          <DialogDescription>
+            {step === 'upload' && 'Selecciona un archivo Excel o CSV con los datos de empleados'}
+            {step === 'preview' && 'Revisa los datos antes de importar'}
+            {step === 'importing' && 'Importando empleados...'}
+            {step === 'complete' && 'Importación completada'}
+          </DialogDescription>
+        </DialogHeader>
+
+        {step === 'upload' && (
+          <div className="space-y-6">
+            <div 
+              className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-12 text-center hover:border-primary/50 transition-colors cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-lg font-medium mb-2">Arrastra un archivo aquí o haz clic para seleccionar</p>
+              <p className="text-sm text-muted-foreground">
+                Formatos soportados: .xlsx, .xls, .csv
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </div>
+
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                <p className="font-medium mb-2">Columnas requeridas:</p>
+                <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                  employee_id, full_name, work_email, base_salary
+                </code>
+                <p className="font-medium mt-2 mb-2">Columnas opcionales:</p>
+                <code className="text-xs bg-muted px-1 py-0.5 rounded">
+                  hire_date, contract_type (mensual/por_horas), currency (CRC/USD/EUR/GBP)
+                </code>
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+
+        {step === 'preview' && (
+          <div className="space-y-4">
+            <div className="flex gap-4">
+              <Badge variant="outline" className="text-green-600 border-green-600">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                {validCount} válidos
+              </Badge>
+              {invalidCount > 0 && (
+                <Badge variant="outline" className="text-destructive border-destructive">
+                  <XCircle className="h-3 w-3 mr-1" />
+                  {invalidCount} con errores
+                </Badge>
+              )}
+            </div>
+
+            <ScrollArea className="h-[400px] rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[60px]">Fila</TableHead>
+                    <TableHead className="w-[80px]">Estado</TableHead>
+                    <TableHead>ID Empleado</TableHead>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Salario</TableHead>
+                    <TableHead>Contrato</TableHead>
+                    <TableHead>Errores</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {parsedData.map((row, index) => (
+                    <TableRow key={index} className={!row.isValid ? 'bg-destructive/10' : ''}>
+                      <TableCell>{row.rowNumber}</TableCell>
+                      <TableCell>
+                        {row.isValid ? (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-destructive" />
+                        )}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">{row.employee_id || '-'}</TableCell>
+                      <TableCell>{row.full_name || '-'}</TableCell>
+                      <TableCell className="text-sm">{row.work_email || '-'}</TableCell>
+                      <TableCell>{row.base_salary > 0 ? row.base_salary.toLocaleString() : '-'}</TableCell>
+                      <TableCell>{row.contract_type}</TableCell>
+                      <TableCell>
+                        {row.errors.length > 0 && (
+                          <span className="text-xs text-destructive">
+                            {row.errors.join(', ')}
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={resetState}>
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleImport} 
+                disabled={validCount === 0}
+              >
+                Importar {validCount} empleado{validCount !== 1 ? 's' : ''}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 'importing' && (
+          <div className="space-y-6 py-8">
+            <div className="flex items-center justify-center">
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Importando empleados...</span>
+                <span>{progress}%</span>
+              </div>
+              <Progress value={progress} />
+            </div>
+          </div>
+        )}
+
+        {step === 'complete' && (
+          <div className="space-y-6 py-4">
+            <div className="text-center">
+              {importResults.success > 0 && (
+                <div className="flex items-center justify-center gap-2 text-green-600 mb-4">
+                  <CheckCircle className="h-8 w-8" />
+                  <span className="text-xl font-medium">
+                    {importResults.success} empleado{importResults.success !== 1 ? 's' : ''} importado{importResults.success !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              )}
+              
+              {importResults.failed > 0 && (
+                <div className="flex items-center justify-center gap-2 text-destructive mb-4">
+                  <XCircle className="h-6 w-6" />
+                  <span>
+                    {importResults.failed} fila{importResults.failed !== 1 ? 's' : ''} con errores
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {importResults.errors.length > 0 && (
+              <ScrollArea className="h-[200px] rounded-md border p-4">
+                <div className="space-y-1">
+                  {importResults.errors.map((error, index) => (
+                    <p key={index} className="text-sm text-destructive">{error}</p>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+
+            <div className="flex justify-end">
+              <Button onClick={() => onOpenChange(false)}>
+                Cerrar
+              </Button>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
