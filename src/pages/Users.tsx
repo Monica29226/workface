@@ -1066,12 +1066,15 @@ export function Users() {
             </div>
             <div className="space-y-2">
               <Label>Empresa (opcional)</Label>
-              <Select value={inviteCompanyId} onValueChange={setInviteCompanyId}>
+              <Select 
+                value={inviteCompanyId || "none"} 
+                onValueChange={(value) => setInviteCompanyId(value === "none" ? "" : value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Sin empresa específica" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin empresa específica</SelectItem>
+                  <SelectItem value="none">Sin empresa específica</SelectItem>
                   {companies.map(c => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
