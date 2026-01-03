@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, UserPlus, Trash2, Edit, ChevronRight, ChevronLeft, Loader2, Mail, RefreshCw, X } from "lucide-react";
+import { Search, UserPlus, Trash2, Edit, ChevronRight, ChevronLeft, Loader2, Mail, RefreshCw, X, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -26,6 +26,7 @@ interface User {
   email: string;
   full_name: string;
   role?: string;
+  last_sign_in_at?: string;
   companies: Array<{
     id: string;
     name: string;
@@ -88,6 +89,7 @@ export function Users() {
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [resendingUserId, setResendingUserId] = useState<string | null>(null);
   
   // Dialog states
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -149,6 +151,30 @@ export function Users() {
 
       if (permError) throw permError;
 
+      // Fetch auth info (last_sign_in) from edge function
+      let authInfoMap: Record<string, { last_sign_in_at: string | null }> = {};
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-users-auth-info`,
+            {
+              headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+              },
+            }
+          );
+          if (response.ok) {
+            const { users: authUsers } = await response.json();
+            authUsers?.forEach((u: any) => {
+              authInfoMap[u.id] = { last_sign_in_at: u.last_sign_in_at };
+            });
+          }
+        }
+      } catch (e) {
+        console.log('Could not fetch auth info:', e);
+      }
+
       const usersData: User[] = (profiles || []).map(profile => {
         const userRole = roles?.find(r => r.user_id === profile.id);
         const userCompanies = (companyAccess || [])
@@ -179,6 +205,7 @@ export function Users() {
           email: profile.email,
           full_name: profile.full_name || profile.email,
           role: userRole?.role,
+          last_sign_in_at: authInfoMap[profile.id]?.last_sign_in_at || undefined,
           companies: userCompanies
         };
       });
@@ -314,6 +341,65 @@ export function Users() {
     
     // Send new one
     handleSendInvitation();
+  };
+
+  const handleResendCredentials = async (user: User) => {
+    setResendingUserId(user.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("No hay una sesión activa");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resend-credentials`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            user_id: user.id,
+            email: user.email,
+            full_name: user.full_name,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Error al reenviar credenciales");
+      }
+
+      toast({
+        title: "Credenciales enviadas",
+        description: `Se han enviado las credenciales a ${user.email}`,
+      });
+    } catch (error: any) {
+      console.error('Error resending credentials:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudieron reenviar las credenciales",
+        variant: "destructive",
+      });
+    } finally {
+      setResendingUserId(null);
+    }
+  };
+
+  const formatLastAccess = (dateString?: string) => {
+    if (!dateString) return "Nunca";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Hoy";
+    if (diffDays === 1) return "Ayer";
+    if (diffDays < 7) return `Hace ${diffDays} días`;
+    if (diffDays < 30) return `Hace ${Math.floor(diffDays / 7)} sem.`;
+    
+    return date.toLocaleDateString('es-CR', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
   const openNewUserDialog = () => {
@@ -707,13 +793,14 @@ export function Users() {
                   <TableHead className="font-semibold">Usuario</TableHead>
                   <TableHead className="font-semibold">Rol Global</TableHead>
                   <TableHead className="font-semibold">Empresas</TableHead>
+                  <TableHead className="font-semibold">Último Acceso</TableHead>
                   <TableHead className="font-semibold text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                       No se encontraron usuarios
                     </TableCell>
                   </TableRow>
@@ -740,6 +827,11 @@ export function Users() {
                           )}
                         </div>
                       </TableCell>
+                      <TableCell>
+                        <span className={`text-sm ${!user.last_sign_in_at ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>
+                          {formatLastAccess(user.last_sign_in_at)}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1">
                           <Button
@@ -750,6 +842,20 @@ export function Users() {
                             title="Editar permisos"
                           >
                             <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-blue-600 hover:text-blue-700"
+                            onClick={() => handleResendCredentials(user)}
+                            disabled={resendingUserId === user.id}
+                            title="Reenviar credenciales"
+                          >
+                            {resendingUserId === user.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Send className="h-4 w-4" />
+                            )}
                           </Button>
                           <Button
                             variant="ghost"
