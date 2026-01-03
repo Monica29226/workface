@@ -27,10 +27,14 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-    const rawFromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
-    // Extract just the email if it's in "Name <email>" format
-    const emailMatch = rawFromEmail.match(/<(.+)>/);
-    const fromEmail = emailMatch ? emailMatch[1] : rawFromEmail.replace(/^[^<]*<|>.*$/g, '').trim() || rawFromEmail;
+
+    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev").trim();
+    const cleanedFrom = rawFromEmail.replace(/^"+|"+$/g, "").trim();
+    const from = cleanedFrom.includes("<") && cleanedFrom.includes(">")
+      ? cleanedFrom
+      : `PlanicasHR <${cleanedFrom}>`;
+
+    console.log("Using FROM:", from);
 
     // Verify authorization
     const authHeader = req.headers.get("Authorization");
@@ -102,7 +106,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email with new credentials
     const emailResponse = await resend.emails.send({
-      from: `PlanicasHR <${fromEmail}>`,
+      from,
       to: [email],
       subject: "Nuevas credenciales de acceso - PlanicasHR",
       html: `
