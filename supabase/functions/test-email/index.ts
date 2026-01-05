@@ -51,12 +51,19 @@ serve(async (req) => {
       // Use default if no body
     }
 
+    // Parse RESEND_FROM_EMAIL correctly
+    const rawFrom = (fromEmail || 'onboarding@resend.dev').trim();
+    const cleanedFrom = rawFrom.replace(/^"+|"+$/g, '').trim();
+    const from = cleanedFrom.includes('<') && cleanedFrom.includes('>')
+      ? cleanedFrom
+      : `Sistema de Planillas <${cleanedFrom}>`;
+
     console.log('Attempting to send test email to:', testEmail);
-    console.log('From:', fromEmail || 'Sistema de Planillas <onboarding@resend.dev>');
+    console.log('Using FROM:', from);
 
     // Test email sending
     const { data, error } = await resend.emails.send({
-      from: fromEmail || 'Sistema de Planillas <onboarding@resend.dev>',
+      from,
       to: [testEmail],
       subject: 'Test Email - Sistema de Planillas ACL',
       html: `

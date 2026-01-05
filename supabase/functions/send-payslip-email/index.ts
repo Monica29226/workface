@@ -2,8 +2,6 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
 import { Resend } from "npm:resend@2.0.0";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -110,8 +108,17 @@ serve(async (req) => {
     const vacationDays = Number(line.vacation_accrued_days || 0);
 
     // Build professional HTML email following MTSS Costa Rica format
-    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
     const companyName = company.display_name;
+    
+    // Parse RESEND_FROM_EMAIL correctly
+    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev").trim();
+    const cleanedFrom = rawFromEmail.replace(/^"+|"+$/g, "").trim();
+    // Extract just the email if it has Name <email> format
+    const emailMatch = cleanedFrom.match(/<([^>]+)>/);
+    const pureEmail = emailMatch ? emailMatch[1] : cleanedFrom;
+    const from = `${companyName} <${pureEmail}>`;
+    
+    console.log("Using FROM:", from);
 
     const emailHtml = `
 <!DOCTYPE html>
@@ -314,8 +321,9 @@ serve(async (req) => {
     `;
 
     // Send email via Resend
+    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
     const emailResponse = await resend.emails.send({
-      from: `${companyName} <${fromEmail}>`,
+      from,
       to: [employee.work_email],
       subject: `📄 Boleta de Pago - ${periodLabel} | ${companyName}`,
       html: emailHtml,
