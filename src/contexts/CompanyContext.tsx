@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Company {
@@ -18,20 +18,17 @@ interface CompanyContextType {
   companies: Company[];
   setCompanies: (companies: Company[]) => void;
   isLoading: boolean;
+  refreshCompanies: () => Promise<void>;
 }
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
 
 export function CompanyProvider({ children }: { children: React.ReactNode }) {
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [selectedCompany, setSelectedCompanyState] = useState<Company | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    loadCompanies();
-  }, []);
-
-  const loadCompanies = async () => {
+  const loadCompanies = useCallback(async () => {
     try {
       setIsLoading(true);
       
@@ -52,7 +49,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
 
       if (!companyUsers || companyUsers.length === 0) {
         setCompanies([]);
-        setSelectedCompany(null);
+        setSelectedCompanyState(null);
         setIsLoading(false);
         return;
       }
@@ -61,7 +58,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       const companyIds = companyUsers.map(cu => cu.company_id);
       const { data: companiesData, error: companiesError } = await supabase
         .from('companies')
-        .select('*')
+        .select('id, display_name, tax_id, logo_url')
         .in('id', companyIds);
 
       if (companiesError) throw companiesError;
@@ -85,40 +82,49 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       if (savedCompanyId) {
         const savedCompany = mappedCompanies.find(c => c.id === savedCompanyId);
         if (savedCompany) {
-          setSelectedCompany(savedCompany);
+          setSelectedCompanyState(savedCompany);
         } else if (mappedCompanies.length > 0) {
-          setSelectedCompany(mappedCompanies[0]);
+          setSelectedCompanyState(mappedCompanies[0]);
         }
       } else if (mappedCompanies.length > 0) {
-        setSelectedCompany(mappedCompanies[0]);
+        setSelectedCompanyState(mappedCompanies[0]);
       }
 
       setIsLoading(false);
     } catch (error) {
       console.error('Error loading companies:', error);
       setCompanies([]);
-      setSelectedCompany(null);
+      setSelectedCompanyState(null);
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const handleSetSelectedCompany = (company: Company | null) => {
-    setSelectedCompany(company);
+  useEffect(() => {
+    loadCompanies();
+  }, [loadCompanies]);
+
+  // Memoized setter to prevent unnecessary re-renders
+  const setSelectedCompany = useCallback((company: Company | null) => {
+    setSelectedCompanyState(company);
     if (company) {
       localStorage.setItem('selectedCompanyId', company.id);
     } else {
       localStorage.removeItem('selectedCompanyId');
     }
-  };
+  }, []);
+
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    selectedCompany,
+    setSelectedCompany,
+    companies,
+    setCompanies,
+    isLoading,
+    refreshCompanies: loadCompanies
+  }), [selectedCompany, setSelectedCompany, companies, isLoading, loadCompanies]);
 
   return (
-    <CompanyContext.Provider value={{
-      selectedCompany,
-      setSelectedCompany: handleSetSelectedCompany,
-      companies,
-      setCompanies,
-      isLoading
-    }}>
+    <CompanyContext.Provider value={contextValue}>
       {children}
     </CompanyContext.Provider>
   );

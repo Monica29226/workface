@@ -1,14 +1,12 @@
+import { memo, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
   BarChart3, 
-  Download, 
-  FileText, 
   Users, 
   DollarSign, 
   TrendingUp,
-  TrendingDown,
   Building2,
   Calculator,
   Mail,
@@ -25,157 +23,59 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useCompany } from "@/contexts/CompanyContext";
 import { formatCurrency } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useDashboardData } from "@/hooks/useDashboardData";
 
-interface KPIData {
-  grossPeriod: number;
-  totalDeductions: number;
-  netPay: number;
-  employerCharges: number;
-  activeEmployees: number;
-  avgCostEmployee: number;
-  pendingVacations: number;
-  pendingPayslips: number;
-}
-
-interface RecentActivity {
-  id: string;
-  type: 'payroll' | 'employee' | 'vacation' | 'email';
+// Memoized KPI Card component to prevent unnecessary re-renders
+const KPICard = memo(({ 
+  title, 
+  value, 
+  subtitle, 
+  icon: Icon, 
+  iconBg, 
+  borderColor,
+  subtitleIcon: SubtitleIcon,
+  subtitleColor 
+}: {
   title: string;
-  description: string;
-  date: string;
-  status: 'success' | 'pending' | 'warning';
-}
+  value: string;
+  subtitle: string;
+  icon: React.ElementType;
+  iconBg: string;
+  borderColor: string;
+  subtitleIcon: React.ElementType;
+  subtitleColor: string;
+}) => (
+  <Card className={`card-elevated group hover:shadow-xl transition-all duration-300 border-l-4 ${borderColor}`}>
+    <CardContent className="p-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
+          <p className="text-2xl font-bold text-foreground">{value}</p>
+          <div className="flex items-center gap-1 mt-2">
+            <SubtitleIcon className={`h-3 w-3 ${subtitleColor}`} />
+            <span className={`text-xs font-medium ${subtitleColor}`}>{subtitle}</span>
+          </div>
+        </div>
+        <div className={`p-3 rounded-xl ${iconBg} group-hover:scale-110 transition-transform`}>
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+));
+
+KPICard.displayName = "KPICard";
 
 export function Dashboard() {
   const { t } = useLanguage();
   const { selectedCompany } = useCompany();
   const navigate = useNavigate();
-  const [kpiData, setKpiData] = useState<KPIData>({
-    grossPeriod: 0,
-    totalDeductions: 0,
-    netPay: 0,
-    employerCharges: 0,
-    activeEmployees: 0,
-    avgCostEmployee: 0,
-    pendingVacations: 0,
-    pendingPayslips: 0
-  });
-  const [loading, setLoading] = useState(true);
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  
+  // Use cached dashboard data hook
+  const { kpiData, latestBatch, isLoading } = useDashboardData();
 
-  useEffect(() => {
-    if (selectedCompany?.id) {
-      loadDashboardData();
-    }
-  }, [selectedCompany?.id]);
-
-  const loadDashboardData = async () => {
-    if (!selectedCompany?.id) return;
-    
-    setLoading(true);
-    try {
-      // Execute all queries in parallel for better performance
-      const [batchResult, employeesResult, vacationsResult, payslipsResult] = await Promise.all([
-        // Query 1: Latest batch - using maybeSingle() to handle empty results
-        supabase
-          .from('payroll_batches')
-          .select('id, period_start, period_end, status, batch_id')
-          .eq('company_id', selectedCompany.id)
-          .in('status', ['aprobado', 'enviado', 'calculado'])
-          .order('period_end', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        
-        // Query 2: Active employees count
-        supabase
-          .from('employees')
-          .select('*', { count: 'exact', head: true })
-          .eq('company_id', selectedCompany.id)
-          .eq('status', 'activo'),
-        
-        // Query 3: Pending vacation requests
-        supabase
-          .from('vacation_requests')
-          .select('*', { count: 'exact', head: true })
-          .eq('company_id', selectedCompany.id)
-          .eq('status', 'pending'),
-        
-        // Query 4: Payslips not sent yet
-        supabase
-          .from('payslips')
-          .select('*', { count: 'exact', head: true })
-          .eq('company_id', selectedCompany.id)
-          .is('sent_at', null)
-      ]);
-
-      const latestBatch = batchResult.data;
-      const activeEmployeesCount = employeesResult.count;
-      const pendingVacations = vacationsResult.count;
-      const pendingPayslips = payslipsResult.count;
-
-      let totalGross = 0;
-      let totalDeductions = 0;
-      let totalNetPay = 0;
-      let totalEmployerCharges = 0;
-
-      // Only fetch payroll lines if we have a batch
-      if (latestBatch) {
-        const { data: payrollLines } = await supabase
-          .from('payroll_lines')
-          .select('gross_salary, deductions, net_pay, employer_contrib, currency, exchange_rate_to_base')
-          .eq('batch_id', latestBatch.id);
-
-        if (payrollLines) {
-          payrollLines.forEach(line => {
-            const rate = line.exchange_rate_to_base || 1;
-            const multiplier = line.currency === 'CRC' ? 1 : rate;
-            
-            totalGross += line.gross_salary * multiplier;
-            totalDeductions += (line.deductions || 0) * multiplier;
-            totalNetPay += line.net_pay * multiplier;
-            totalEmployerCharges += (line.employer_contrib || 0) * multiplier;
-          });
-        }
-      }
-
-      const employeeCount = activeEmployeesCount || 1;
-      
-      setKpiData({
-        grossPeriod: totalGross,
-        totalDeductions: totalDeductions,
-        netPay: totalNetPay,
-        employerCharges: totalEmployerCharges,
-        activeEmployees: activeEmployeesCount || 0,
-        avgCostEmployee: employeeCount > 0 ? totalGross / employeeCount : 0,
-        pendingVacations: pendingVacations || 0,
-        pendingPayslips: pendingPayslips || 0
-      });
-
-      // Build recent activity from various sources
-      const activities: RecentActivity[] = [];
-      
-      if (latestBatch) {
-        activities.push({
-          id: latestBatch.id,
-          type: 'payroll',
-          title: 'Planilla Procesada',
-          description: `Lote ${latestBatch.batch_id} - ${latestBatch.status}`,
-          date: latestBatch.period_end,
-          status: latestBatch.status === 'enviado' ? 'success' : 'pending'
-        });
-      }
-
-      setRecentActivity(activities);
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const quickActions = [
+  // Memoize quick actions to prevent recreation
+  const quickActions = useMemo(() => [
     {
       title: "Nuevo Empleado",
       description: "Agregar colaborador al sistema",
@@ -204,9 +104,9 @@ export function Dashboard() {
       color: "bg-amber-500",
       action: () => navigate('/historico'),
     },
-  ];
+  ], [navigate]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6 animate-pulse">
         <div className="h-32 bg-muted rounded-xl" />
@@ -256,99 +156,48 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Cards Grid */}
+      {/* KPI Cards Grid - Using memoized components */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Gross Salary */}
-        <Card className="card-elevated group hover:shadow-xl transition-all duration-300 border-l-4 border-l-emerald-500">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">
-                  Salario Bruto Período
-                </p>
-                <p className="text-2xl font-bold text-foreground">
-                  {formatCurrency(kpiData.grossPeriod, 'CRC')}
-                </p>
-                <div className="flex items-center gap-1 mt-2">
-                  <TrendingUp className="h-3 w-3 text-emerald-500" />
-                  <span className="text-xs text-emerald-600 font-medium">Último período</span>
-                </div>
-              </div>
-              <div className="p-3 rounded-xl bg-emerald-100 group-hover:bg-emerald-200 transition-colors">
-                <DollarSign className="h-5 w-5 text-emerald-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Net Pay */}
-        <Card className="card-elevated group hover:shadow-xl transition-all duration-300 border-l-4 border-l-blue-500">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">
-                  Salario Neto
-                </p>
-                <p className="text-2xl font-bold text-foreground">
-                  {formatCurrency(kpiData.netPay, 'CRC')}
-                </p>
-                <div className="flex items-center gap-1 mt-2">
-                  <CheckCircle2 className="h-3 w-3 text-blue-500" />
-                  <span className="text-xs text-blue-600 font-medium">A depositar</span>
-                </div>
-              </div>
-              <div className="p-3 rounded-xl bg-blue-100 group-hover:bg-blue-200 transition-colors">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Active Employees */}
-        <Card className="card-elevated group hover:shadow-xl transition-all duration-300 border-l-4 border-l-purple-500">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">
-                  Colaboradores Activos
-                </p>
-                <p className="text-2xl font-bold text-foreground">
-                  {kpiData.activeEmployees}
-                </p>
-                <div className="flex items-center gap-1 mt-2">
-                  <Users className="h-3 w-3 text-purple-500" />
-                  <span className="text-xs text-purple-600 font-medium">En planilla</span>
-                </div>
-              </div>
-              <div className="p-3 rounded-xl bg-purple-100 group-hover:bg-purple-200 transition-colors">
-                <Users className="h-5 w-5 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Employer Contributions */}
-        <Card className="card-elevated group hover:shadow-xl transition-all duration-300 border-l-4 border-l-amber-500">
-          <CardContent className="p-5">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">
-                  Cargas Patronales
-                </p>
-                <p className="text-2xl font-bold text-foreground">
-                  {formatCurrency(kpiData.employerCharges, 'CRC')}
-                </p>
-                <div className="flex items-center gap-1 mt-2">
-                  <Building2 className="h-3 w-3 text-amber-500" />
-                  <span className="text-xs text-amber-600 font-medium">CCSS + Otros</span>
-                </div>
-              </div>
-              <div className="p-3 rounded-xl bg-amber-100 group-hover:bg-amber-200 transition-colors">
-                <Building2 className="h-5 w-5 text-amber-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <KPICard
+          title="Salario Bruto Período"
+          value={formatCurrency(kpiData.grossPeriod, 'CRC')}
+          subtitle="Último período"
+          icon={DollarSign}
+          iconBg="bg-emerald-100 group-hover:bg-emerald-200 text-emerald-600"
+          borderColor="border-l-emerald-500"
+          subtitleIcon={TrendingUp}
+          subtitleColor="text-emerald-600"
+        />
+        <KPICard
+          title="Salario Neto"
+          value={formatCurrency(kpiData.netPay, 'CRC')}
+          subtitle="A depositar"
+          icon={TrendingUp}
+          iconBg="bg-blue-100 group-hover:bg-blue-200 text-blue-600"
+          borderColor="border-l-blue-500"
+          subtitleIcon={CheckCircle2}
+          subtitleColor="text-blue-600"
+        />
+        <KPICard
+          title="Colaboradores Activos"
+          value={kpiData.activeEmployees.toString()}
+          subtitle="En planilla"
+          icon={Users}
+          iconBg="bg-purple-100 group-hover:bg-purple-200 text-purple-600"
+          borderColor="border-l-purple-500"
+          subtitleIcon={Users}
+          subtitleColor="text-purple-600"
+        />
+        <KPICard
+          title="Cargas Patronales"
+          value={formatCurrency(kpiData.employerCharges, 'CRC')}
+          subtitle="CCSS + Otros"
+          icon={Building2}
+          iconBg="bg-amber-100 group-hover:bg-amber-200 text-amber-600"
+          borderColor="border-l-amber-500"
+          subtitleIcon={Building2}
+          subtitleColor="text-amber-600"
+        />
       </div>
 
       {/* Quick Actions */}
