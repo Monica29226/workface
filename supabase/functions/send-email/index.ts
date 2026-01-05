@@ -69,11 +69,15 @@ serve(async (req) => {
           console.error('Error creating email log:', logError);
         }
 
-        // Send email via Resend
-        const fromEmail = Deno.env.get('RESEND_FROM_EMAIL') || 'Sistema de Planillas <onboarding@resend.dev>';
+        // Send email via Resend - parse FROM correctly
+        const rawFromEmail = (Deno.env.get('RESEND_FROM_EMAIL') || 'onboarding@resend.dev').trim();
+        const cleanedFrom = rawFromEmail.replace(/^"+|"+$/g, '').trim();
+        const defaultFrom = cleanedFrom.includes('<') && cleanedFrom.includes('>')
+          ? cleanedFrom
+          : `Sistema de Planillas <${cleanedFrom}>`;
         
         const emailData: any = {
-          from: from || fromEmail,
+          from: from || defaultFrom,
           to: [recipient],
           subject,
           html,
