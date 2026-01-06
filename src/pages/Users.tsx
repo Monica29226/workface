@@ -273,12 +273,15 @@ export function Users() {
         }
       );
 
+      // Handle edge function errors (status 4xx/5xx)
       if (invokeError) {
-        throw invokeError;
+        // Try to extract error message from the response body
+        const errorBody = (result as any)?.error || invokeError.message;
+        throw new Error(errorBody);
       }
 
       if ((result as any)?.error) {
-        throw new Error((result as any).error || "Error al enviar la invitación");
+        throw new Error((result as any).error);
       }
 
       toast({
@@ -291,12 +294,11 @@ export function Users() {
       setInviteRole("Client_Viewer");
       setInviteCompanyId("");
       fetchPendingInvitations();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending invitation:', error);
-      const errorMessage = error instanceof Error ? error.message : 'No se pudo enviar la invitación';
       toast({
-        title: "Error",
-        description: errorMessage,
+        title: "Error al enviar invitación",
+        description: error?.message || 'No se pudo enviar la invitación',
         variant: "destructive",
       });
     } finally {
