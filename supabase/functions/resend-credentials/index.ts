@@ -29,10 +29,10 @@ const handler = async (req: Request): Promise<Response> => {
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
     const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev").trim();
-    const cleanedFrom = rawFromEmail.replace(/^"+|"+$/g, "").trim();
+    const cleanedFrom = rawFromEmail.replace(/^\"+|\"+$/g, "").trim();
     const from = cleanedFrom.includes("<") && cleanedFrom.includes(">")
       ? cleanedFrom
-      : `PlanicasHR <${cleanedFrom}>`;
+      : `Aureon <${cleanedFrom}>`;
 
     console.log("Using FROM:", from);
 
@@ -102,7 +102,14 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Get platform URL
-    const platformUrl = Deno.env.get("PLATFORM_URL") || "https://planicas-ac.lovable.app";
+    const appOrigin = (
+      req.headers.get("origin") ||
+      Deno.env.get("APP_URL") ||
+      Deno.env.get("PLATFORM_URL") ||
+      "https://aureoncr.com"
+    ).replace(/\/$/, "");
+
+    const platformUrl = `${appOrigin}/auth`;
 
     // Send email with new credentials
     const emailResponse = await resend.emails.send({

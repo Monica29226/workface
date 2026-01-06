@@ -111,8 +111,13 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Build the invitation link
-    const appUrl = Deno.env.get("APP_URL") || `${supabaseUrl.replace('.supabase.co', '.lovable.app')}`;
-    const inviteLink = `${appUrl}/auth?invite=${invitation.token}`;
+    const appOrigin = (
+      req.headers.get("origin") ||
+      Deno.env.get("APP_URL") ||
+      `${supabaseUrl.replace('.supabase.co', '.lovable.app')}`
+    ).replace(/\/$/, "");
+
+    const inviteLink = `${appOrigin}/auth?invite=${invitation.token}`;
 
     // Send the invitation email
     const inviterName = inviterProfile?.full_name || inviterProfile?.email || "El equipo de ACL Payroll";
