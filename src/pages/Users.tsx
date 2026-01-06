@@ -261,27 +261,24 @@ export function Users() {
         ? companies.find(c => c.id === inviteCompanyId)?.name 
         : undefined;
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-invitation`,
+      const { data: result, error: invokeError } = await supabase.functions.invoke(
+        "send-invitation",
         {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
+          body: {
             email: inviteEmail,
             role: inviteRole,
             company_id: inviteCompanyId || null,
             company_name: companyName,
-          }),
+          },
         }
       );
 
-      const result = await response.json();
+      if (invokeError) {
+        throw invokeError;
+      }
 
-      if (!response.ok || result.error) {
-        throw new Error(result.error || 'Error al enviar la invitación');
+      if ((result as any)?.error) {
+        throw new Error((result as any).error || "Error al enviar la invitación");
       }
 
       toast({
@@ -349,26 +346,23 @@ export function Users() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("No hay una sesión activa");
 
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/resend-credentials`,
+      const { data: result, error: invokeError } = await supabase.functions.invoke(
+        "resend-credentials",
         {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
+          body: {
             user_id: user.id,
             email: user.email,
             full_name: user.full_name,
-          }),
+          },
         }
       );
 
-      const result = await response.json();
+      if (invokeError) {
+        throw invokeError;
+      }
 
-      if (!response.ok) {
-        throw new Error(result.error || "Error al reenviar credenciales");
+      if ((result as any)?.error) {
+        throw new Error((result as any).error || "Error al reenviar credenciales");
       }
 
       toast({
@@ -467,7 +461,7 @@ export function Users() {
       }
 
       let userId = editingUser?.id;
-      let temporaryPassword: string | null = null;
+      let wasUserCreated = false;
 
       // If new user, find or create profile
       if (!editingUser) {
@@ -480,48 +474,31 @@ export function Users() {
         if (profileError) throw profileError;
 
         if (!existingProfile) {
-          // Create new user via edge function
-          const { data: { session } } = await supabase.auth.getSession();
-          
-          if (!session) {
-            throw new Error('No hay una sesión activa');
-          }
-          
-          console.log('Creating new user:', formData.email);
-          
-          const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`,
+          // Create new user via backend function (also sends the credentials email)
+          const { data: result, error: invokeError } = await supabase.functions.invoke(
+            "create-user",
             {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${session.access_token}`,
-              },
-              body: JSON.stringify({
+              body: {
                 email: formData.email,
                 full_name: formData.full_name || formData.email,
-              }),
+              },
             }
           );
 
-          const result = await response.json();
-          
-          console.log('Create user response:', result);
-          
-          if (!response.ok || result.error) {
-            const errorMsg = result.error || 'No se pudo crear el usuario';
-            console.error('Error creating user:', errorMsg);
-            throw new Error(errorMsg);
+          if (invokeError) {
+            throw invokeError;
           }
 
-          if (!result.user?.id) {
+          if ((result as any)?.error) {
+            throw new Error((result as any).error || 'No se pudo crear el usuario');
+          }
+
+          if (!(result as any)?.user?.id) {
             throw new Error('No se recibió el ID del usuario creado');
           }
 
-          userId = result.user.id;
-          temporaryPassword = result.temporary_password;
-          
-          console.log('User created successfully:', userId);
+          userId = (result as any).user.id;
+          wasUserCreated = true;
         } else {
           userId = existingProfile.id;
         }
@@ -565,16 +542,20 @@ export function Users() {
         await supabase.from('user_company_permissions').insert(permissions);
       }
 
-      const successMessage = temporaryPassword
-        ? `Usuario creado exitosamente. Contraseña temporal: ${temporaryPassword}\n\nEnvíe esta contraseña al usuario para su primer acceso.`
-        : editingUser 
+      const successMessage = wasUserCreated
+        ? "Usuario creado exitosamente. Se envió un correo con las credenciales de acceso"
+        : editingUser
           ? `Usuario ${formData.email} actualizado correctamente`
           : `Permisos asignados a ${formData.email}`;
 
       toast({
-        title: editingUser ? "Usuario actualizado" : temporaryPassword ? "¡Usuario creado!" : "Permisos asignados",
+        title: editingUser
+          ? "Usuario actualizado"
+          : wasUserCreated
+            ? "¡Usuario creado!"
+            : "Permisos asignados",
         description: successMessage,
-        duration: temporaryPassword ? 15000 : 3000,
+        duration: 3000,
       });
 
       setIsDialogOpen(false);
