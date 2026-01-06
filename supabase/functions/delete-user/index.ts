@@ -46,14 +46,13 @@ serve(async (req) => {
     }
 
     // Check if the caller has admin role
-    const { data: callerRole, error: roleError } = await supabaseAdmin
+    const { data: callerRoles, error: roleError } = await supabaseAdmin
       .from('user_roles')
       .select('role')
       .eq('user_id', caller.id)
-      .in('role', ['admin', 'ACL_SuperAdmin'])
-      .single();
+      .in('role', ['admin', 'ACL_SuperAdmin']);
 
-    if (roleError || !callerRole) {
+    if (roleError || !callerRoles || callerRoles.length === 0) {
       console.error('Caller is not an admin:', roleError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized - Admin access required' }),
