@@ -593,24 +593,37 @@ export function Users() {
   };
 
   const handleRemoveUser = async (userId: string, userEmail: string) => {
-    if (!confirm(`¿Eliminar todos los permisos de ${userEmail}?`)) return;
+    if (!confirm(`¿Eliminar completamente al usuario ${userEmail}? Esta acción no se puede deshacer.`)) return;
 
     try {
-      await supabase.from('user_roles').delete().eq('user_id', userId);
-      await supabase.from('company_users').delete().eq('user_id', userId);
-      await supabase.from('user_company_permissions').delete().eq('user_id', userId);
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId },
+        headers: {
+          Authorization: `Bearer ${sessionData.session?.access_token}`,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
       toast({
-        title: "Permisos eliminados",
-        description: `Permisos de ${userEmail} eliminados correctamente`,
+        title: "Usuario eliminado",
+        description: `${userEmail} ha sido eliminado completamente del sistema`,
       });
 
       fetchUsers();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error removing user:', error);
       toast({
         title: "Error",
-        description: "No se pudieron eliminar los permisos",
+        description: error.message || "No se pudo eliminar el usuario",
         variant: "destructive",
       });
     }

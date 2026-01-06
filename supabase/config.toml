@@ -47,3 +47,6 @@ verify_jwt = true
 
 [functions.get-users-auth-info]
 verify_jwt = true
+
+[functions.delete-user]
+verify_jwt = false
