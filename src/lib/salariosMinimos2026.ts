@@ -1,8 +1,7 @@
 /**
- * Salarios mínimos Costa Rica 2025
+ * Salarios mínimos Costa Rica 2026
  * Fuente: Ministerio de Trabajo y Seguridad Social (MTSS)
- * Decreto vigente desde el 01 de enero de 2025
- * Ajuste salarial: 2.37%
+ * Decreto vigente desde el 01 de enero de 2026
  */
 
 export interface SalarioMinimo {
@@ -12,7 +11,7 @@ export interface SalarioMinimo {
   descripcion: string;
 }
 
-export const SALARIOS_MINIMOS_2025: SalarioMinimo[] = [
+export const SALARIOS_MINIMOS_2026: SalarioMinimo[] = [
   // Trabajadores No Calificados
   { codigo: 'TONC', categoria: 'Trabajador No Calificado Genérico', monto: 12236.95, descripcion: 'Trabajos que requieren principalmente esfuerzo físico' },
   
@@ -42,7 +41,7 @@ export const SALARIOS_MINIMOS_2025: SalarioMinimo[] = [
  * Obtiene el salario mínimo más bajo (trabajador no calificado)
  */
 export function getSalarioMinimoBase(): number {
-  return SALARIOS_MINIMOS_2025.find(s => s.codigo === 'TONC')?.monto || 12236.95;
+  return SALARIOS_MINIMOS_2026.find(s => s.codigo === 'TONC')?.monto || 12236.95;
 }
 
 /**
@@ -65,5 +64,5 @@ export function getDiferenciaSalarioMinimo(salario: number): number {
  * Obtiene el salario mínimo por categoría
  */
 export function getSalarioMinimoPorCategoria(codigo: string): SalarioMinimo | undefined {
-  return SALARIOS_MINIMOS_2025.find(s => s.codigo === codigo);
+  return SALARIOS_MINIMOS_2026.find(s => s.codigo === codigo);
 }

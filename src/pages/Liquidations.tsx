@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { calcularLiquidacion, ResultadoLiquidacion } from "@/lib/liquidacion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { estaBajoSalarioMinimo, getSalarioMinimoBase, getDiferenciaSalarioMinimo } from "@/lib/salariosMinimos2025";
+import { estaBajoSalarioMinimo, getSalarioMinimoBase, getDiferenciaSalarioMinimo } from "@/lib/salariosMinimos2026";
 
 interface Employee {
   id: string;

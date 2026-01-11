@@ -76,20 +76,20 @@ serve(async (req) => {
       );
     }
 
-    // Helper functions for calculations
+    // Helper functions for calculations (updated 2026)
     const calculateCCSS = (grossSalary: number) => {
-      const ivmEmployee = grossSalary * 0.0417; // 4.17%
-      const invalidezEmployee = grossSalary * 0.005; // 0.5%
-      const healthEmployee = grossSalary * 0.055; // 5.5%
-      return ivmEmployee + invalidezEmployee + healthEmployee;
+      // Total obrero CCSS 2026: 10.83%
+      // SEM: 5.50% + IVM: 4.33% + Banco Popular Obrero: 1.00% = 10.83%
+      return grossSalary * 0.1083;
     };
 
     const calculateIncomeTax = (monthlySalary: number) => {
-      if (monthlySalary <= 941000) return 0;
-      if (monthlySalary <= 1403000) return (monthlySalary - 941000) * 0.10;
-      if (monthlySalary <= 2571000) return 46200 + (monthlySalary - 1403000) * 0.15;
-      if (monthlySalary <= 5142000) return 221400 + (monthlySalary - 2571000) * 0.20;
-      return 735600 + (monthlySalary - 5142000) * 0.25;
+      // Tramos de impuesto de renta actualizados 2026
+      if (monthlySalary <= 918000) return 0; // Exento
+      if (monthlySalary <= 1347000) return (monthlySalary - 918000) * 0.10; // 10%
+      if (monthlySalary <= 2364000) return 42900 + (monthlySalary - 1347000) * 0.15; // 15%
+      if (monthlySalary <= 4727000) return 195450 + (monthlySalary - 2364000) * 0.20; // 20%
+      return 668050 + (monthlySalary - 4727000) * 0.25; // 25%
     };
 
     // Recalculate each line
