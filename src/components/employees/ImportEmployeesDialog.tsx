@@ -36,6 +36,127 @@ const OPTIONAL_COLUMNS = ['hire_date', 'contract_type', 'currency'];
 const VALID_CONTRACT_TYPES = ['mensual', 'por_horas'];
 const VALID_CURRENCIES = ['CRC', 'USD', 'EUR', 'GBP'];
 
+// Column name mapping: various formats -> normalized snake_case
+const COLUMN_ALIASES: Record<string, string> = {
+  // employee_id variations
+  'employee_id': 'employee_id',
+  'employeeid': 'employee_id',
+  'employee id': 'employee_id',
+  'employee-id': 'employee_id',
+  'emp_id': 'employee_id',
+  'empid': 'employee_id',
+  'emp id': 'employee_id',
+  'id empleado': 'employee_id',
+  'idempleado': 'employee_id',
+  'id_empleado': 'employee_id',
+  'codigo': 'employee_id',
+  'código': 'employee_id',
+  'cedula': 'employee_id',
+  'cédula': 'employee_id',
+  
+  // full_name variations
+  'full_name': 'full_name',
+  'fullname': 'full_name',
+  'full name': 'full_name',
+  'full-name': 'full_name',
+  'name': 'full_name',
+  'nombre': 'full_name',
+  'nombre completo': 'full_name',
+  'nombre_completo': 'full_name',
+  'nombrecompleto': 'full_name',
+  'employee name': 'full_name',
+  'employee_name': 'full_name',
+  'employeename': 'full_name',
+  
+  // work_email variations
+  'work_email': 'work_email',
+  'workemail': 'work_email',
+  'work email': 'work_email',
+  'work-email': 'work_email',
+  'email': 'work_email',
+  'correo': 'work_email',
+  'correo electronico': 'work_email',
+  'correo electrónico': 'work_email',
+  'correo_electronico': 'work_email',
+  'email trabajo': 'work_email',
+  'email_trabajo': 'work_email',
+  'emailtrabajo': 'work_email',
+  
+  // base_salary variations
+  'base_salary': 'base_salary',
+  'basesalary': 'base_salary',
+  'base salary': 'base_salary',
+  'base-salary': 'base_salary',
+  'salary': 'base_salary',
+  'salario': 'base_salary',
+  'salario base': 'base_salary',
+  'salario_base': 'base_salary',
+  'salariobase': 'base_salary',
+  'sueldo': 'base_salary',
+  'sueldo base': 'base_salary',
+  
+  // hire_date variations
+  'hire_date': 'hire_date',
+  'hiredate': 'hire_date',
+  'hire date': 'hire_date',
+  'hire-date': 'hire_date',
+  'fecha contratacion': 'hire_date',
+  'fecha contratación': 'hire_date',
+  'fecha_contratacion': 'hire_date',
+  'fecha de contratacion': 'hire_date',
+  'fecha de contratación': 'hire_date',
+  'fecha ingreso': 'hire_date',
+  'fecha_ingreso': 'hire_date',
+  'start date': 'hire_date',
+  'start_date': 'hire_date',
+  'startdate': 'hire_date',
+  
+  // contract_type variations
+  'contract_type': 'contract_type',
+  'contracttype': 'contract_type',
+  'contract type': 'contract_type',
+  'contract-type': 'contract_type',
+  'tipo contrato': 'contract_type',
+  'tipo_contrato': 'contract_type',
+  'tipocontrato': 'contract_type',
+  'tipo de contrato': 'contract_type',
+  'contrato': 'contract_type',
+  
+  // currency variations
+  'currency': 'currency',
+  'moneda': 'currency',
+  'divisa': 'currency',
+};
+
+// Normalize column name to snake_case and check aliases
+const normalizeColumnName = (columnName: string): string => {
+  // Clean and normalize the column name
+  const cleaned = columnName
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove accents for matching
+    .replace(/[_\-\s]+/g, ' ') // Normalize separators to spaces
+    .trim();
+  
+  // Check if there's a direct alias match
+  if (COLUMN_ALIASES[cleaned]) {
+    return COLUMN_ALIASES[cleaned];
+  }
+  
+  // Try matching without accents in the alias keys
+  const cleanedForMatch = cleaned.replace(/\s+/g, '');
+  for (const [alias, normalized] of Object.entries(COLUMN_ALIASES)) {
+    const cleanAlias = alias.replace(/[_\-\s]+/g, '');
+    if (cleanAlias === cleanedForMatch) {
+      return normalized;
+    }
+  }
+  
+  // Fallback: convert to snake_case
+  return cleaned.replace(/\s+/g, '_');
+};
+
 export function ImportEmployeesDialog({ 
   open, 
   onOpenChange, 
@@ -173,15 +294,23 @@ export function ImportEmployeesDialog({
         return;
       }
 
-      // Check for required columns
+      // Check for required columns using normalized names
       const firstRow = jsonData[0] as Record<string, any>;
-      const columns = Object.keys(firstRow).map(c => c.toLowerCase().trim());
-      const missingColumns = REQUIRED_COLUMNS.filter(col => !columns.includes(col));
+      const originalColumns = Object.keys(firstRow);
+      
+      // Create mapping from original column names to normalized names
+      const columnMapping: Record<string, string> = {};
+      originalColumns.forEach(col => {
+        columnMapping[col] = normalizeColumnName(col);
+      });
+      
+      const normalizedColumns = Object.values(columnMapping);
+      const missingColumns = REQUIRED_COLUMNS.filter(col => !normalizedColumns.includes(col));
       
       if (missingColumns.length > 0) {
         toast({
           title: "Columnas faltantes",
-          description: `El archivo debe contener: ${missingColumns.join(', ')}`,
+          description: `El archivo debe contener: ${missingColumns.join(', ')}. Columnas encontradas: ${originalColumns.join(', ')}`,
           variant: "destructive",
         });
         return;
@@ -191,7 +320,8 @@ export function ImportEmployeesDialog({
       const normalizedData = jsonData.map((row: any, index) => {
         const normalizedRow: Record<string, any> = {};
         Object.keys(row).forEach(key => {
-          normalizedRow[key.toLowerCase().trim()] = row[key];
+          const normalizedKey = normalizeColumnName(key);
+          normalizedRow[normalizedKey] = row[key];
         });
         return validateRow(normalizedRow, index + 2); // +2 because Excel rows start at 1 and first row is header
       });
