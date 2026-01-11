@@ -54,13 +54,14 @@ interface CompanyParameters {
   vacation_expiry_months: number;
 }
 
+// Valores actualizados 2026 según CCSS y Ministerio de Hacienda
 const defaultParameters: Omit<CompanyParameters, 'company_id'> = {
   ccss_patronal_sem: 9.25,
   ccss_patronal_ivm: 5.25,
   ccss_patronal_total: 14.50,
   ccss_obrero_sem: 5.50,
-  ccss_obrero_ivm: 4.00,
-  ccss_obrero_total: 9.50,
+  ccss_obrero_ivm: 4.33, // Actualizado 2026: 10.83% total - 5.50% SEM = 4.33% IVM (ajuste 0.33% adicional)
+  ccss_obrero_total: 10.83, // Actualizado 2026: nuevo porcentaje total obrero
   ina_rate: 1.50,
   imas_rate: 0.50,
   fodesaf_rate: 5.00,
@@ -70,15 +71,16 @@ const defaultParameters: Omit<CompanyParameters, 'company_id'> = {
   aguinaldo_rate: 8.33,
   cesantia_rate: 8.33,
   vacaciones_rate: 4.17,
-  renta_bracket_1_limit: 941000,
+  // Tramos de impuesto de renta 2026 actualizados
+  renta_bracket_1_limit: 918000,  // Hasta ₡918,000 exento
   renta_bracket_1_rate: 0,
-  renta_bracket_2_limit: 1381000,
+  renta_bracket_2_limit: 1347000, // ₡918,000 - ₡1,347,000 al 10%
   renta_bracket_2_rate: 10,
-  renta_bracket_3_limit: 2423000,
+  renta_bracket_3_limit: 2364000, // ₡1,347,000 - ₡2,364,000 al 15%
   renta_bracket_3_rate: 15,
-  renta_bracket_4_limit: 4845000,
+  renta_bracket_4_limit: 4727000, // ₡2,364,000 - ₡4,727,000 al 20%
   renta_bracket_4_rate: 20,
-  renta_bracket_5_rate: 25,
+  renta_bracket_5_rate: 25,       // Más de ₡4,727,000 al 25%
   salario_minimo_referencia: 12236.95,
   vacation_days_standard: 10,
   vacation_days_domestic: 15,
@@ -441,10 +443,10 @@ export function Parameters() {
         <TabsContent value="renta" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Tabla de Impuesto sobre la Renta 2025</CardTitle>
-              <CardDescription>
-                Tramos de renta según Ministerio de Hacienda de Costa Rica
-              </CardDescription>
+            <CardTitle>Tabla de Impuesto sobre la Renta 2026</CardTitle>
+            <CardDescription>
+              Tramos de renta según Ministerio de Hacienda de Costa Rica (vigente desde 01/01/2026)
+            </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">

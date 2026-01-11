@@ -109,16 +109,17 @@ serve(async (req) => {
 
     console.log("Payroll batch created:", batch.id);
 
-    // Calculate CCSS deduction (10.5% for employee)
-    const calculateCCSS = (salary: number) => salary * 0.105;
+    // Calculate CCSS deduction (10.83% for employee - updated 2026)
+    const calculateCCSS = (salary: number) => salary * 0.1083;
 
-    // Calculate income tax (simplified - Costa Rica progressive rates)
+    // Calculate income tax (Costa Rica progressive rates - updated 2026)
     const calculateIncomeTax = (salary: number) => {
-      if (salary <= 941000) return 0;
-      if (salary <= 1381000) return (salary - 941000) * 0.10;
-      if (salary <= 2423000) return 44000 + (salary - 1381000) * 0.15;
-      if (salary <= 4845000) return 200300 + (salary - 2423000) * 0.20;
-      return 684700 + (salary - 4845000) * 0.25;
+      // Tramos actualizados 2026
+      if (salary <= 918000) return 0; // Exento
+      if (salary <= 1347000) return (salary - 918000) * 0.10; // 10%
+      if (salary <= 2364000) return 42900 + (salary - 1347000) * 0.15; // 15%
+      if (salary <= 4727000) return 195450 + (salary - 2364000) * 0.20; // 20%
+      return 668050 + (salary - 4727000) * 0.25; // 25%
     };
 
     // Calculate monthly aguinaldo accrual (1/12 of annual salary)
