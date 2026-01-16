@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, ArrowRight, Building2, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useCompany } from "@/contexts/CompanyContext";
 
 const steps = [
   { id: 1, title: "Información Básica" },
@@ -64,6 +65,7 @@ const step6Schema = z.object({
 
 export default function CreateCompany() {
   const navigate = useNavigate();
+  const { refreshCompanies, setSelectedCompany } = useCompany();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<any>({});
@@ -191,6 +193,21 @@ export default function CreateCompany() {
         });
 
       if (userError) throw userError;
+
+      // Refresh companies list and select the new company
+      await refreshCompanies();
+      
+      // Set the new company as selected
+      setSelectedCompany({
+        id: company.id,
+        name: company.display_name,
+        legal_name: company.display_name,
+        juridical_id: company.tax_id || '',
+        logo_url: company.logo_url || undefined,
+        primary_color: '#0B2B4C',
+        accent_color: '#2A9D8F',
+        light_color: '#F5EFE6'
+      });
 
       toast.success("Empresa creada exitosamente");
       navigate("/dashboard");
