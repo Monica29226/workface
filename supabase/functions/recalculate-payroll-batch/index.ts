@@ -1,3 +1,4 @@
+// Updated: Support for education sector (Magisterio + Poliza de Vida)
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
@@ -8,6 +9,23 @@ const corsHeaders = {
 
 interface RecalculateRequest {
   batchId: string;
+}
+
+interface CompanyParameters {
+  is_education_sector: boolean;
+  magisterio_rate: number;
+  poliza_vida_fija: number;
+  ccss_obrero_education: number;
+  ccss_obrero_total: number;
+  renta_bracket_1_limit: number;
+  renta_bracket_1_rate: number;
+  renta_bracket_2_limit: number;
+  renta_bracket_2_rate: number;
+  renta_bracket_3_limit: number;
+  renta_bracket_3_rate: number;
+  renta_bracket_4_limit: number;
+  renta_bracket_4_rate: number;
+  renta_bracket_5_rate: number;
 }
 
 serve(async (req) => {
@@ -40,7 +58,7 @@ serve(async (req) => {
 
     console.log('Recalculating payroll batch:', batchId);
 
-    // Get batch and all lines
+    // Get batch info
     const { data: batch, error: batchError } = await supabase
       .from('payroll_batches')
       .select('*')
@@ -62,6 +80,40 @@ serve(async (req) => {
       );
     }
 
+    // Get company parameters for education sector settings
+    const { data: companyParams, error: paramsError } = await supabase
+      .from('company_parameters')
+      .select('*')
+      .eq('company_id', batch.company_id)
+      .single();
+
+    if (paramsError) {
+      console.warn("Company parameters not found, using defaults:", paramsError);
+    }
+
+    const params: CompanyParameters = {
+      is_education_sector: companyParams?.is_education_sector || false,
+      magisterio_rate: companyParams?.magisterio_rate || 0,
+      poliza_vida_fija: companyParams?.poliza_vida_fija || 0,
+      ccss_obrero_education: companyParams?.ccss_obrero_education || 6.70,
+      ccss_obrero_total: companyParams?.ccss_obrero_total || 10.83,
+      renta_bracket_1_limit: companyParams?.renta_bracket_1_limit || 918000,
+      renta_bracket_1_rate: companyParams?.renta_bracket_1_rate || 0,
+      renta_bracket_2_limit: companyParams?.renta_bracket_2_limit || 1347000,
+      renta_bracket_2_rate: companyParams?.renta_bracket_2_rate || 10,
+      renta_bracket_3_limit: companyParams?.renta_bracket_3_limit || 2364000,
+      renta_bracket_3_rate: companyParams?.renta_bracket_3_rate || 15,
+      renta_bracket_4_limit: companyParams?.renta_bracket_4_limit || 4727000,
+      renta_bracket_4_rate: companyParams?.renta_bracket_4_rate || 20,
+      renta_bracket_5_rate: companyParams?.renta_bracket_5_rate || 25,
+    };
+
+    console.log('Company parameters:', { 
+      isEducation: params.is_education_sector, 
+      magisterio: params.magisterio_rate,
+      poliza: params.poliza_vida_fija 
+    });
+
     // Get all payroll lines with employee data
     const { data: lines, error: linesError } = await supabase
       .from('payroll_lines')
@@ -76,20 +128,49 @@ serve(async (req) => {
       );
     }
 
-    // Helper functions for calculations (updated 2026)
+    // Helper functions for calculations
     const calculateCCSS = (grossSalary: number) => {
-      // Total obrero CCSS 2026: 10.83%
-      // SEM: 5.50% + IVM: 4.33% + Banco Popular Obrero: 1.00% = 10.83%
-      return grossSalary * 0.1083;
+      if (params.is_education_sector) {
+        return grossSalary * (params.ccss_obrero_education / 100);
+      }
+      return grossSalary * (params.ccss_obrero_total / 100);
     };
 
-    const calculateIncomeTax = (monthlySalary: number) => {
-      // Tramos de impuesto de renta actualizados 2026
-      if (monthlySalary <= 918000) return 0; // Exento
-      if (monthlySalary <= 1347000) return (monthlySalary - 918000) * 0.10; // 10%
-      if (monthlySalary <= 2364000) return 42900 + (monthlySalary - 1347000) * 0.15; // 15%
-      if (monthlySalary <= 4727000) return 195450 + (monthlySalary - 2364000) * 0.20; // 20%
-      return 668050 + (monthlySalary - 4727000) * 0.25; // 25%
+    const calculateMagisterio = (grossSalary: number) => {
+      if (params.is_education_sector && params.magisterio_rate > 0) {
+        return grossSalary * (params.magisterio_rate / 100);
+      }
+      return 0;
+    };
+
+    const calculatePolizaVida = () => {
+      if (params.is_education_sector && params.poliza_vida_fija > 0) {
+        return params.poliza_vida_fija;
+      }
+      return 0;
+    };
+
+    const calculateIncomeTax = (salary: number) => {
+      const b1 = params.renta_bracket_1_limit;
+      const b2 = params.renta_bracket_2_limit;
+      const b3 = params.renta_bracket_3_limit;
+      const b4 = params.renta_bracket_4_limit;
+      const r2 = params.renta_bracket_2_rate / 100;
+      const r3 = params.renta_bracket_3_rate / 100;
+      const r4 = params.renta_bracket_4_rate / 100;
+      const r5 = params.renta_bracket_5_rate / 100;
+
+      if (salary <= b1) return 0;
+      if (salary <= b2) return (salary - b1) * r2;
+      
+      const tax1 = (b2 - b1) * r2;
+      if (salary <= b3) return tax1 + (salary - b2) * r3;
+      
+      const tax2 = tax1 + (b3 - b2) * r3;
+      if (salary <= b4) return tax2 + (salary - b3) * r4;
+      
+      const tax3 = tax2 + (b4 - b3) * r4;
+      return tax3 + (salary - b4) * r5;
     };
 
     // Recalculate each line
@@ -117,11 +198,20 @@ serve(async (req) => {
       const dailyRate = employee.base_salary / 30;
       grossSalary -= (absenceDays * dailyRate);
 
-      // Calculate deductions
-      const ccssDeductions = calculateCCSS(grossSalary);
+      // Calculate all deductions
+      const ccss = calculateCCSS(grossSalary);
+      const magisterio = calculateMagisterio(grossSalary);
+      const polizaVida = calculatePolizaVida();
       const incomeTax = calculateIncomeTax(grossSalary);
+      
+      // Get loan deduction from employee record
+      const loanDeduction = Number(employee.loan_monthly_deduction || 0);
+      
+      // Other additional deductions
       const additionalDeductions = line.additional_deductions || 0;
-      const totalDeductions = ccssDeductions + incomeTax + additionalDeductions;
+      
+      // Total deductions
+      const totalDeductions = ccss + magisterio + polizaVida + incomeTax + loanDeduction + additionalDeductions;
 
       // Calculate net pay
       const netPay = grossSalary - totalDeductions;
@@ -133,7 +223,19 @@ serve(async (req) => {
 
       // Calculate accruals
       const aguinaldoAccrued = grossSalary / 12;
-      const vacationAccruedDays = (line.vacation_days_taken || 0) > 0 ? 0 : 1.25; // 1.25 days per month
+      const vacationAccruedDays = (line.vacation_days_taken || 0) > 0 ? 0 : 1.25;
+
+      // Build notes with breakdown for education sector
+      let notes = '';
+      if (params.is_education_sector) {
+        const deductionDetails = [];
+        if (ccss > 0) deductionDetails.push(`CCSS: ₡${ccss.toFixed(0)}`);
+        if (magisterio > 0) deductionDetails.push(`Magisterio: ₡${magisterio.toFixed(0)}`);
+        if (polizaVida > 0) deductionDetails.push(`Póliza: ₡${polizaVida.toFixed(0)}`);
+        if (incomeTax > 0) deductionDetails.push(`ISR: ₡${incomeTax.toFixed(0)}`);
+        if (loanDeduction > 0) deductionDetails.push(`Préstamo: ₡${loanDeduction.toFixed(0)}`);
+        notes = deductionDetails.join(' | ');
+      }
 
       updatedLines.push({
         id: line.id,
@@ -143,6 +245,15 @@ serve(async (req) => {
         employer_contrib: employerContrib,
         aguinaldo_accrued: aguinaldoAccrued,
         vacation_accrued_days: vacationAccruedDays,
+        notes: notes || line.notes,
+        manual_adjustments: {
+          ...(line.manual_adjustments || {}),
+          magisterio: magisterio,
+          poliza_vida: polizaVida,
+          ccss: ccss,
+          income_tax: incomeTax,
+          loan_deduction: loanDeduction
+        }
       });
     }
 
@@ -163,7 +274,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        lines_updated: updatedLines.length 
+        lines_updated: updatedLines.length,
+        is_education_sector: params.is_education_sector
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

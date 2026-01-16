@@ -99,6 +99,7 @@ export type Database = {
           aguinaldo_rate: number
           banco_popular_obrero: number
           banco_popular_patronal: number
+          ccss_obrero_education: number
           ccss_obrero_ivm: number
           ccss_obrero_sem: number
           ccss_obrero_total: number
@@ -113,6 +114,9 @@ export type Database = {
           imas_rate: number
           ina_rate: number
           ins_riesgos_trabajo: number
+          is_education_sector: boolean
+          magisterio_rate: number
+          poliza_vida_fija: number
           renta_bracket_1_limit: number
           renta_bracket_1_rate: number
           renta_bracket_2_limit: number
@@ -136,6 +140,7 @@ export type Database = {
           aguinaldo_rate?: number
           banco_popular_obrero?: number
           banco_popular_patronal?: number
+          ccss_obrero_education?: number
           ccss_obrero_ivm?: number
           ccss_obrero_sem?: number
           ccss_obrero_total?: number
@@ -150,6 +155,9 @@ export type Database = {
           imas_rate?: number
           ina_rate?: number
           ins_riesgos_trabajo?: number
+          is_education_sector?: boolean
+          magisterio_rate?: number
+          poliza_vida_fija?: number
           renta_bracket_1_limit?: number
           renta_bracket_1_rate?: number
           renta_bracket_2_limit?: number
@@ -173,6 +181,7 @@ export type Database = {
           aguinaldo_rate?: number
           banco_popular_obrero?: number
           banco_popular_patronal?: number
+          ccss_obrero_education?: number
           ccss_obrero_ivm?: number
           ccss_obrero_sem?: number
           ccss_obrero_total?: number
@@ -187,6 +196,9 @@ export type Database = {
           imas_rate?: number
           ina_rate?: number
           ins_riesgos_trabajo?: number
+          is_education_sector?: boolean
+          magisterio_rate?: number
+          poliza_vida_fija?: number
           renta_bracket_1_limit?: number
           renta_bracket_1_rate?: number
           renta_bracket_2_limit?: number
@@ -403,6 +415,76 @@ export type Database = {
           },
         ]
       }
+      employee_loans: {
+        Row: {
+          company_id: string
+          created_at: string
+          employee_id: string
+          end_date: string | null
+          id: string
+          loan_type: string
+          monthly_deduction: number
+          notes: string | null
+          original_amount: number
+          remaining_balance: number
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          employee_id: string
+          end_date?: string | null
+          id?: string
+          loan_type?: string
+          monthly_deduction?: number
+          notes?: string | null
+          original_amount?: number
+          remaining_balance?: number
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          employee_id?: string
+          end_date?: string | null
+          id?: string
+          loan_type?: string
+          monthly_deduction?: number
+          notes?: string | null
+          original_amount?: number
+          remaining_balance?: number
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_loans_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_loans_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employee_safe_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_loans_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_vacations: {
         Row: {
           accrual_start_date: string | null
@@ -490,6 +572,8 @@ export type Database = {
           hire_date: string | null
           hourly_rate: number | null
           id: string
+          loan_amount: number | null
+          loan_monthly_deduction: number | null
           status: Database["public"]["Enums"]["employee_status"]
           updated_at: string
           user_id: string | null
@@ -509,6 +593,8 @@ export type Database = {
           hire_date?: string | null
           hourly_rate?: number | null
           id?: string
+          loan_amount?: number | null
+          loan_monthly_deduction?: number | null
           status?: Database["public"]["Enums"]["employee_status"]
           updated_at?: string
           user_id?: string | null
@@ -528,6 +614,8 @@ export type Database = {
           hire_date?: string | null
           hourly_rate?: number | null
           id?: string
+          loan_amount?: number | null
+          loan_monthly_deduction?: number | null
           status?: Database["public"]["Enums"]["employee_status"]
           updated_at?: string
           user_id?: string | null
