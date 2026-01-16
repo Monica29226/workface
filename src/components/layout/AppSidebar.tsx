@@ -97,6 +97,12 @@ const navigationItems: NavigationItem[] = [
     group: 'reports'
   },
   { 
+    title: 'Desglose Planilla', 
+    url: '/reports/payroll-breakdown', 
+    icon: Receipt,
+    group: 'reports'
+  },
+  { 
     title: 'Aprobar Vacaciones', 
     url: '/vacation-approval', 
     icon: UserCheck,
