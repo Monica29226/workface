@@ -1,140 +1,175 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* ACL Corporate Design System - AUREON Payroll
+   All colors MUST be HSL for proper Tailwind integration.
+   
+   Color Palette:
+   - Primary (ACL Blue): #0F2A44 → 210 66% 16%
+   - Secondary (Graphite): #2E2E2E → 0 0% 18%
+   - Accent (Gold): #C9A24D → 42 53% 55%
+   - Background: #F6F8FA → 210 25% 97%
+   - Text: #1F2933 → 207 27% 16%
+   - Success: #1F7A5F → 163 59% 30%
+   - Destructive: #B5473A → 7 51% 47%
 */
 
 @layer base {
   :root {
-    /* ACL Payroll CR - Professional Corporate Palette */
-    /* Clean, modern, and professional color scheme */
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    /* === ACL CORPORATE PALETTE === */
+    
+    /* Background - Light Gray (never pure white) */
+    --background: 210 25% 97%;
+    --foreground: 207 27% 16%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    /* Cards - Subtle off-white */
+    --card: 210 20% 99%;
+    --card-foreground: 207 27% 16%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    /* Popovers */
+    --popover: 210 20% 99%;
+    --popover-foreground: 207 27% 16%;
 
-    /* Primary - Corporate Navy Blue (#1e3a8a) */
-    --primary: 222 89% 33%;
+    /* Primary - ACL Corporate Blue (#0F2A44) */
+    --primary: 210 66% 16%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Bright Blue (#3b82f6) */
-    --secondary: 217 91% 60%;
+    /* Secondary - Graphite Gray (#2E2E2E) */
+    --secondary: 0 0% 18%;
     --secondary-foreground: 0 0% 100%;
 
     /* Muted backgrounds */
-    --muted: 214 32% 91%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 210 20% 93%;
+    --muted-foreground: 207 20% 46%;
 
-    /* Accent - Light Blue */
-    --accent: 210 40% 96%;
-    --accent-foreground: 214 84% 56%;
+    /* Accent - ACL Gold (#C9A24D) */
+    --accent: 42 53% 55%;
+    --accent-foreground: 207 27% 16%;
 
-    --destructive: 0 84% 60%;
+    /* Destructive - Sober Red (#B5473A) */
+    --destructive: 7 51% 47%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 214 84% 56%;
+    /* Borders and inputs */
+    --border: 210 20% 88%;
+    --input: 210 20% 93%;
+    --ring: 210 66% 16%;
 
     --radius: 0.5rem;
 
-    /* Custom design tokens for ACL Payroll CR */
-    --navy: 217 33% 17%;
-    --navy-light: 217 33% 25%;
-    --slate: 215 16% 47%;
-    --slate-light: 220 9% 60%;
-    --blue-50: 214 100% 97%;
-    --blue-100: 214 95% 93%;
-    --blue-500: 214 84% 56%;
+    /* === ACL CUSTOM DESIGN TOKENS === */
     
-    /* Success, Warning, Info colors */
-    --success: 142 76% 36%;
+    /* Navy variants */
+    --navy: 210 66% 16%;
+    --navy-light: 210 50% 25%;
+    --navy-dark: 210 70% 12%;
+    
+    /* Gold accent */
+    --gold: 42 53% 55%;
+    --gold-light: 42 53% 65%;
+    --gold-dark: 42 53% 45%;
+    
+    /* Graphite */
+    --graphite: 0 0% 18%;
+    --graphite-light: 0 0% 28%;
+    
+    /* Success - Professional Green (#1F7A5F) */
+    --success: 163 59% 30%;
+    --success-foreground: 0 0% 100%;
+    
+    /* Warning - Amber */
     --warning: 38 92% 50%;
+    --warning-foreground: 207 27% 16%;
+    
+    /* Info */
     --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
     
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(214 84% 56%), hsl(214 100% 70%));
-    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 100%), hsl(214 32% 97%));
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(214 32% 98%));
+    /* === GRADIENTS === */
+    --gradient-primary: linear-gradient(135deg, hsl(210 66% 16%), hsl(210 50% 25%));
+    --gradient-gold: linear-gradient(135deg, hsl(42 53% 55%), hsl(42 53% 65%));
+    --gradient-subtle: linear-gradient(180deg, hsl(210 20% 99%), hsl(210 25% 97%));
+    --gradient-card: linear-gradient(145deg, hsl(210 20% 99%), hsl(210 20% 97%));
     
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(222 47% 11% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(222 47% 11% / 0.1);
-    --shadow-lg: 0 10px 15px -3px hsl(222 47% 11% / 0.1);
-    --shadow-xl: 0 20px 25px -5px hsl(222 47% 11% / 0.1);
+    /* === SHADOWS === */
+    --shadow-sm: 0 1px 2px 0 hsl(207 27% 16% / 0.04);
+    --shadow-md: 0 4px 6px -1px hsl(207 27% 16% / 0.08);
+    --shadow-lg: 0 10px 15px -3px hsl(207 27% 16% / 0.1);
+    --shadow-xl: 0 20px 25px -5px hsl(207 27% 16% / 0.12);
+    --shadow-gold: 0 4px 14px -2px hsl(42 53% 55% / 0.25);
     
-    /* Animations */
+    /* === TRANSITIONS === */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 
-    --sidebar-background: 0 0% 98%;
+    /* === SIDEBAR (ACL Blue) === */
+    --sidebar-background: 210 66% 16%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 42 53% 55%;
+    --sidebar-primary-foreground: 207 27% 16%;
+    --sidebar-accent: 210 50% 22%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 50% 22%;
+    --sidebar-ring: 42 53% 55%;
+    --sidebar-muted: 210 40% 30%;
+    --sidebar-muted-foreground: 210 20% 70%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Chart colors */
+    --chart-1: 210 66% 16%;
+    --chart-2: 42 53% 55%;
+    --chart-3: 163 59% 30%;
+    --chart-4: 0 0% 18%;
+    --chart-5: 7 51% 47%;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
+    /* Dark mode - ACL Navy based */
+    --background: 210 66% 10%;
+    --foreground: 210 20% 93%;
 
-    --card: 217 33% 17%;
-    --card-foreground: 210 40% 98%;
+    --card: 210 50% 14%;
+    --card-foreground: 210 20% 93%;
 
-    --popover: 217 33% 17%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 210 50% 14%;
+    --popover-foreground: 210 20% 93%;
 
-    --primary: 214 84% 56%;
-    --primary-foreground: 0 0% 100%;
+    --primary: 42 53% 55%;
+    --primary-foreground: 207 27% 16%;
 
-    --secondary: 217 33% 25%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 210 40% 25%;
+    --secondary-foreground: 210 20% 93%;
 
-    --muted: 215 28% 17%;
-    --muted-foreground: 217 10% 64%;
+    --muted: 210 40% 20%;
+    --muted-foreground: 210 20% 60%;
 
-    --accent: 217 33% 22%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 210 50% 22%;
+    --accent-foreground: 210 20% 93%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 7 51% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 215 28% 22%;
-    --input: 215 28% 22%;
-    --ring: 214 84% 56%;
+    --border: 210 40% 22%;
+    --input: 210 40% 22%;
+    --ring: 42 53% 55%;
 
     /* Dark mode custom tokens */
-    --navy: 217 33% 17%;
-    --navy-light: 217 33% 25%;
-    --slate: 217 10% 64%;
-    --slate-light: 220 9% 70%;
-    --blue-50: 217 33% 22%;
-    --blue-100: 215 28% 25%;
-    --blue-500: 214 84% 56%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --navy: 210 66% 16%;
+    --navy-light: 210 50% 25%;
+    --gold: 42 53% 60%;
+    --gold-light: 42 53% 70%;
+    --success: 163 59% 40%;
+    
+    --sidebar-background: 210 70% 8%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 42 53% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 210 50% 18%;
+    --sidebar-accent-foreground: 210 20% 93%;
+    --sidebar-border: 210 50% 18%;
+    --sidebar-ring: 42 53% 55%;
   }
 }
 
@@ -143,21 +178,43 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    font-feature-settings: "tnum" on, "lnum" on;
+  }
+
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
   
-  /* Custom scrollbar */
+  /* Typography hierarchy */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  
+  /* Tabular numbers for amounts */
+  .font-mono, 
+  [class*="currency"],
+  [class*="amount"],
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+  
+  /* Custom scrollbar - ACL styled */
   ::-webkit-scrollbar {
     width: 8px;
+    height: 8px;
   }
   
   ::-webkit-scrollbar-track {
-    @apply bg-muted;
+    @apply bg-muted rounded-full;
   }
   
   ::-webkit-scrollbar-thumb {
     @apply bg-border rounded-full;
+    border: 2px solid transparent;
+    background-clip: padding-box;
   }
   
   ::-webkit-scrollbar-thumb:hover {
@@ -166,12 +223,13 @@ All colors MUST be HSL.
 }
 
 @layer components {
-  /* Custom component styles */
+  /* === ACL CARD STYLES === */
   .card-elevated {
     background: var(--gradient-card);
     box-shadow: var(--shadow-md);
     transition: var(--transition-smooth);
-    border: 1px solid hsl(214 32% 91%);
+    border: 1px solid hsl(var(--border));
+    border-radius: var(--radius);
   }
   
   .card-elevated:hover {
@@ -179,18 +237,177 @@ All colors MUST be HSL.
     transform: translateY(-2px);
   }
   
+  .card-kpi {
+    @apply bg-card border border-border rounded-lg p-6;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .card-kpi-gold {
+    @apply bg-card border border-border rounded-lg p-6 relative overflow-hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .card-kpi-gold::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--gradient-gold);
+  }
+  
+  /* === GRADIENTS === */
   .gradient-primary {
     background: var(--gradient-primary);
+  }
+  
+  .gradient-gold {
+    background: var(--gradient-gold);
   }
   
   .gradient-subtle {
     background: var(--gradient-subtle);
   }
   
+  .gradient-navy {
+    background: linear-gradient(135deg, hsl(var(--navy)), hsl(var(--navy-light)));
+  }
+  
+  /* === TEXT STYLES === */
   .text-gradient {
     background: var(--gradient-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+  }
+  
+  .text-gold {
+    color: hsl(var(--gold));
+  }
+  
+  .text-navy {
+    color: hsl(var(--navy));
+  }
+  
+  /* === KPI TYPOGRAPHY === */
+  .kpi-value {
+    @apply text-2xl md:text-3xl font-bold tracking-tight;
+    color: hsl(var(--gold));
+  }
+  
+  .kpi-label {
+    @apply text-xs md:text-sm font-medium uppercase tracking-wide;
+    color: hsl(var(--muted-foreground));
+  }
+  
+  .subtotal-value {
+    @apply text-lg md:text-xl font-semibold;
+  }
+  
+  /* === SIDEBAR STYLES === */
+  .sidebar-acl {
+    background: hsl(var(--sidebar-background));
+    color: hsl(var(--sidebar-foreground));
+  }
+  
+  .sidebar-item-active {
+    @apply bg-sidebar-accent text-sidebar-accent-foreground font-medium;
+  }
+  
+  /* === BUTTON VARIANTS === */
+  .btn-gold {
+    @apply font-medium px-4 py-2 rounded-md transition-all;
+    background: hsl(var(--gold));
+    color: hsl(var(--navy));
+  }
+  
+  .btn-gold:hover {
+    background: hsl(var(--gold-dark));
+    box-shadow: var(--shadow-gold);
+  }
+  
+  .btn-outline-navy {
+    @apply font-medium px-4 py-2 rounded-md transition-all border-2;
+    border-color: hsl(var(--navy));
+    color: hsl(var(--navy));
+    background: transparent;
+  }
+  
+  .btn-outline-navy:hover {
+    background: hsl(var(--navy));
+    color: white;
+  }
+  
+  /* === STATUS BADGES === */
+  .badge-success {
+    @apply px-2.5 py-0.5 rounded-full text-xs font-medium;
+    background: hsl(var(--success) / 0.1);
+    color: hsl(var(--success));
+  }
+  
+  .badge-destructive {
+    @apply px-2.5 py-0.5 rounded-full text-xs font-medium;
+    background: hsl(var(--destructive) / 0.1);
+    color: hsl(var(--destructive));
+  }
+  
+  .badge-warning {
+    @apply px-2.5 py-0.5 rounded-full text-xs font-medium;
+    background: hsl(var(--warning) / 0.1);
+    color: hsl(var(--warning));
+  }
+  
+  .badge-gold {
+    @apply px-2.5 py-0.5 rounded-full text-xs font-medium;
+    background: hsl(var(--gold) / 0.15);
+    color: hsl(var(--gold-dark));
+  }
+  
+  /* === TABLE STYLES === */
+  .table-professional {
+    @apply w-full;
+  }
+  
+  .table-professional th {
+    @apply text-left text-xs font-semibold uppercase tracking-wider py-3 px-4;
+    color: hsl(var(--muted-foreground));
+    background: hsl(var(--muted) / 0.5);
+  }
+  
+  .table-professional td {
+    @apply py-3 px-4 border-b;
+    border-color: hsl(var(--border));
+  }
+  
+  /* === DOCUMENT STYLES (PDF/PAYSLIP) === */
+  .document-header {
+    background: hsl(var(--navy));
+    color: white;
+    @apply p-6 rounded-t-lg;
+  }
+  
+  .document-total {
+    color: hsl(var(--gold));
+    @apply font-bold;
+  }
+  
+  /* === ANIMATIONS === */
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+  
+  @keyframes pulse-gold {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(42 53% 55% / 0.4); }
+    50% { box-shadow: 0 0 0 8px hsl(42 53% 55% / 0); }
+  }
+  
+  .animate-pulse-gold {
+    animation: pulse-gold 2s infinite;
   }
 }
