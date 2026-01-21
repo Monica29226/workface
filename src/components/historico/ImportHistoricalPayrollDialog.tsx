@@ -210,6 +210,7 @@ export function ImportHistoricalPayrollDialog({
   const [parsedData, setParsedData] = useState<ImportPayrollRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const [employeeMap, setEmployeeMap] = useState<Map<string, { id: string; full_name: string }>>(new Map());
   const [importResults, setImportResults] = useState<{ success: number; failed: number; errors: string[] }>({
     success: 0,
@@ -221,10 +222,40 @@ export function ImportHistoricalPayrollDialog({
     setStep('upload');
     setParsedData([]);
     setProgress(0);
+    setIsDragging(false);
     setEmployeeMap(new Map());
     setImportResults({ success: 0, failed: 0, errors: [] });
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      const file = files[0];
+      await processFile(file);
     }
   };
 
@@ -288,10 +319,7 @@ export function ImportHistoricalPayrollDialog({
     return map;
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFile = async (file: File) => {
     const fileExt = file.name.split('.').pop()?.toLowerCase();
     if (!['xlsx', 'xls', 'csv'].includes(fileExt || '')) {
       toast({
@@ -377,6 +405,12 @@ export function ImportHistoricalPayrollDialog({
         variant: "destructive",
       });
     }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processFile(file);
   };
 
   const handleImport = async () => {
@@ -555,11 +589,21 @@ export function ImportHistoricalPayrollDialog({
         {step === 'upload' && (
           <div className="space-y-6">
             <div 
-              className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-12 text-center hover:border-primary/50 transition-colors cursor-pointer"
+              className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors cursor-pointer ${
+                isDragging 
+                  ? 'border-primary bg-primary/5' 
+                  : 'border-muted-foreground/25 hover:border-primary/50'
+              }`}
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
-              <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-lg font-medium mb-2">Arrastra un archivo aquí o haz clic para seleccionar</p>
+              <Upload className={`h-12 w-12 mx-auto mb-4 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+              <p className="text-lg font-medium mb-2">
+                {isDragging ? 'Suelta el archivo aquí' : 'Arrastra un archivo aquí o haz clic para seleccionar'}
+              </p>
               <p className="text-sm text-muted-foreground">
                 Formatos soportados: .xlsx, .xls, .csv
               </p>
