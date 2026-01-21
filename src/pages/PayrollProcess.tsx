@@ -231,8 +231,61 @@ export function PayrollProcess() {
     }
   };
 
+  const validatePayrollLines = (): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    const tolerance = 0.01; // Allow for small floating point differences
+
+    payrollLines.forEach((line) => {
+      const grossSalary = Number(line.gross_salary) || 0;
+      const deductions = Number(line.deductions) || 0;
+      const netPay = Number(line.net_pay) || 0;
+      
+      const expectedNetPay = grossSalary - deductions;
+      const difference = Math.abs(netPay - expectedNetPay);
+      
+      if (difference > tolerance) {
+        errors.push(
+          `${line.employee.full_name} (${line.employee.employee_id}): ` +
+          `Neto esperado ₡${expectedNetPay.toLocaleString('es-CR', { minimumFractionDigits: 2 })} ` +
+          `pero tiene ₡${netPay.toLocaleString('es-CR', { minimumFractionDigits: 2 })} ` +
+          `(diferencia: ₡${difference.toLocaleString('es-CR', { minimumFractionDigits: 2 })})`
+        );
+      }
+    });
+
+    return { isValid: errors.length === 0, errors };
+  };
+
   const handleApprove = async () => {
     if (!selectedBatch) return;
+
+    // Validate all payroll lines before approving
+    const { isValid, errors } = validatePayrollLines();
+    
+    if (!isValid) {
+      toast({
+        title: "Validación fallida",
+        description: (
+          <div className="space-y-2">
+            <p className="font-medium">Se encontraron errores en el cálculo:</p>
+            <ul className="list-disc list-inside text-sm max-h-40 overflow-y-auto">
+              {errors.slice(0, 5).map((error, i) => (
+                <li key={i}>{error}</li>
+              ))}
+              {errors.length > 5 && (
+                <li className="text-muted-foreground">...y {errors.length - 5} errores más</li>
+              )}
+            </ul>
+            <p className="text-sm text-muted-foreground mt-2">
+              Por favor recalcula la planilla antes de aprobar.
+            </p>
+          </div>
+        ),
+        variant: "destructive",
+        duration: 10000, // Show for 10 seconds due to important info
+      });
+      return;
+    }
 
     setIsProcessing(true);
     try {
@@ -244,8 +297,8 @@ export function PayrollProcess() {
       if (error) throw error;
 
       toast({
-        title: "Planilla aprobada",
-        description: "La planilla ha sido aprobada correctamente",
+        title: "✓ Planilla aprobada",
+        description: `Validación exitosa: ${payrollLines.length} líneas verificadas correctamente`,
       });
 
       fetchBatches();
