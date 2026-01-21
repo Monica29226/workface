@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,12 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Upload, Download, FileSpreadsheet, FileText, Search, Filter, Calendar, DollarSign, Mail } from "lucide-react";
+import { Upload, Download, FileText, Search, Filter, Calendar, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber } from "@/lib/utils";
+import { ImportHistoricalPayrollDialog } from "@/components/historico/ImportHistoricalPayrollDialog";
 
 interface HistoricalPayroll {
   id?: string;
@@ -189,13 +189,6 @@ export function Historico() {
     return Array.from(centrosSet);
   }, [filteredData]);
 
-  const handleImportCSV = async (file: File) => {
-    // Implementation for CSV import would go here
-    toast({
-      title: "Importación",
-      description: "Funcionalidad de importación CSV pendiente de implementación",
-    });
-  };
 
   const handleRecalculate = async () => {
     // Implementation for recalculating from approved periods would go here
@@ -291,41 +284,17 @@ export function Historico() {
             <Calendar className="h-4 w-4 mr-2" />
             Recalcular
           </Button>
-          <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <Upload className="h-4 w-4 mr-2" />
-                Importar
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Importar Datos Históricos</DialogTitle>
-                <DialogDescription>
-                  Sube un archivo CSV o XLSX con los datos históricos de payroll
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="file">Archivo CSV/XLSX</Label>
-                  <Input
-                    id="file"
-                    type="file"
-                    accept=".csv,.xlsx,.xls"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleImportCSV(file);
-                    }}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowImportDialog(false)}>
-                  Cancelar
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Importar
+          </Button>
+          <ImportHistoricalPayrollDialog
+            open={showImportDialog}
+            onOpenChange={setShowImportDialog}
+            companyId={selectedCompany?.id || ''}
+            companyName={selectedCompany?.name || ''}
+            onImportComplete={loadHistoricalData}
+          />
           <Button onClick={handleExportExcel}>
             <Download className="h-4 w-4 mr-2" />
             Exportar Excel
