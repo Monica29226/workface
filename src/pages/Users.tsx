@@ -16,10 +16,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, UserPlus, Trash2, Edit, ChevronRight, ChevronLeft, Loader2, Mail, RefreshCw, X, Send } from "lucide-react";
+import { Search, UserPlus, Trash2, Edit, ChevronRight, ChevronLeft, Loader2, Mail, RefreshCw, X, Send, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
+import { EmailPreviewDialog } from "@/components/users/EmailPreviewDialog";
 
 interface User {
   id: string;
@@ -104,6 +105,16 @@ export function Users() {
   const [inviteCompanyId, setInviteCompanyId] = useState("");
   const [isSendingInvite, setIsSendingInvite] = useState(false);
   const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
+  
+  // Email preview states
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [emailPreviewType, setEmailPreviewType] = useState<'invitation' | 'credentials'>('invitation');
+  const [emailPreviewData, setEmailPreviewData] = useState<{
+    email: string;
+    name?: string;
+    role?: string;
+    companyName?: string;
+  }>({ email: '' });
   
   // Form data
   const [formData, setFormData] = useState<UserFormData>({
@@ -240,6 +251,29 @@ export function Users() {
     } catch (error) {
       console.error('Error fetching invitations:', error);
     }
+  };
+
+  const handleShowInvitationPreview = () => {
+    if (!inviteEmail) {
+      toast({
+        title: "Error",
+        description: "El correo electrónico es requerido",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const companyName = inviteCompanyId 
+      ? companies.find(c => c.id === inviteCompanyId)?.name 
+      : undefined;
+
+    setEmailPreviewType('invitation');
+    setEmailPreviewData({
+      email: inviteEmail,
+      role: inviteRole,
+      companyName,
+    });
+    setShowEmailPreview(true);
   };
 
   const handleSendInvitation = async () => {
@@ -1120,16 +1154,36 @@ export function Users() {
                 <Button variant="outline" onClick={() => setDialogStep(2)} disabled={isSaving}>
                   <ChevronLeft className="h-4 w-4 mr-2" /> Anterior
                 </Button>
-                <Button onClick={handleSaveUser} disabled={isSaving}>
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      {editingUser ? 'Actualizando...' : 'Creando usuario...'}
-                    </>
-                  ) : (
-                    editingUser ? 'Actualizar Usuario' : 'Crear Usuario'
+                <div className="flex gap-2">
+                  {!editingUser && (
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setEmailPreviewType('credentials');
+                        setEmailPreviewData({
+                          email: formData.email,
+                          name: formData.full_name,
+                        });
+                        setShowEmailPreview(true);
+                      }}
+                      disabled={isSaving}
+                      className="gap-2"
+                    >
+                      <Eye className="h-4 w-4" />
+                      Vista Previa Correo
+                    </Button>
                   )}
-                </Button>
+                  <Button onClick={handleSaveUser} disabled={isSaving}>
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        {editingUser ? 'Actualizando...' : 'Creando usuario...'}
+                      </>
+                    ) : (
+                      editingUser ? 'Actualizar Usuario' : 'Crear Usuario'
+                    )}
+                  </Button>
+                </div>
               </div>
             </TabsContent>
           </Tabs>
@@ -1184,8 +1238,12 @@ export function Users() {
               </Select>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" onClick={handleShowInvitationPreview} className="gap-2">
+              <Eye className="h-4 w-4" />
+              Vista Previa
+            </Button>
             <Button onClick={handleSendInvitation} disabled={isSendingInvite}>
               {isSendingInvite ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Enviando...</> : <>
                 <Mail className="h-4 w-4 mr-2" />Enviar Invitación
@@ -1194,6 +1252,24 @@ export function Users() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Email Preview Dialog */}
+      <EmailPreviewDialog
+        isOpen={showEmailPreview}
+        onClose={() => setShowEmailPreview(false)}
+        onConfirmSend={() => {
+          setShowEmailPreview(false);
+          if (emailPreviewType === 'invitation') {
+            handleSendInvitation();
+          }
+        }}
+        isSending={isSendingInvite}
+        emailType={emailPreviewType}
+        recipientEmail={emailPreviewData.email}
+        recipientName={emailPreviewData.name}
+        role={emailPreviewData.role}
+        companyName={emailPreviewData.companyName}
+      />
     </div>
   );
 }
