@@ -772,6 +772,7 @@ export function PayrollProcess() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-10">✓</TableHead>
                           <TableHead>Empleado</TableHead>
                           <TableHead className="text-right">Horas</TableHead>
                           <TableHead className="text-right">Ausencias/Vac</TableHead>
@@ -782,8 +783,15 @@ export function PayrollProcess() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {payrollLines.map((line) => (
-                          currentBatch?.status === 'calculado' ? (
+                        {payrollLines.map((line) => {
+                          // Validate: NET = GROSS - DEDUCTIONS
+                          const grossSalary = Number(line.gross_salary) || 0;
+                          const deductions = Number(line.deductions) || 0;
+                          const netPay = Number(line.net_pay) || 0;
+                          const expectedNetPay = grossSalary - deductions;
+                          const isValid = Math.abs(netPay - expectedNetPay) < 0.01;
+
+                          return currentBatch?.status === 'calculado' ? (
                             <EditablePayrollRow
                               key={line.id}
                               line={line}
@@ -791,9 +799,24 @@ export function PayrollProcess() {
                               onStartEdit={() => setEditingLineId(line.id)}
                               onSave={handleUpdateLine}
                               onCancel={() => setEditingLineId(null)}
+                              isValid={isValid}
                             />
                           ) : (
-                            <TableRow key={line.id}>
+                            <TableRow key={line.id} className={!isValid ? 'bg-destructive/5' : ''}>
+                              <TableCell>
+                                {isValid ? (
+                                  <CheckCircle className="h-4 w-4 text-green-600" />
+                                ) : (
+                                  <div className="relative group">
+                                    <AlertCircle className="h-4 w-4 text-destructive cursor-help" />
+                                    <div className="absolute left-6 top-0 z-50 hidden group-hover:block bg-popover text-popover-foreground text-xs p-2 rounded shadow-lg border w-48">
+                                      <p className="font-semibold text-destructive">Error de cálculo</p>
+                                      <p>Esperado: {formatCurrency(expectedNetPay, line.currency)}</p>
+                                      <p>Actual: {formatCurrency(netPay, line.currency)}</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </TableCell>
                               <TableCell>
                                 <div>
                                   <div className="font-medium">{line.employee.full_name}</div>
@@ -813,18 +836,18 @@ export function PayrollProcess() {
                               <TableCell className="text-right font-mono">
                                 {formatCurrency(Number(line.gross_salary), line.currency)}
                               </TableCell>
-                              <TableCell className="text-right font-mono text-orange-600">
+                              <TableCell className="text-right font-mono text-destructive">
                                 {formatCurrency(Number(line.deductions), line.currency)}
                               </TableCell>
                               <TableCell className="text-right font-mono font-semibold text-green-600">
                                 {formatCurrency(Number(line.net_pay), line.currency)}
                               </TableCell>
-                              <TableCell className="text-right font-mono text-blue-600">
+                              <TableCell className="text-right font-mono text-primary">
                                 {formatCurrency(Number(line.employer_contrib), line.currency)}
                               </TableCell>
                             </TableRow>
-                          )
-                        ))}
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </div>

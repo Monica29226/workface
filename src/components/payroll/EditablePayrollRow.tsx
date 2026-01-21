@@ -2,7 +2,7 @@ import { useState } from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Save, X } from "lucide-react";
+import { Save, X, CheckCircle, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface EditablePayrollRowProps {
@@ -11,6 +11,7 @@ interface EditablePayrollRowProps {
   onStartEdit: () => void;
   onSave: (lineId: string, updates: any) => Promise<void>;
   onCancel: () => void;
+  isValid?: boolean;
 }
 
 export function EditablePayrollRow({ 
@@ -18,7 +19,8 @@ export function EditablePayrollRow({
   isEditing, 
   onStartEdit, 
   onSave, 
-  onCancel 
+  onCancel,
+  isValid = true
 }: EditablePayrollRowProps) {
   const [regularHours, setRegularHours] = useState(line.regular_hours || 0);
   const [overtimeHours, setOvertimeHours] = useState(line.overtime_hours || 0);
@@ -28,6 +30,12 @@ export function EditablePayrollRow({
   const [additionalBonuses, setAdditionalBonuses] = useState(line.additional_bonuses || 0);
   const [additionalDeductions, setAdditionalDeductions] = useState(line.additional_deductions || 0);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Calculate expected net for tooltip
+  const grossSalary = Number(line.gross_salary) || 0;
+  const deductions = Number(line.deductions) || 0;
+  const netPay = Number(line.net_pay) || 0;
+  const expectedNetPay = grossSalary - deductions;
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -49,9 +57,23 @@ export function EditablePayrollRow({
   if (!isEditing) {
     return (
       <TableRow 
-        className="cursor-pointer hover:bg-muted/50"
+        className={`cursor-pointer hover:bg-muted/50 ${!isValid ? 'bg-destructive/5' : ''}`}
         onClick={onStartEdit}
       >
+        <TableCell>
+          {isValid ? (
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          ) : (
+            <div className="relative group">
+              <AlertCircle className="h-4 w-4 text-destructive cursor-help" />
+              <div className="absolute left-6 top-0 z-50 hidden group-hover:block bg-popover text-popover-foreground text-xs p-2 rounded shadow-lg border w-48">
+                <p className="font-semibold text-destructive">Error de cálculo</p>
+                <p>Esperado: {formatCurrency(expectedNetPay, line.currency)}</p>
+                <p>Actual: {formatCurrency(netPay, line.currency)}</p>
+              </div>
+            </div>
+          )}
+        </TableCell>
         <TableCell>
           <div>
             <div className="font-medium">{line.employee.full_name}</div>
@@ -72,13 +94,13 @@ export function EditablePayrollRow({
         <TableCell className="text-right font-mono">
           {formatCurrency(Number(line.gross_salary), line.currency)}
         </TableCell>
-        <TableCell className="text-right font-mono text-orange-600">
+        <TableCell className="text-right font-mono text-destructive">
           {formatCurrency(Number(line.deductions), line.currency)}
         </TableCell>
         <TableCell className="text-right font-mono font-semibold text-green-600">
           {formatCurrency(Number(line.net_pay), line.currency)}
         </TableCell>
-        <TableCell className="text-right font-mono text-blue-600">
+        <TableCell className="text-right font-mono text-primary">
           {formatCurrency(Number(line.employer_contrib), line.currency)}
         </TableCell>
       </TableRow>
@@ -86,7 +108,14 @@ export function EditablePayrollRow({
   }
 
   return (
-    <TableRow className="bg-blue-50">
+    <TableRow className="bg-accent/50">
+      <TableCell>
+        {isValid ? (
+          <CheckCircle className="h-4 w-4 text-green-600" />
+        ) : (
+          <AlertCircle className="h-4 w-4 text-destructive" />
+        )}
+      </TableCell>
       <TableCell>
         <div>
           <div className="font-medium">{line.employee.full_name}</div>
@@ -163,7 +192,7 @@ export function EditablePayrollRow({
           />
         </div>
       </TableCell>
-      <TableCell className="text-right font-mono text-orange-600">
+      <TableCell className="text-right font-mono text-destructive">
         {formatCurrency(Number(line.deductions), line.currency)}
       </TableCell>
       <TableCell className="text-right font-mono font-semibold text-green-600">
