@@ -766,6 +766,7 @@ export type Database = {
           created_at: string
           currency: Database["public"]["Enums"]["currency_type"]
           deductions: number | null
+          deductions_detail: Json | null
           employee_id: string
           employer_contrib: number | null
           exchange_rate_to_base: number | null
@@ -780,6 +781,7 @@ export type Database = {
           project_hours_amount: number | null
           regular_hours: number | null
           sick_leave_days: number | null
+          total_to_pay: number | null
           updated_at: string
           vacation_accrued_days: number | null
           vacation_days_taken: number | null
@@ -795,6 +797,7 @@ export type Database = {
           created_at?: string
           currency?: Database["public"]["Enums"]["currency_type"]
           deductions?: number | null
+          deductions_detail?: Json | null
           employee_id: string
           employer_contrib?: number | null
           exchange_rate_to_base?: number | null
@@ -809,6 +812,7 @@ export type Database = {
           project_hours_amount?: number | null
           regular_hours?: number | null
           sick_leave_days?: number | null
+          total_to_pay?: number | null
           updated_at?: string
           vacation_accrued_days?: number | null
           vacation_days_taken?: number | null
@@ -824,6 +828,7 @@ export type Database = {
           created_at?: string
           currency?: Database["public"]["Enums"]["currency_type"]
           deductions?: number | null
+          deductions_detail?: Json | null
           employee_id?: string
           employer_contrib?: number | null
           exchange_rate_to_base?: number | null
@@ -838,6 +843,7 @@ export type Database = {
           project_hours_amount?: number | null
           regular_hours?: number | null
           sick_leave_days?: number | null
+          total_to_pay?: number | null
           updated_at?: string
           vacation_accrued_days?: number | null
           vacation_days_taken?: number | null

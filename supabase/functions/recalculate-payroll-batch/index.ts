@@ -1,4 +1,5 @@
-// Updated: Support for education sector (Magisterio + Poliza de Vida)
+// AUREON Payroll Recalculation - Multi-company with per-company deduction rules
+// IMPORTANT: All deductions are calculated from company_parameters using company_id
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
@@ -17,6 +18,12 @@ interface CompanyParameters {
   poliza_vida_fija: number;
   ccss_obrero_education: number;
   ccss_obrero_total: number;
+  ccss_patronal_total: number;
+  ina_rate: number;
+  imas_rate: number;
+  fodesaf_rate: number;
+  banco_popular_patronal: number;
+  ins_riesgos_trabajo: number;
   renta_bracket_1_limit: number;
   renta_bracket_1_rate: number;
   renta_bracket_2_limit: number;
@@ -26,6 +33,19 @@ interface CompanyParameters {
   renta_bracket_4_limit: number;
   renta_bracket_4_rate: number;
   renta_bracket_5_rate: number;
+}
+
+interface DeductionItem {
+  code: string;
+  label: string;
+  type: 'percentage' | 'fixed' | 'calculated';
+  rate?: number;
+  amount: number;
+}
+
+interface DeductionsDetail {
+  items: DeductionItem[];
+  total_deductions: number;
 }
 
 serve(async (req) => {
@@ -80,7 +100,7 @@ serve(async (req) => {
       );
     }
 
-    // Get company parameters for education sector settings
+    // CRITICAL: Get company parameters - ALL deductions are company-specific
     const { data: companyParams, error: paramsError } = await supabase
       .from('company_parameters')
       .select('*')
@@ -91,27 +111,36 @@ serve(async (req) => {
       console.warn("Company parameters not found, using defaults:", paramsError);
     }
 
+    // Build parameters from company_parameters table - NEVER use global defaults
     const params: CompanyParameters = {
       is_education_sector: companyParams?.is_education_sector || false,
       magisterio_rate: companyParams?.magisterio_rate || 0,
       poliza_vida_fija: companyParams?.poliza_vida_fija || 0,
       ccss_obrero_education: companyParams?.ccss_obrero_education || 6.70,
       ccss_obrero_total: companyParams?.ccss_obrero_total || 10.83,
-      renta_bracket_1_limit: companyParams?.renta_bracket_1_limit || 918000,
+      ccss_patronal_total: companyParams?.ccss_patronal_total || 26.67,
+      ina_rate: companyParams?.ina_rate || 1.50,
+      imas_rate: companyParams?.imas_rate || 0.50,
+      fodesaf_rate: companyParams?.fodesaf_rate || 5.00,
+      banco_popular_patronal: companyParams?.banco_popular_patronal || 0.25,
+      ins_riesgos_trabajo: companyParams?.ins_riesgos_trabajo || 1.50,
+      renta_bracket_1_limit: companyParams?.renta_bracket_1_limit || 941000,
       renta_bracket_1_rate: companyParams?.renta_bracket_1_rate || 0,
-      renta_bracket_2_limit: companyParams?.renta_bracket_2_limit || 1347000,
+      renta_bracket_2_limit: companyParams?.renta_bracket_2_limit || 1381000,
       renta_bracket_2_rate: companyParams?.renta_bracket_2_rate || 10,
-      renta_bracket_3_limit: companyParams?.renta_bracket_3_limit || 2364000,
+      renta_bracket_3_limit: companyParams?.renta_bracket_3_limit || 2423000,
       renta_bracket_3_rate: companyParams?.renta_bracket_3_rate || 15,
-      renta_bracket_4_limit: companyParams?.renta_bracket_4_limit || 4727000,
+      renta_bracket_4_limit: companyParams?.renta_bracket_4_limit || 4845000,
       renta_bracket_4_rate: companyParams?.renta_bracket_4_rate || 20,
       renta_bracket_5_rate: companyParams?.renta_bracket_5_rate || 25,
     };
 
-    console.log('Company parameters:', { 
+    console.log('Company parameters loaded:', { 
+      companyId: batch.company_id,
       isEducation: params.is_education_sector, 
       magisterio: params.magisterio_rate,
-      poliza: params.poliza_vida_fija 
+      poliza: params.poliza_vida_fija,
+      ccssObrero: params.is_education_sector ? params.ccss_obrero_education : params.ccss_obrero_total
     });
 
     // Get all payroll lines with employee data
@@ -128,29 +157,36 @@ serve(async (req) => {
       );
     }
 
-    // Helper functions for calculations
-    const calculateCCSS = (grossSalary: number) => {
+    // ========================================
+    // DEDUCTION CALCULATION FUNCTIONS
+    // All read from company_parameters
+    // ========================================
+    
+    const calculateCCSS = (salary: number): { amount: number; rate: number } => {
       if (params.is_education_sector) {
-        return grossSalary * (params.ccss_obrero_education / 100);
+        const rate = params.ccss_obrero_education / 100;
+        return { amount: salary * rate, rate };
       }
-      return grossSalary * (params.ccss_obrero_total / 100);
+      const rate = params.ccss_obrero_total / 100;
+      return { amount: salary * rate, rate };
     };
 
-    const calculateMagisterio = (grossSalary: number) => {
+    const calculateMagisterio = (salary: number): { amount: number; rate: number } => {
       if (params.is_education_sector && params.magisterio_rate > 0) {
-        return grossSalary * (params.magisterio_rate / 100);
+        const rate = params.magisterio_rate / 100;
+        return { amount: salary * rate, rate };
       }
-      return 0;
+      return { amount: 0, rate: 0 };
     };
 
-    const calculatePolizaVida = () => {
+    const calculatePolizaVida = (): number => {
       if (params.is_education_sector && params.poliza_vida_fija > 0) {
         return params.poliza_vida_fija;
       }
       return 0;
     };
 
-    const calculateIncomeTax = (salary: number) => {
+    const calculateIncomeTax = (salary: number): number => {
       const b1 = params.renta_bracket_1_limit;
       const b2 = params.renta_bracket_2_limit;
       const b3 = params.renta_bracket_3_limit;
@@ -171,6 +207,16 @@ serve(async (req) => {
       
       const tax3 = tax2 + (b4 - b3) * r4;
       return tax3 + (salary - b4) * r5;
+    };
+
+    const calculateEmployerContributions = (salary: number): number => {
+      const ccssPatronal = salary * (params.ccss_patronal_total / 100);
+      const ina = salary * (params.ina_rate / 100);
+      const imas = salary * (params.imas_rate / 100);
+      const fodesaf = salary * (params.fodesaf_rate / 100);
+      const bancoPopular = salary * (params.banco_popular_patronal / 100);
+      const insRiesgos = salary * (params.ins_riesgos_trabajo / 100);
+      return ccssPatronal + ina + imas + fodesaf + bancoPopular + insRiesgos;
     };
 
     // Recalculate each line
@@ -198,9 +244,11 @@ serve(async (req) => {
       const dailyRate = employee.base_salary / 30;
       grossSalary -= (absenceDays * dailyRate);
 
-      // Calculate all deductions
-      const ccss = calculateCCSS(grossSalary);
-      const magisterio = calculateMagisterio(grossSalary);
+      // ========================================
+      // DEDUCTIONS CALCULATION (per company rules)
+      // ========================================
+      const ccssResult = calculateCCSS(grossSalary);
+      const magisterioResult = calculateMagisterio(grossSalary);
       const polizaVida = calculatePolizaVida();
       const incomeTax = calculateIncomeTax(grossSalary);
       
@@ -210,47 +258,109 @@ serve(async (req) => {
       // Other additional deductions
       const additionalDeductions = line.additional_deductions || 0;
       
+      // ========================================
+      // BUILD STRUCTURED DEDUCTIONS DETAIL (REQUIRED)
+      // ========================================
+      const deductionItems: DeductionItem[] = [];
+      
+      if (ccssResult.amount > 0) {
+        deductionItems.push({
+          code: 'CCSS_OBRERO',
+          label: params.is_education_sector 
+            ? `CCSS (Obrero) ${(ccssResult.rate * 100).toFixed(1)}%`
+            : `CCSS (Obrero) ${(ccssResult.rate * 100).toFixed(2)}%`,
+          type: 'percentage',
+          rate: ccssResult.rate,
+          amount: ccssResult.amount
+        });
+      }
+      
+      if (magisterioResult.amount > 0) {
+        deductionItems.push({
+          code: 'MAGISTERIO',
+          label: `Magisterio ${(magisterioResult.rate * 100).toFixed(1)}%`,
+          type: 'percentage',
+          rate: magisterioResult.rate,
+          amount: magisterioResult.amount
+        });
+      }
+      
+      if (polizaVida > 0) {
+        deductionItems.push({
+          code: 'POLIZA_VIDA',
+          label: 'Póliza de Vida Magisterio',
+          type: 'fixed',
+          amount: polizaVida
+        });
+      }
+      
+      if (incomeTax > 0) {
+        deductionItems.push({
+          code: 'RENTA',
+          label: 'Impuesto sobre la Renta',
+          type: 'calculated',
+          amount: incomeTax
+        });
+      }
+      
+      if (loanDeduction > 0) {
+        deductionItems.push({
+          code: 'PRESTAMOS',
+          label: 'Préstamos',
+          type: 'fixed',
+          amount: loanDeduction
+        });
+      }
+      
+      if (additionalDeductions > 0) {
+        deductionItems.push({
+          code: 'OTROS',
+          label: 'Otros Descuentos',
+          type: 'fixed',
+          amount: additionalDeductions
+        });
+      }
+      
       // Total deductions
-      const totalDeductions = ccss + magisterio + polizaVida + incomeTax + loanDeduction + additionalDeductions;
+      const totalDeductions = ccssResult.amount + magisterioResult.amount + polizaVida + incomeTax + loanDeduction + additionalDeductions;
+
+      const deductionsDetail: DeductionsDetail = {
+        items: deductionItems,
+        total_deductions: totalDeductions
+      };
 
       // Calculate net pay
       const netPay = grossSalary - totalDeductions;
+      
+      // Total to pay
+      const totalToPay = netPay;
 
       // Calculate employer contributions
-      const employerCCSS = grossSalary * 0.2667; // 26.67%
-      const employerINS = grossSalary * 0.0150; // 1.50%
-      const employerContrib = employerCCSS + employerINS;
+      const employerContrib = calculateEmployerContributions(grossSalary);
 
       // Calculate accruals
       const aguinaldoAccrued = grossSalary / 12;
       const vacationAccruedDays = (line.vacation_days_taken || 0) > 0 ? 0 : 1.25;
 
-      // Build notes with breakdown for education sector
-      let notes = '';
-      if (params.is_education_sector) {
-        const deductionDetails = [];
-        if (ccss > 0) deductionDetails.push(`CCSS: ₡${ccss.toFixed(0)}`);
-        if (magisterio > 0) deductionDetails.push(`Magisterio: ₡${magisterio.toFixed(0)}`);
-        if (polizaVida > 0) deductionDetails.push(`Póliza: ₡${polizaVida.toFixed(0)}`);
-        if (incomeTax > 0) deductionDetails.push(`ISR: ₡${incomeTax.toFixed(0)}`);
-        if (loanDeduction > 0) deductionDetails.push(`Préstamo: ₡${loanDeduction.toFixed(0)}`);
-        notes = deductionDetails.join(' | ');
-      }
+      // Build notes with summary
+      const deductionSummary = deductionItems.map(d => `${d.code}: ₡${d.amount.toFixed(0)}`).join(' | ');
 
       updatedLines.push({
         id: line.id,
         gross_salary: grossSalary,
         deductions: totalDeductions,
+        deductions_detail: deductionsDetail,
         net_pay: netPay,
+        total_to_pay: totalToPay,
         employer_contrib: employerContrib,
         aguinaldo_accrued: aguinaldoAccrued,
         vacation_accrued_days: vacationAccruedDays,
-        notes: notes || line.notes,
+        notes: deductionSummary || line.notes,
         manual_adjustments: {
           ...(line.manual_adjustments || {}),
-          magisterio: magisterio,
+          magisterio: magisterioResult.amount,
           poliza_vida: polizaVida,
-          ccss: ccss,
+          ccss: ccssResult.amount,
           income_tax: incomeTax,
           loan_deduction: loanDeduction
         }
@@ -269,7 +379,7 @@ serve(async (req) => {
       }
     }
 
-    console.log('Batch recalculated successfully, updated', updatedLines.length, 'lines');
+    console.log('Batch recalculated successfully, updated', updatedLines.length, 'lines with structured deductions');
 
     return new Response(
       JSON.stringify({ 

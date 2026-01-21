@@ -29,13 +29,16 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Loader2
+  Loader2,
+  Eye,
+  Building2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { format, differenceInBusinessDays, addDays, isWeekend } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
+import { SalaryDetailModal } from "@/components/payroll/SalaryDetailModal";
 
 interface EmployeeData {
   id: string;
@@ -72,20 +75,40 @@ interface VacationRequest {
   review_notes: string | null;
 }
 
-interface Payslip {
+interface PayslipWithLine {
   id: string;
   period_label: string;
   created_at: string;
   pdf_file_path: string | null;
+  batch_id: string;
+  payroll_line?: {
+    id: string;
+    gross_salary: number;
+    deductions: number;
+    deductions_detail: any;
+    net_pay: number;
+    total_to_pay: number;
+    currency: string;
+    additional_bonuses: number;
+    project_hours_amount: number;
+  } | null;
+}
+
+interface CompanyData {
+  id: string;
+  display_name: string;
+  logo_url: string | null;
+  tax_id: string | null;
 }
 
 export function EmployeeProfile() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [employee, setEmployee] = useState<EmployeeData | null>(null);
+  const [company, setCompany] = useState<CompanyData | null>(null);
   const [vacations, setVacations] = useState<VacationData[]>([]);
   const [vacationRequests, setVacationRequests] = useState<VacationRequest[]>([]);
-  const [payslips, setPayslips] = useState<Payslip[]>([]);
+  const [payslips, setPayslips] = useState<PayslipWithLine[]>([]);
   
   // Vacation request form
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
@@ -93,6 +116,11 @@ export function EmployeeProfile() {
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [requestReason, setRequestReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Salary detail modal
+  const [selectedPayslip, setSelectedPayslip] = useState<PayslipWithLine | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
 
   useEffect(() => {
     fetchEmployeeData();
@@ -120,6 +148,15 @@ export function EmployeeProfile() {
 
       setEmployee(employeeData);
 
+      // Get company info with logo
+      const { data: companyData } = await supabase
+        .from("companies")
+        .select("id, display_name, logo_url, tax_id")
+        .eq("id", employeeData.company_id)
+        .single();
+
+      if (companyData) setCompany(companyData);
+
       // Fetch vacation balances
       const { data: vacData } = await supabase
         .from("employee_vacations")
@@ -138,14 +175,30 @@ export function EmployeeProfile() {
 
       if (requestsData) setVacationRequests(requestsData);
 
-      // Fetch payslips
+      // Fetch payslips with payroll line data for detailed view
       const { data: payslipsData } = await supabase
         .from("payslips")
         .select("*")
         .eq("employee_id", employeeData.id)
         .order("created_at", { ascending: false });
 
-      if (payslipsData) setPayslips(payslipsData);
+      if (payslipsData && payslipsData.length > 0) {
+        // Get payroll lines for these payslips
+        const batchIds = payslipsData.map(p => p.batch_id);
+        const { data: payrollLines } = await supabase
+          .from("payroll_lines")
+          .select("id, batch_id, gross_salary, deductions, deductions_detail, net_pay, total_to_pay, currency, additional_bonuses, project_hours_amount")
+          .eq("employee_id", employeeData.id)
+          .in("batch_id", batchIds);
+
+        // Map payroll lines to payslips
+        const payslipsWithLines = payslipsData.map(payslip => ({
+          ...payslip,
+          payroll_line: payrollLines?.find(pl => pl.batch_id === payslip.batch_id) || null
+        }));
+
+        setPayslips(payslipsWithLines);
+      }
 
     } catch (error) {
       console.error("Error fetching employee data:", error);
@@ -240,12 +293,57 @@ export function EmployeeProfile() {
     }
   };
 
+  const handleViewDetail = (payslip: PayslipWithLine) => {
+    setSelectedPayslip(payslip);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!selectedPayslip) return;
+    
+    setIsDownloadingPDF(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-payslip-pdf', {
+        body: { payslipId: selectedPayslip.id }
+      });
+
+      if (error) throw error;
+
+      // Handle PDF download
+      if (data?.pdfBuffer) {
+        const blob = new Blob([new Uint8Array(data.pdfBuffer)], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `comprobante-${selectedPayslip.period_label}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      toast({
+        title: "PDF generado",
+        description: "El comprobante se ha descargado correctamente",
+      });
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo generar el comprobante PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloadingPDF(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const config: Record<string, { color: string; icon: any; label: string }> = {
       pending: { color: "bg-yellow-100 text-yellow-800", icon: Clock, label: "Pendiente" },
-      approved: { color: "bg-green-100 text-green-800", icon: CheckCircle, label: "Aprobada" },
-      rejected: { color: "bg-red-100 text-red-800", icon: XCircle, label: "Rechazada" },
-      cancelled: { color: "bg-gray-100 text-gray-800", icon: XCircle, label: "Cancelada" },
+      approved: { color: "bg-primary/10 text-primary", icon: CheckCircle, label: "Aprobada" },
+      rejected: { color: "bg-destructive/10 text-destructive", icon: XCircle, label: "Rechazada" },
+      cancelled: { color: "bg-muted text-muted-foreground", icon: XCircle, label: "Cancelada" },
     };
     const { color, icon: Icon, label } = config[status] || config.pending;
     return (
@@ -289,11 +387,24 @@ export function EmployeeProfile() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with Company Logo */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Mi Perfil</h1>
-          <p className="text-muted-foreground">Consulta tu información y gestiona tus solicitudes</p>
+        <div className="flex items-center gap-4">
+          {company?.logo_url ? (
+            <img 
+              src={company.logo_url} 
+              alt={company.display_name}
+              className="h-12 w-12 object-contain rounded-lg border bg-white p-1"
+            />
+          ) : (
+            <div className="h-12 w-12 rounded-lg border bg-muted flex items-center justify-center">
+              <Building2 className="h-6 w-6 text-muted-foreground" />
+            </div>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold">Mi Perfil</h1>
+            <p className="text-muted-foreground">{company?.display_name || 'Consulta tu información y gestiona tus solicitudes'}</p>
+          </div>
         </div>
         <Button onClick={() => setIsRequestDialogOpen(true)} className="gap-2">
           <Send className="h-4 w-4" />
@@ -368,9 +479,9 @@ export function EmployeeProfile() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Días Disfrutados</p>
-                <p className="text-3xl font-bold text-green-600">{totalTakenDays}</p>
+                <p className="text-3xl font-bold text-primary">{totalTakenDays}</p>
               </div>
-              <CheckCircle className="h-10 w-10 text-green-600/20" />
+              <CheckCircle className="h-10 w-10 text-primary/20" />
             </div>
           </CardContent>
         </Card>
@@ -379,20 +490,100 @@ export function EmployeeProfile() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Acumulado</p>
-                <p className="text-3xl font-bold text-blue-600">{totalAccruedDays}</p>
+                <p className="text-3xl font-bold text-primary">{totalAccruedDays}</p>
               </div>
-              <Clock className="h-10 w-10 text-blue-600/20" />
+              <Clock className="h-10 w-10 text-primary/20" />
             </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Tabs for History and Payslips */}
-      <Tabs defaultValue="requests" className="space-y-4">
+      <Tabs defaultValue="payslips" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="requests">Solicitudes de Vacaciones</TabsTrigger>
           <TabsTrigger value="payslips">Colillas de Pago</TabsTrigger>
+          <TabsTrigger value="requests">Solicitudes de Vacaciones</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="payslips">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Colillas de Pago
+              </CardTitle>
+              <CardDescription>Historial de tus comprobantes de pago con detalle de deducciones</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead>Período</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead className="text-right">Salario Bruto</TableHead>
+                    <TableHead className="text-right">Deducciones</TableHead>
+                    <TableHead className="text-right">Neto</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payslips.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No hay colillas de pago disponibles
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    payslips.map((payslip) => (
+                      <TableRow key={payslip.id}>
+                        <TableCell className="font-medium">{payslip.period_label}</TableCell>
+                        <TableCell>
+                          {format(new Date(payslip.created_at), "dd/MM/yyyy", { locale: es })}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {payslip.payroll_line 
+                            ? formatCurrency(payslip.payroll_line.gross_salary, payslip.payroll_line.currency)
+                            : '—'}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-destructive">
+                          {payslip.payroll_line 
+                            ? `-${formatCurrency(payslip.payroll_line.deductions, payslip.payroll_line.currency)}`
+                            : '—'}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-semibold text-primary">
+                          {payslip.payroll_line 
+                            ? formatCurrency(payslip.payroll_line.net_pay, payslip.payroll_line.currency)
+                            : '—'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1"
+                              onClick={() => handleViewDetail(payslip)}
+                            >
+                              <Eye className="h-4 w-4" />
+                              Ver detalle
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={!payslip.pdf_file_path}
+                              className="gap-1"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="requests">
           <Card>
@@ -437,55 +628,6 @@ export function EmployeeProfile() {
                         <TableCell>{getStatusBadge(request.status)}</TableCell>
                         <TableCell className="max-w-[200px] truncate">
                           {request.review_notes || request.reason || "—"}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="payslips">
-          <Card>
-            <CardHeader>
-              <CardTitle>Colillas de Pago</CardTitle>
-              <CardDescription>Historial de tus comprobantes de pago</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Período</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {payslips.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                        No hay colillas de pago disponibles
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    payslips.map((payslip) => (
-                      <TableRow key={payslip.id}>
-                        <TableCell className="font-medium">{payslip.period_label}</TableCell>
-                        <TableCell>
-                          {format(new Date(payslip.created_at), "dd/MM/yyyy", { locale: es })}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={!payslip.pdf_file_path}
-                            className="gap-1"
-                          >
-                            <Download className="h-4 w-4" />
-                            Descargar
-                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
@@ -568,8 +710,8 @@ export function EmployeeProfile() {
             </div>
 
             {startDate && endDate && (
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <p className="text-sm text-primary">
                   <strong>Días hábiles solicitados:</strong> {calculateBusinessDays(startDate, endDate)}
                 </p>
               </div>
@@ -606,6 +748,30 @@ export function EmployeeProfile() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Salary Detail Modal */}
+      <SalaryDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedPayslip(null);
+        }}
+        payrollLine={selectedPayslip?.payroll_line ? {
+          id: selectedPayslip.payroll_line.id,
+          gross_salary: selectedPayslip.payroll_line.gross_salary,
+          deductions: selectedPayslip.payroll_line.deductions,
+          deductions_detail: selectedPayslip.payroll_line.deductions_detail,
+          net_pay: selectedPayslip.payroll_line.net_pay,
+          total_to_pay: selectedPayslip.payroll_line.total_to_pay,
+          currency: selectedPayslip.payroll_line.currency,
+          additional_bonuses: selectedPayslip.payroll_line.additional_bonuses,
+          project_hours_amount: selectedPayslip.payroll_line.project_hours_amount,
+        } : null}
+        company={company}
+        periodLabel={selectedPayslip?.period_label || ''}
+        onDownloadPDF={handleDownloadPDF}
+        isDownloading={isDownloadingPDF}
+      />
     </div>
   );
 }
