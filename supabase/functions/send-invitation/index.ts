@@ -114,20 +114,23 @@ const handler = async (req: Request): Promise<Response> => {
     const appOrigin = (
       req.headers.get("origin") ||
       Deno.env.get("APP_URL") ||
-      `${supabaseUrl.replace('.supabase.co', '.lovable.app')}`
+      Deno.env.get("PLATFORM_URL") ||
+      "https://aureoncr.com"
     ).replace(/\/$/, "");
 
     const inviteLink = `${appOrigin}/auth?invite=${invitation.token}`;
+    const systemName = "Sistema de Planillas Aureon";
+    const supportEmail = "soporte@aureoncr.com";
 
     // Send the invitation email
-    const inviterName = inviterProfile?.full_name || inviterProfile?.email || "El equipo de ACL Payroll";
+    const inviterName = inviterProfile?.full_name || inviterProfile?.email || "El administrador del sistema";
     
     // Parse RESEND_FROM_EMAIL correctly
     const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev").trim();
-    const cleanedFrom = rawFromEmail.replace(/^"+|"+$/g, "").trim();
+    const cleanedFrom = rawFromEmail.replace(/^\"+|"+$/g, "").trim();
     const from = cleanedFrom.includes("<") && cleanedFrom.includes(">")
       ? cleanedFrom
-      : `ACL Payroll CR <${cleanedFrom}>`;
+      : `Sistema de Planillas <${cleanedFrom}>`;
 
     console.log("Using FROM:", from);
 
@@ -135,7 +138,7 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from,
       to: [email],
-      subject: `Invitación a ACL Payroll CR${company_name ? ` - ${company_name}` : ""}`,
+      subject: `Bienvenido al ${systemName}${company_name ? ` - ${company_name}` : ""}`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -144,18 +147,18 @@ const handler = async (req: Request): Promise<Response> => {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f4f6f9;">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 640px; margin: 0 auto; padding: 40px 20px;">
             <tr>
               <td>
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                   <!-- Header -->
                   <tr>
-                    <td style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); padding: 32px; text-align: center;">
+                    <td style="background: linear-gradient(135deg, #0f172a, #1e3a8a); padding: 32px; text-align: center;">
                       <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">
-                        ACL Payroll CR
+                        ${systemName}
                       </h1>
-                      <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">
-                        Sistema de Gestión de Planillas
+                      <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">
+                        Gestión de Nómina y Recursos Humanos
                       </p>
                     </td>
                   </tr>
@@ -163,54 +166,90 @@ const handler = async (req: Request): Promise<Response> => {
                   <!-- Content -->
                   <tr>
                     <td style="padding: 40px 32px;">
-                      <h2 style="margin: 0 0 16px 0; color: #1e3a8a; font-size: 20px;">
-                        ¡Has sido invitado!
+                      <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 20px;">
+                        ¡Ha sido invitado al Sistema de Planillas!
                       </h2>
                       
-                      <p style="color: #64748b; line-height: 1.6; margin: 0 0 24px 0;">
-                        <strong>${inviterName}</strong> te ha invitado a unirte al sistema ACL Payroll CR${company_name ? ` para la empresa <strong>${company_name}</strong>` : ""}.
+                      <p style="color: #475569; line-height: 1.7; margin: 0 0 24px 0; font-size: 15px;">
+                        <strong>${inviterName}</strong> lo ha invitado a unirse al <strong>${systemName}</strong>${company_name ? ` para gestionar la nómina de <strong>${company_name}</strong>` : ""}.
                       </p>
                       
-                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: #f8fafc; border-radius: 8px; margin: 0 0 24px 0;">
+                      <p style="color: #475569; line-height: 1.7; margin: 0 0 24px 0; font-size: 15px;">
+                        Este sistema le permitirá gestionar información de nómina, generar reportes, administrar empleados y mucho más.
+                      </p>
+                      
+                      <!-- Details Box -->
+                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin: 0 0 24px 0;">
                         <tr>
-                          <td style="padding: 16px 20px;">
-                            <p style="margin: 0; color: #64748b; font-size: 14px;">
-                              <strong style="color: #334155;">Rol asignado:</strong> ${role}
-                            </p>
-                            ${company_name ? `
-                            <p style="margin: 8px 0 0 0; color: #64748b; font-size: 14px;">
-                              <strong style="color: #334155;">Empresa:</strong> ${company_name}
-                            </p>
-                            ` : ""}
+                          <td style="padding: 20px;">
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                              <tr>
+                                <td style="padding: 0 0 12px 0;">
+                                  <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Portal de Acceso</p>
+                                  <a href="${appOrigin}/auth" style="color: #1e40af; font-size: 14px; text-decoration: underline; word-break: break-all;">${appOrigin}</a>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td style="padding: 12px 0; border-top: 1px solid #e2e8f0;">
+                                  <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Rol Asignado</p>
+                                  <p style="margin: 0; color: #0f172a; font-weight: 600; font-size: 15px;">${role}</p>
+                                </td>
+                              </tr>
+                              ${company_name ? `
+                              <tr>
+                                <td style="padding: 12px 0 0 0; border-top: 1px solid #e2e8f0;">
+                                  <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Empresa</p>
+                                  <p style="margin: 0; color: #0f172a; font-weight: 600; font-size: 15px;">${company_name}</p>
+                                </td>
+                              </tr>
+                              ` : ""}
+                            </table>
                           </td>
                         </tr>
                       </table>
                       
-                      <p style="color: #64748b; line-height: 1.6; margin: 0 0 24px 0;">
-                        Haz clic en el siguiente botón para crear tu cuenta y acceder al sistema:
+                      <p style="color: #475569; line-height: 1.7; margin: 0 0 24px 0; font-size: 15px;">
+                        Haga clic en el siguiente botón para crear su cuenta y acceder al sistema:
                       </p>
                       
-                      <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px 0;">
+                      <!-- CTA Button -->
+                      <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
                         <tr>
-                          <td style="background: linear-gradient(135deg, #1e3a8a, #3b82f6); border-radius: 8px;">
-                            <a href="${inviteLink}" style="display: inline-block; padding: 14px 32px; color: white; text-decoration: none; font-weight: 600; font-size: 16px;">
-                              Aceptar Invitación
+                          <td style="background: linear-gradient(135deg, #0f172a, #1e3a8a); border-radius: 10px;">
+                            <a href="${inviteLink}" style="display: inline-block; padding: 16px 40px; color: white; text-decoration: none; font-weight: 600; font-size: 16px;">
+                              Acceder al Sistema de Planillas
                             </a>
                           </td>
                         </tr>
                       </table>
                       
-                      <p style="color: #94a3b8; font-size: 13px; line-height: 1.5; margin: 0;">
-                        Este enlace expirará en 7 días. Si no solicitaste esta invitación, puedes ignorar este correo.
-                      </p>
+                      <!-- Expiry Notice -->
+                      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 24px 0 0 0;">
+                        <tr>
+                          <td style="text-align: center;">
+                            <p style="color: #94a3b8; font-size: 13px; line-height: 1.5; margin: 0;">
+                              Este enlace de invitación expirará en <strong>7 días</strong>.
+                            </p>
+                          </td>
+                        </tr>
+                      </table>
                     </td>
                   </tr>
                   
                   <!-- Footer -->
                   <tr>
-                    <td style="background: #f8fafc; padding: 24px 32px; text-align: center; border-top: 1px solid #e2e8f0;">
-                      <p style="margin: 0; color: #94a3b8; font-size: 12px;">
-                        © ${new Date().getFullYear()} ACL Payroll CR. Todos los derechos reservados.
+                    <td style="background: #f8fafc; padding: 24px 32px; border-top: 1px solid #e2e8f0;">
+                      <p style="margin: 0 0 8px 0; color: #64748b; font-size: 13px; line-height: 1.6; text-align: center;">
+                        ¿Tiene preguntas o necesita ayuda? Contáctenos:
+                      </p>
+                      <p style="margin: 0 0 16px 0; text-align: center;">
+                        <a href="mailto:${supportEmail}" style="color: #1e40af; font-size: 14px; text-decoration: underline;">${supportEmail}</a>
+                      </p>
+                      <p style="margin: 0; color: #94a3b8; font-size: 12px; text-align: center;">
+                        © ${new Date().getFullYear()} Aureon. Todos los derechos reservados.
+                      </p>
+                      <p style="margin: 8px 0 0 0; color: #cbd5e1; font-size: 11px; text-align: center;">
+                        Si no esperaba esta invitación o cree que la recibió por error, puede ignorar este correo de forma segura.
                       </p>
                     </td>
                   </tr>
