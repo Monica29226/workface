@@ -46,6 +46,7 @@ interface PayrollBatch {
   period_start: string;
   period_end: string;
   frequency: string;
+  payroll_type?: string;
   status: string;
   base_currency: string;
 }
@@ -79,6 +80,7 @@ export function PayrollProcess() {
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
   const [frequency, setFrequency] = useState<'mensual' | 'quincenal' | 'semanal'>('mensual');
+  const [payrollType, setPayrollType] = useState<'adelanto' | 'segunda' | 'completa'>('completa');
   const [exchangeRate, setExchangeRate] = useState(510.27);
   const [copyFromPrevious, setCopyFromPrevious] = useState(false);
   const [previousBatchId, setPreviousBatchId] = useState<string>("");
@@ -199,6 +201,7 @@ export function PayrollProcess() {
           periodStart,
           periodEnd,
           frequency,
+          payrollType: frequency === 'quincenal' ? payrollType : 'completa',
           exchangeRate,
           copyFromBatchId: copyFromPrevious ? previousBatchId : undefined,
         },
@@ -505,6 +508,17 @@ export function PayrollProcess() {
     return <Badge className={variant.className}>{variant.label}</Badge>;
   };
 
+  const getPayrollTypeBadge = (type?: string) => {
+    if (!type || type === 'completa') return null;
+    const variants: Record<string, { label: string; className: string }> = {
+      adelanto: { label: "1ra Quincena", className: "bg-indigo-100 text-indigo-800" },
+      segunda: { label: "2da Quincena", className: "bg-teal-100 text-teal-800" },
+    };
+    const variant = variants[type];
+    if (!variant) return null;
+    return <Badge className={variant.className}>{variant.label}</Badge>;
+  };
+
   if (isLoading && batches.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -579,7 +593,11 @@ export function PayrollProcess() {
             </div>
             <div className="space-y-2">
               <Label>Frecuencia *</Label>
-              <Select value={frequency} onValueChange={(v: any) => setFrequency(v)}>
+              <Select value={frequency} onValueChange={(v: any) => {
+                setFrequency(v);
+                // Reset payroll type when changing frequency
+                if (v !== 'quincenal') setPayrollType('completa');
+              }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -590,6 +608,20 @@ export function PayrollProcess() {
                 </SelectContent>
               </Select>
             </div>
+            {frequency === 'quincenal' && (
+              <div className="space-y-2">
+                <Label>Tipo de Quincena *</Label>
+                <Select value={payrollType} onValueChange={(v: any) => setPayrollType(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="adelanto">1ra Quincena - Adelanto de Salario</SelectItem>
+                    <SelectItem value="segunda">2da Quincena - Pago Final</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Tipo de Cambio</Label>
               <Input
@@ -600,6 +632,19 @@ export function PayrollProcess() {
               />
             </div>
           </div>
+          
+          {/* Biweekly info banner */}
+          {frequency === 'quincenal' && (
+            <Alert className="bg-blue-50 border-blue-200">
+              <AlertCircle className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                <strong>{payrollType === 'adelanto' ? 'Adelanto de Salario:' : 'Segunda Quincena:'}</strong>{' '}
+                {payrollType === 'adelanto' 
+                  ? 'Se calculará el 50% del salario neto estimado con 50% de las deducciones mensuales.'
+                  : 'Se calculará el 50% restante del salario con el otro 50% de las deducciones.'}
+              </AlertDescription>
+            </Alert>
+          )}
           
           {/* Copy from previous month option */}
           <div className="space-y-4 border-t pt-4">
@@ -669,7 +714,10 @@ export function PayrollProcess() {
                   <Calendar className="h-5 w-5" />
                   Planilla Seleccionada
                 </span>
-                {currentBatch && getStatusBadge(currentBatch.status)}
+                <div className="flex gap-2">
+                  {currentBatch && getPayrollTypeBadge(currentBatch.payroll_type)}
+                  {currentBatch && getStatusBadge(currentBatch.status)}
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -681,14 +729,18 @@ export function PayrollProcess() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {batches.map(batch => (
-                        <SelectItem key={batch.id} value={batch.id}>
-                          {batch.batch_id} - {new Date(batch.period_start).toLocaleDateString('es-CR')} 
-                          {' '}al{' '}
-                          {new Date(batch.period_end).toLocaleDateString('es-CR')}
-                          {' '}({batch.status})
-                        </SelectItem>
-                      ))}
+                      {batches.map(batch => {
+                        const typeLabel = batch.payroll_type === 'adelanto' ? ' [Adelanto]' : 
+                                          batch.payroll_type === 'segunda' ? ' [2da Quincena]' : '';
+                        return (
+                          <SelectItem key={batch.id} value={batch.id}>
+                            {batch.batch_id}{typeLabel} - {new Date(batch.period_start).toLocaleDateString('es-CR')} 
+                            {' '}al{' '}
+                            {new Date(batch.period_end).toLocaleDateString('es-CR')}
+                            {' '}({batch.status})
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
