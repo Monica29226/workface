@@ -32,6 +32,8 @@ const translations = {
     'nav.my_profile': 'Mi Perfil',
     'nav.my_salary_history': 'Mi Historial Salarial',
     'nav.my_vacations': 'Mis Vacaciones',
+    'nav.pre_colilla': 'Pre-Colilla',
+    'nav.pre_nomina': 'Pre-Nómina',
 
     // Dashboard
     'dashboard.title': 'Panel Principal',
@@ -55,6 +57,14 @@ const translations = {
     'common.search': 'Buscar',
     'common.filter': 'Filtrar',
     'common.loading': 'Cargando...',
+    'common.recalculate': 'Recalcular',
+    'common.export_excel': 'Exportar Excel',
+    'common.collaborators': 'colaboradores',
+    'common.select_period': 'Seleccionar período...',
+    'common.view_detail': 'Ver Detalle',
+    'common.download_pdf': 'Descargar Comprobante PDF',
+    'common.generating': 'Generando...',
+    'common.send_payslips': 'Enviar Colillas',
 
     // Employee fields
     'employee.cedula': 'Cédula',
@@ -74,12 +84,47 @@ const translations = {
     'payroll.aguinaldo': 'Aguinaldo',
     'payroll.social_charges': 'Cargas Sociales',
     'payroll.salary_retention': 'Retención Salarial',
+    'payroll.gross_salary': 'Salario Bruto',
+    'payroll.total_deductions': 'Total Deducciones',
+    'payroll.total_to_receive': 'Total a Recibir',
+    'payroll.exchange_rate_bccr': 'Tipo de cambio BCCR',
+    'payroll.deductions_breakdown': 'Desglose de Deducciones',
+    'payroll.concept': 'Concepto',
+    'payroll.total': 'Total',
+
+    // Pre-Colilla
+    'precolilla.title': 'Pre-Colilla',
+    'precolilla.description': 'Revise y valide las colillas antes del envío',
+    'precolilla.no_period_selected': 'Seleccione un período',
+    'precolilla.select_period_hint': 'Elija un período de planilla para revisar las colillas',
+    'precolilla.loading_data': 'Cargando datos de planilla...',
+    'precolilla.no_data': 'No hay datos para este período',
+    'precolilla.search_placeholder': 'Buscar colaborador por nombre o código...',
+    'precolilla.no_results': 'No se encontraron colaboradores que coincidan con',
+    'precolilla.detail_title': 'Detalle de Pre-Colilla',
+    'precolilla.period': 'Período',
+    'precolilla.no_deductions': 'No hay detalles de deducciones disponibles para este período.',
+
+    // Deduction labels
+    'deduction.ccss': 'CCSS Obrero',
+    'deduction.isr': 'Impuesto sobre la Renta',
+    'deduction.magisterio': 'Magisterio Nacional',
+    'deduction.poliza': 'Póliza de Vida',
+    'deduction.loans': 'Préstamos',
 
     // Status
     'status.draft': 'Borrador',
     'status.in_review': 'En Revisión',
     'status.approved': 'Aprobado',
     'status.closed': 'Cerrado',
+    'status.calculated': 'Calculado',
+    'status.authorized': 'Autorizado',
+    'status.sent': 'Enviado',
+
+    // Payroll types
+    'payroll_type.adelanto': '1ª Quincena',
+    'payroll_type.segunda': '2ª Quincena',
+    'payroll_type.completa': 'Mensual',
 
     // Company Selector
     'companySelector.title': 'Sistema de Planillas Costa Rica',
@@ -109,6 +154,8 @@ const translations = {
     'nav.my_profile': 'My Profile',
     'nav.my_salary_history': 'My Salary History',
     'nav.my_vacations': 'My Vacations',
+    'nav.pre_colilla': 'Pre-Payslip',
+    'nav.pre_nomina': 'Pre-Payroll',
 
     // Dashboard
     'dashboard.title': 'Dashboard',
@@ -132,6 +179,14 @@ const translations = {
     'common.search': 'Search',
     'common.filter': 'Filter',
     'common.loading': 'Loading...',
+    'common.recalculate': 'Recalculate',
+    'common.export_excel': 'Export Excel',
+    'common.collaborators': 'collaborators',
+    'common.select_period': 'Select period...',
+    'common.view_detail': 'View Detail',
+    'common.download_pdf': 'Download PDF Voucher',
+    'common.generating': 'Generating...',
+    'common.send_payslips': 'Send Payslips',
 
     // Employee fields
     'employee.cedula': 'ID',
@@ -151,12 +206,47 @@ const translations = {
     'payroll.aguinaldo': 'Christmas Bonus',
     'payroll.social_charges': 'Social Charges',
     'payroll.salary_retention': 'Salary Retention',
+    'payroll.gross_salary': 'Gross Salary',
+    'payroll.total_deductions': 'Total Deductions',
+    'payroll.total_to_receive': 'Total to Receive',
+    'payroll.exchange_rate_bccr': 'BCCR Exchange Rate',
+    'payroll.deductions_breakdown': 'Deductions Breakdown',
+    'payroll.concept': 'Concept',
+    'payroll.total': 'Total',
+
+    // Pre-Colilla
+    'precolilla.title': 'Pre-Payslip',
+    'precolilla.description': 'Review and validate payslips before sending',
+    'precolilla.no_period_selected': 'Select a period',
+    'precolilla.select_period_hint': 'Choose a payroll period to review payslips',
+    'precolilla.loading_data': 'Loading payroll data...',
+    'precolilla.no_data': 'No data for this period',
+    'precolilla.search_placeholder': 'Search collaborator by name or ID...',
+    'precolilla.no_results': 'No collaborators found matching',
+    'precolilla.detail_title': 'Pre-Payslip Detail',
+    'precolilla.period': 'Period',
+    'precolilla.no_deductions': 'No deduction details available for this period.',
+
+    // Deduction labels
+    'deduction.ccss': 'Social Security',
+    'deduction.isr': 'Income Tax',
+    'deduction.magisterio': 'National Teaching Fund',
+    'deduction.poliza': 'Life Insurance',
+    'deduction.loans': 'Loans',
 
     // Status
     'status.draft': 'Draft',
     'status.in_review': 'In Review',
     'status.approved': 'Approved',
     'status.closed': 'Closed',
+    'status.calculated': 'Calculated',
+    'status.authorized': 'Authorized',
+    'status.sent': 'Sent',
+
+    // Payroll types
+    'payroll_type.adelanto': '1st Fortnight',
+    'payroll_type.segunda': '2nd Fortnight',
+    'payroll_type.completa': 'Monthly',
 
     // Company Selector
     'companySelector.title': 'Costa Rica Payroll System',
