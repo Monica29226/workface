@@ -209,12 +209,12 @@ export function PreColilla() {
         throw new Error(response.error.message || 'Error al generar PDF');
       }
 
-      // Create blob from response and download
-      const blob = new Blob([response.data], { type: 'text/html' });
+      // Create blob from response and download as PDF
+      const blob = new Blob([response.data], { type: 'application/pdf' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `pre-colilla-${selectedEmployee.employee.employee_id}-${currentBatch?.period_end || 'periodo'}.html`;
+      a.download = `pre-colilla-${selectedEmployee.employee.employee_id}-${currentBatch?.period_end || 'periodo'}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
