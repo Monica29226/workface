@@ -53,7 +53,7 @@ export function Payslips() {
   const { selectedCompany } = useCompany();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedYear, setSelectedYear] = useState("2025");
+  const [selectedYear, setSelectedYear] = useState("2026");
   const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedCurrency, setSelectedCurrency] = useState<'CRC' | 'USD'>('CRC');
   const [selectedMonth, setSelectedMonth] = useState<number | 'all'>('all'); // 'all' = todos los meses
@@ -192,6 +192,12 @@ export function Payslips() {
     const totalNet = displayData.reduce((sum, p) => sum + p.netSalary, 0);
     
     return { total, sent, pending, totalNet };
+  }, [displayData]);
+
+  // Get exchange rate from payslips data
+  const currentExchangeRate = useMemo(() => {
+    const usdPayslip = displayData.find(p => p.currency === 'USD' && p.exchangeRate > 1);
+    return usdPayslip?.exchangeRate || null;
   }, [displayData]);
 
   const handleGenerateNew = async () => {
@@ -475,6 +481,7 @@ export function Payslips() {
                 <SelectItem value="2023">2023</SelectItem>
                 <SelectItem value="2024">2024</SelectItem>
                 <SelectItem value="2025">2025</SelectItem>
+                <SelectItem value="2026">2026</SelectItem>
               </SelectContent>
             </Select>
             {viewMode === 'monthly' && (
@@ -510,6 +517,19 @@ export function Payslips() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Exchange Rate Banner */}
+      {currentExchangeRate && (
+        <Card className="border-blue-200 bg-blue-50/50">
+          <CardContent className="py-3">
+            <div className="flex items-center gap-2 text-sm text-blue-800">
+              <span className="font-medium">Tipo de Cambio BCCR (Venta):</span>
+              <span className="font-bold">₡{Number(currentExchangeRate).toFixed(2)}</span>
+              <span className="text-muted-foreground">/ $1 USD</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
