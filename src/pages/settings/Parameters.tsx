@@ -69,7 +69,7 @@ const defaultParameters: Omit<CompanyParameters, 'company_id'> = {
   banco_popular_obrero: 1.00,
   ins_riesgos_trabajo: 1.50,
   aguinaldo_rate: 8.33,
-  cesantia_rate: 8.33,
+  cesantia_rate: 0, // Deprecated: la cesantía se calcula por días según antigüedad, no como porcentaje fijo
   vacaciones_rate: 4.17,
   // Tramos de impuesto de renta 2026 actualizados
   renta_bracket_1_limit: 918000,  // Hasta ₡918,000 exento
@@ -601,6 +601,7 @@ export function Parameters() {
 
         {/* Prestaciones Tab */}
         <TabsContent value="prestaciones" className="space-y-4">
+          {/* Aguinaldo y Vacaciones */}
           <Card>
             <CardHeader>
               <CardTitle>Provisiones de Prestaciones Laborales</CardTitle>
@@ -609,7 +610,7 @@ export function Parameters() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="p-4 border rounded-lg">
                   <Label>Aguinaldo (%)</Label>
                   <Input
@@ -621,19 +622,6 @@ export function Parameters() {
                   />
                   <p className="text-sm text-muted-foreground mt-2">
                     1/12 del salario = 8.33%
-                  </p>
-                </div>
-                <div className="p-4 border rounded-lg">
-                  <Label>Cesantía (%)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    className="mt-2"
-                    value={parameters?.cesantia_rate || 0}
-                    onChange={(e) => updateParameter('cesantia_rate', parseFloat(e.target.value) || 0)}
-                  />
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Provisión mensual
                   </p>
                 </div>
                 <div className="p-4 border rounded-lg">
@@ -654,12 +642,103 @@ export function Parameters() {
               <Separator className="my-6" />
 
               <div className="bg-muted/50 p-4 rounded-lg">
-                <h4 className="font-semibold mb-2">Total Provisión Mensual</h4>
+                <h4 className="font-semibold mb-2">Total Provisión Mensual (sin cesantía)</h4>
                 <p className="text-3xl font-bold text-primary">
-                  {((parameters?.aguinaldo_rate || 0) + (parameters?.cesantia_rate || 0) + (parameters?.vacaciones_rate || 0)).toFixed(2)}%
+                  {((parameters?.aguinaldo_rate || 0) + (parameters?.vacaciones_rate || 0)).toFixed(2)}%
                 </p>
                 <p className="text-sm text-muted-foreground">
                   Del salario bruto mensual
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Cesantía - Tabla informativa */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calculator className="h-5 w-5" />
+                Cesantía - Artículo 29 Código de Trabajo
+              </CardTitle>
+              <CardDescription>
+                La cesantía NO es un porcentaje fijo. Se calcula con días de salario según antigüedad.
+                Aplica solo en despido sin justa causa. <strong>Tope máximo: 8 años.</strong>
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 rounded-lg mb-4">
+                <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <strong>Importante:</strong> La cesantía se calcula al momento de la liquidación usando el 
+                  promedio salarial de los últimos 6 meses y la tabla de días por año trabajado.
+                </p>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="bg-muted">
+                      <th className="border p-2 text-left">Tiempo Laborado</th>
+                      <th className="border p-2 text-center">Días de Salario</th>
+                      <th className="border p-2 text-left">Observación</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td className="border p-2">Menos de 3 meses</td>
+                      <td className="border p-2 text-center font-mono">0</td>
+                      <td className="border p-2 text-muted-foreground">No aplica</td>
+                    </tr>
+                    <tr>
+                      <td className="border p-2">3 a 6 meses</td>
+                      <td className="border p-2 text-center font-mono">7 días × mes</td>
+                      <td className="border p-2 text-muted-foreground">Proporcional</td>
+                    </tr>
+                    <tr>
+                      <td className="border p-2">6 meses a 1 año</td>
+                      <td className="border p-2 text-center font-mono">14 días</td>
+                      <td className="border p-2 text-muted-foreground">Fijo</td>
+                    </tr>
+                    <tr className="bg-primary/5">
+                      <td className="border p-2 font-medium">1 año completo</td>
+                      <td className="border p-2 text-center font-mono font-bold">19.5 días</td>
+                      <td className="border p-2 text-muted-foreground">Por año</td>
+                    </tr>
+                    <tr>
+                      <td className="border p-2">2 años</td>
+                      <td className="border p-2 text-center font-mono">20 días</td>
+                      <td className="border p-2 text-muted-foreground">Por año</td>
+                    </tr>
+                    <tr>
+                      <td className="border p-2">3 años</td>
+                      <td className="border p-2 text-center font-mono">20.5 días</td>
+                      <td className="border p-2 text-muted-foreground">Por año</td>
+                    </tr>
+                    <tr>
+                      <td className="border p-2">4 años</td>
+                      <td className="border p-2 text-center font-mono">21 días</td>
+                      <td className="border p-2 text-muted-foreground">Por año</td>
+                    </tr>
+                    <tr>
+                      <td className="border p-2">5 años</td>
+                      <td className="border p-2 text-center font-mono">21.24 días</td>
+                      <td className="border p-2 text-muted-foreground">Por año</td>
+                    </tr>
+                    <tr className="bg-primary/5">
+                      <td className="border p-2 font-medium">6, 7 y 8 años</td>
+                      <td className="border p-2 text-center font-mono font-bold">22 días</td>
+                      <td className="border p-2 text-muted-foreground">Por año (máximo)</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-4 p-4 bg-muted rounded-lg">
+                <h5 className="font-semibold mb-2">Fórmula de Cálculo:</h5>
+                <code className="text-sm bg-background p-2 rounded block">
+                  Cesantía = (Salario Promedio 6 meses ÷ 30) × Días según tabla
+                </code>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Para empleados con más de 1 año, se suman los días correspondientes a cada año trabajado.
                 </p>
               </div>
             </CardContent>

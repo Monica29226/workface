@@ -110,70 +110,118 @@ export function calcularPreaviso(params: LiquidacionParams): {
 }
 
 /**
- * Calcula la cesantía según art. 29 Código de Trabajo
- * Solo aplica en despido sin justa causa
+ * Tabla de días de cesantía según Art. 29 del Código de Trabajo de Costa Rica
+ * Basado en años de servicio, con tope máximo de 8 años
+ */
+const TABLA_CESANTIA_DIAS: { [key: number]: number } = {
+  1: 19.5,  // 1 año completo
+  2: 20,    // 2 años
+  3: 20.5,  // 3 años
+  4: 21,    // 4 años
+  5: 21.24, // 5 años
+  6: 22,    // 6 años
+  7: 22,    // 7 años
+  8: 22,    // 8 años (tope máximo)
+};
+
+/**
+ * Calcula la cesantía según art. 29 Código de Trabajo de Costa Rica
+ * 
+ * Reglas:
+ * - Menos de 3 meses: No aplica
+ * - 3 a 6 meses: 7 días por cada mes trabajado (proporcional)
+ * - 6 meses a 1 año: 14 días de salario
+ * - 1+ años: Según tabla progresiva de días por año (máximo 8 años)
+ * 
+ * Solo aplica en despido CON responsabilidad patronal (sin justa causa)
  */
 export function calcularCesantia(params: LiquidacionParams): {
   monto: number;
   dias: number;
   detalle: string;
+  desglose?: { año: number; dias: number; monto: number }[];
 } {
   const { fechaIngreso, fechaSalida, salarioPromedio, motivoSalida } = params;
   
-  // Solo aplica en despido sin responsabilidad patronal
+  // La cesantía aplica en despido CON responsabilidad patronal (sin justa causa del trabajador)
+  // El nombre del motivo es confuso pero "despido_sin_responsabilidad" significa despido donde 
+  // el TRABAJADOR no tiene responsabilidad (o sea, despido sin justa causa = con responsabilidad patronal)
   if (motivoSalida !== 'despido_sin_responsabilidad') {
     return {
       monto: 0,
       dias: 0,
       detalle: motivoSalida === 'renuncia' 
-        ? 'No aplica (renuncia)' 
+        ? 'No aplica (renuncia voluntaria)' 
         : 'No aplica (despido con justa causa)'
     };
   }
   
   const tiempo = calcularTiempoTrabajado(fechaIngreso, fechaSalida);
   const meses = tiempo.mesesTotales;
-  const años = tiempo.años;
+  const salarioDiario = salarioPromedio / 30;
   
   let diasCesantia = 0;
   let detalle = '';
+  let desglose: { año: number; dias: number; monto: number }[] = [];
   
   if (meses < 3) {
-    diasCesantia = 0;
-    detalle = 'No aplica (menos de 3 meses)';
-  } else if (meses < 6) {
-    // 7 días por mes trabajado
+    // Menos de 3 meses: no aplica cesantía
+    return {
+      monto: 0,
+      dias: 0,
+      detalle: 'No aplica (menos de 3 meses de servicio)'
+    };
+  } else if (meses >= 3 && meses < 6) {
+    // 3 a 6 meses: 7 días por cada mes trabajado (proporcional)
     diasCesantia = 7 * meses;
-    detalle = `7 días x ${meses} meses = ${diasCesantia} días`;
-  } else if (meses < 12) {
-    // 14 días por mes trabajado
-    diasCesantia = 14 * meses;
-    detalle = `14 días x ${meses} meses = ${diasCesantia} días`;
+    detalle = `Proporcional: 7 días × ${meses} meses = ${diasCesantia} días`;
+  } else if (meses >= 6 && meses < 12) {
+    // 6 meses a 1 año: 14 días de salario
+    diasCesantia = 14;
+    detalle = `6 meses a 1 año: 14 días de salario`;
   } else {
-    // Por cada año completo según escala
-    let diasPorAño: number;
+    // 1 año o más: usar tabla progresiva
+    // Calcular años completos (con tope de 8)
+    const añosCompletos = Math.min(tiempo.años, 8);
+    const mesesRestantes = tiempo.mesesTotales - (tiempo.años * 12);
     
-    if (años <= 8) {
-      diasPorAño = 19.5;
-    } else if (años <= 9) {
-      diasPorAño = 20;
-    } else if (años <= 10) {
-      diasPorAño = 21;
-    } else {
-      diasPorAño = 22;
+    // Sumar días por cada año según la tabla
+    for (let año = 1; año <= añosCompletos; año++) {
+      const diasAño = TABLA_CESANTIA_DIAS[año] || 22;
+      const montoAño = salarioDiario * diasAño;
+      diasCesantia += diasAño;
+      desglose.push({ año, dias: diasAño, monto: montoAño });
     }
     
-    diasCesantia = diasPorAño * años;
-    detalle = `${diasPorAño} días x ${años} años = ${diasCesantia} días`;
+    // Si hay fracción de año (6+ meses), agregar proporcional del siguiente año
+    if (mesesRestantes >= 6 && añosCompletos < 8) {
+      const añoSiguiente = añosCompletos + 1;
+      const diasAñoSiguiente = TABLA_CESANTIA_DIAS[añoSiguiente] || 22;
+      const diasProporcionales = (diasAñoSiguiente / 12) * mesesRestantes;
+      diasCesantia += diasProporcionales;
+      desglose.push({ 
+        año: añoSiguiente, 
+        dias: Math.round(diasProporcionales * 100) / 100, 
+        monto: salarioDiario * diasProporcionales 
+      });
+    }
+    
+    // Generar detalle legible
+    if (tiempo.años > 8) {
+      detalle = `${añosCompletos} años (tope legal): ${diasCesantia.toFixed(2)} días totales`;
+    } else {
+      const desgloseTexto = desglose.map(d => `Año ${d.año}: ${d.dias} días`).join(' + ');
+      detalle = `${desgloseTexto} = ${diasCesantia.toFixed(2)} días totales`;
+    }
   }
   
-  const salarioDiario = salarioPromedio / 30;
   const monto = salarioDiario * diasCesantia;
   
   return {
     monto,
-    dias: diasCesantia,
-    detalle
+    dias: Math.round(diasCesantia * 100) / 100,
+    detalle,
+    desglose: desglose.length > 0 ? desglose : undefined
   };
 }
 
