@@ -2,7 +2,17 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
 
-export type AppRole = 'admin' | 'company_manager' | 'employee';
+export type AppRole = 
+  | 'admin' 
+  | 'company_manager' 
+  | 'employee' 
+  | 'ACL_SuperAdmin' 
+  | 'ACL_PayrollSpecialist' 
+  | 'ACL_Auditor' 
+  | 'Client_Admin' 
+  | 'Client_HR' 
+  | 'Client_Viewer' 
+  | 'Employee_Portal';
 
 interface UserRoleData {
   user: User | null;
