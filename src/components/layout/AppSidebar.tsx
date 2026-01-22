@@ -111,23 +111,23 @@ const hrNavigationItems: NavigationItem[] = [
     roles: ['admin', 'company_manager']
   },
   { 
-    title: 'Desglose Planilla', 
-    url: '/reports/payroll-breakdown', 
-    icon: Receipt,
+    title: 'Aprobar Vacaciones', 
+    url: '/vacation-approval', 
+    icon: UserCheck,
     group: 'reports',
     roles: ['admin', 'company_manager']
   },
   { 
-    title: 'Planilla Editable', 
-    url: '/reports/editable-payroll', 
+    title: 'Pre-Nómina', 
+    url: '/reports/pre-nomina', 
     icon: Calculator,
     group: 'reports',
     roles: ['admin', 'company_manager']
   },
   { 
-    title: 'Aprobar Vacaciones', 
-    url: '/vacation-approval', 
-    icon: UserCheck,
+    title: 'Pre-Colilla', 
+    url: '/reports/pre-colilla', 
+    icon: Receipt,
     group: 'reports',
     roles: ['admin', 'company_manager']
   },
