@@ -128,12 +128,16 @@ const COLUMN_ALIASES: Record<string, string> = {
   'sueldo base': 'base_salary',
   'salario bruto': 'base_salary',
   'salario mensual': 'base_salary',
+  'salario mensual $': 'base_salary',
+  'salario mensual usd': 'base_salary',
+  'salario $': 'base_salary',
+  'salario usd': 'base_salary',
   'sueldo mensual': 'base_salary',
+  'sueldo $': 'base_salary',
   'monto': 'base_salary',
   'monto salario': 'base_salary',
   'salario ordinario': 'base_salary',
   'ingreso base': 'base_salary',
-  'ingreso': 'base_salary',
   'remuneracion': 'base_salary',
   'remuneración': 'base_salary',
   'pago base': 'base_salary',
@@ -189,30 +193,37 @@ const COLUMN_ALIASES: Record<string, string> = {
 // Normalize column name to snake_case and check aliases
 const normalizeColumnName = (columnName: string): string => {
   // Clean and normalize the column name
-  const cleaned = columnName
+  let cleaned = columnName
     .toLowerCase()
     .trim()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '') // Remove accents for matching
     .replace(/[_\-\s]+/g, ' ') // Normalize separators to spaces
+    .replace(/[₡]/g, '') // Remove colones symbol
     .trim();
   
-  // Check if there's a direct alias match
+  // Check if there's a direct alias match (keeping $ for matching)
   if (COLUMN_ALIASES[cleaned]) {
     return COLUMN_ALIASES[cleaned];
   }
   
-  // Try matching without accents in the alias keys
-  const cleanedForMatch = cleaned.replace(/\s+/g, '');
+  // Try without $ symbol
+  const cleanedNoDollar = cleaned.replace(/[$]/g, '').trim();
+  if (COLUMN_ALIASES[cleanedNoDollar]) {
+    return COLUMN_ALIASES[cleanedNoDollar];
+  }
+  
+  // Try matching without spaces and special chars
+  const cleanedForMatch = cleaned.replace(/[\s$₡]+/g, '');
   for (const [alias, normalized] of Object.entries(COLUMN_ALIASES)) {
-    const cleanAlias = alias.replace(/[_\-\s]+/g, '');
+    const cleanAlias = alias.replace(/[_\-\s$₡]+/g, '');
     if (cleanAlias === cleanedForMatch) {
       return normalized;
     }
   }
   
   // Fallback: convert to snake_case
-  return cleaned.replace(/\s+/g, '_');
+  return cleaned.replace(/[\s$₡]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
 };
 
 export function ImportEmployeesDialog({ 
