@@ -285,59 +285,104 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
       overflow: hidden;
     }
     .header {
-      background: linear-gradient(135deg, #003d7a 0%, #0066cc 100%);
+      background: linear-gradient(135deg, #0F2A44 0%, #1a3a5c 100%);
       color: white;
-      padding: 25px 30px;
+      padding: 20px 30px;
+    }
+    .header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+    }
+    .logo-container {
+      background: white;
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 120px;
+      min-height: 70px;
+    }
+    .logo {
+      max-width: 100px;
+      max-height: 50px;
+      object-fit: contain;
+    }
+    .logo-placeholder {
+      width: 100px;
+      height: 50px;
+      background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: bold;
+      color: #0F2A44;
+    }
+    .logo-text {
+      font-size: 10px;
+      color: #999;
+      text-align: center;
+      margin-top: 5px;
+    }
+    .header-brand {
+      text-align: right;
+    }
+    .platform-name {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.8;
+      margin-bottom: 3px;
+    }
+    .payslip-title {
+      font-size: 20px;
+      font-weight: bold;
+      margin: 0;
+      color: #C9A24D;
+    }
+    .header-bottom {
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-    }
-    .logo {
-      width: 80px;
-      height: 80px;
-      object-fit: contain;
-      background: white;
-      border-radius: 8px;
-      padding: 8px;
-    }
-    .logo-placeholder {
-      width: 80px;
-      height: 80px;
-      background: rgba(255,255,255,0.2);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      font-weight: bold;
+    .company-info {
+      flex: 1;
     }
     .company-name {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: bold;
       margin: 0;
     }
     .company-tax-id {
-      font-size: 13px;
-      opacity: 0.9;
-      margin-top: 5px;
+      font-size: 12px;
+      opacity: 0.8;
+      margin-top: 4px;
     }
-    .header-right {
+    .period-info {
       text-align: right;
+      background: rgba(201, 162, 77, 0.15);
+      padding: 10px 15px;
+      border-radius: 8px;
+      border: 1px solid rgba(201, 162, 77, 0.3);
     }
-    .payslip-title {
-      font-size: 18px;
-      font-weight: bold;
-      margin: 0;
+    .period-label-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.8;
+      margin-bottom: 3px;
     }
     .period-label {
       font-size: 14px;
-      opacity: 0.9;
-      margin-top: 5px;
+      font-weight: 600;
+      color: #C9A24D;
     }
     .content {
       padding: 25px 30px;
@@ -550,19 +595,27 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
 <body>
   <div class="container">
     <div class="header">
-      <div class="header-left">
-        ${logoUrl 
-          ? `<img src="${logoUrl}" alt="Logo" class="logo" />`
-          : `<div class="logo-placeholder">${payslip.company.display_name.charAt(0)}</div>`
-        }
-        <div>
+      <div class="header-top">
+        <div class="logo-container">
+          ${logoUrl 
+            ? `<img src="${logoUrl}" alt="Logo de ${payslip.company.display_name}" class="logo" />`
+            : `<div class="logo-placeholder">${payslip.company.display_name.substring(0, 3).toUpperCase()}</div>`
+          }
+        </div>
+        <div class="header-brand">
+          <p class="platform-name">ACL Workforce HUB</p>
+          <p class="payslip-title">COMPROBANTE DE PAGO</p>
+        </div>
+      </div>
+      <div class="header-bottom">
+        <div class="company-info">
           <p class="company-name">${payslip.company.display_name}</p>
           <p class="company-tax-id">Cédula Jurídica: ${payslip.company.tax_id || 'N/A'}</p>
         </div>
-      </div>
-      <div class="header-right">
-        <p class="payslip-title">COMPROBANTE DE PAGO</p>
-        <p class="period-label">${periodLabel}</p>
+        <div class="period-info">
+          <p class="period-label-title">Período de Pago</p>
+          <p class="period-label">${periodLabel}</p>
+        </div>
       </div>
     </div>
 
