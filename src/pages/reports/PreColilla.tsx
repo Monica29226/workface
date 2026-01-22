@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useCompany } from "@/contexts/CompanyContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,11 +89,13 @@ interface PayrollBatch {
 function EmployeePayrollCard({ 
   line, 
   exchangeRate,
-  onViewDetail 
+  onViewDetail,
+  t
 }: { 
   line: PayrollLine;
   exchangeRate: number;
   onViewDetail: () => void;
+  t: (key: string) => string;
 }) {
   const grossCRC = line.currency === 'USD' 
     ? Number(line.gross_salary) * exchangeRate 
@@ -132,7 +135,7 @@ function EmployeePayrollCard({
           {/* Gross Salary */}
           <div className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg">
             <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="text-xs font-normal">Bruto</Badge>
+              <Badge variant="secondary" className="text-xs font-normal">{t('payroll.gross')}</Badge>
             </div>
             <div className="text-right">
               <span className="font-mono text-base font-medium text-foreground tabular-nums block">
@@ -149,7 +152,7 @@ function EmployeePayrollCard({
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs font-normal text-destructive border-destructive/20">
                 <Minus className="h-3 w-3 mr-1" />
-                Deduc.
+                {t('payroll.deductions')}
               </Badge>
             </div>
             <div className="text-right">
@@ -162,7 +165,7 @@ function EmployeePayrollCard({
           {/* Net Pay - Highlighted with dual currency */}
           <div className="bg-primary rounded-lg p-3">
             <div className="flex items-center justify-between">
-              <Badge className="text-xs font-normal bg-white/20 text-white hover:bg-white/20">Neto</Badge>
+              <Badge className="text-xs font-normal bg-white/20 text-white hover:bg-white/20">{t('payroll.net')}</Badge>
               <div className="text-right">
                 <span className="font-mono text-lg font-bold text-white tabular-nums block">
                   {formatCRC(Number(line.net_pay))}
@@ -184,7 +187,7 @@ function EmployeePayrollCard({
             onClick={onViewDetail}
           >
             <Eye className="h-4 w-4" />
-            Ver Detalle
+            {t('common.view_detail')}
           </Button>
         </div>
       </CardContent>
@@ -201,7 +204,8 @@ function PayrollDetailModal({
   companyName,
   periodLabel,
   onDownloadPDF,
-  isDownloading
+  isDownloading,
+  t
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -211,6 +215,7 @@ function PayrollDetailModal({
   periodLabel: string;
   onDownloadPDF: () => void;
   isDownloading: boolean;
+  t: (key: string) => string;
 }) {
   if (!line) return null;
 
@@ -224,13 +229,13 @@ function PayrollDetailModal({
   const deductionsUSD = Number(line.deductions) / exchangeRate;
   const netUSD = Number(line.net_pay) / exchangeRate;
 
-  // Build deductions list from detail
+  // Build deductions list from detail with translations
   const deductionItems = detail.items || [
-    { code: 'ccss', label: 'CCSS Obrero', amount: detail.ccss_obrero || 0 },
-    ...(detail.isr_neto && detail.isr_neto > 0 ? [{ code: 'isr', label: 'Impuesto sobre la Renta', amount: detail.isr_neto }] : []),
-    ...(detail.magisterio && detail.magisterio > 0 ? [{ code: 'mag', label: 'Magisterio Nacional', amount: detail.magisterio }] : []),
-    ...(detail.poliza_vida && detail.poliza_vida > 0 ? [{ code: 'pol', label: 'Póliza de Vida', amount: detail.poliza_vida }] : []),
-    ...(detail.loan_deduction && detail.loan_deduction > 0 ? [{ code: 'loan', label: 'Préstamos', amount: detail.loan_deduction }] : []),
+    { code: 'ccss', label: t('deduction.ccss'), amount: detail.ccss_obrero || 0 },
+    ...(detail.isr_neto && detail.isr_neto > 0 ? [{ code: 'isr', label: t('deduction.isr'), amount: detail.isr_neto }] : []),
+    ...(detail.magisterio && detail.magisterio > 0 ? [{ code: 'mag', label: t('deduction.magisterio'), amount: detail.magisterio }] : []),
+    ...(detail.poliza_vida && detail.poliza_vida > 0 ? [{ code: 'pol', label: t('deduction.poliza'), amount: detail.poliza_vida }] : []),
+    ...(detail.loan_deduction && detail.loan_deduction > 0 ? [{ code: 'loan', label: t('deduction.loans'), amount: detail.loan_deduction }] : []),
   ].filter(item => item.amount > 0);
 
   return (
@@ -244,11 +249,11 @@ function PayrollDetailModal({
             </div>
             <div>
               <DialogTitle className="text-lg font-semibold">
-                {companyName || 'Detalle de Pre-Colilla'}
+                {companyName || t('precolilla.detail_title')}
               </DialogTitle>
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                 <FileText className="h-4 w-4" />
-                <span>Período: {periodLabel}</span>
+                <span>{t('precolilla.period')}: {periodLabel}</span>
               </div>
             </div>
           </div>
@@ -260,7 +265,7 @@ function PayrollDetailModal({
             <Card className="bg-muted/30">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                  <span>+ Salario Bruto</span>
+                  <span>+ {t('payroll.gross_salary')}</span>
                 </div>
                 <p className="text-xl font-bold text-foreground">
                   {formatCRC(grossCRC)}
@@ -271,7 +276,7 @@ function PayrollDetailModal({
             <Card className="bg-destructive/5 border-destructive/20">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                  <span>− Total Deducciones</span>
+                  <span>− {t('payroll.total_deductions')}</span>
                 </div>
                 <p className="text-xl font-bold text-destructive">
                   {formatCRC(Number(line.deductions))}
@@ -285,7 +290,7 @@ function PayrollDetailModal({
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">Total a Recibir</span>
+                  <span className="font-medium">{t('payroll.total_to_receive')}</span>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold text-primary">
@@ -300,11 +305,11 @@ function PayrollDetailModal({
           </Card>
 
           {/* Exchange Rate Info */}
-          <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+          <Card className="bg-accent/30 border-accent">
             <CardContent className="p-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-blue-700 dark:text-blue-300">Tipo de cambio BCCR:</span>
-                <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
+                <span className="text-accent-foreground">{t('payroll.exchange_rate_bccr')}:</span>
+                <Badge variant="outline" className="bg-accent text-accent-foreground border-accent">
                   {formatCRC(exchangeRate)} / $1 USD
                 </Badge>
               </div>
@@ -314,7 +319,7 @@ function PayrollDetailModal({
           {/* Deductions Breakdown */}
           <div>
             <h4 className="font-semibold mb-3 flex items-center gap-2">
-              − Desglose de Deducciones
+              − {t('payroll.deductions_breakdown')}
             </h4>
             
             {deductionItems.length > 0 ? (
@@ -322,7 +327,7 @@ function PayrollDetailModal({
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left p-3 font-medium">Concepto</th>
+                      <th className="text-left p-3 font-medium">{t('payroll.concept')}</th>
                       <th className="text-right p-3 font-medium">CRC</th>
                       <th className="text-right p-3 font-medium">USD</th>
                     </tr>
@@ -340,7 +345,7 @@ function PayrollDetailModal({
                       </tr>
                     ))}
                     <tr className="border-t bg-muted/30 font-semibold">
-                      <td className="p-3">Total</td>
+                      <td className="p-3">{t('payroll.total')}</td>
                       <td className="p-3 text-right font-mono text-destructive">
                         -{formatCRC(Number(line.deductions))}
                       </td>
@@ -353,7 +358,7 @@ function PayrollDetailModal({
               </div>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">
-                No hay detalles de deducciones disponibles para este período.
+                {t('precolilla.no_deductions')}
               </p>
             )}
           </div>
@@ -370,7 +375,7 @@ function PayrollDetailModal({
               ) : (
                 <Download className="h-4 w-4" />
               )}
-              {isDownloading ? 'Generando...' : 'Descargar Comprobante PDF'}
+              {isDownloading ? t('common.generating') : t('common.download_pdf')}
             </Button>
           </div>
         </div>
@@ -381,6 +386,7 @@ function PayrollDetailModal({
 
 export function PreColilla() {
   const { selectedCompany } = useCompany();
+  const { t, language } = useLanguage();
   const { toast } = useToast();
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -465,29 +471,31 @@ export function PreColilla() {
   const formatPeriod = (start: string, end: string) => {
     const startDate = new Date(start);
     const endDate = new Date(end);
-    const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const monthsEs = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    const monthsEn = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const months = language === 'en' ? monthsEn : monthsEs;
     return `${startDate.getDate()} ${months[startDate.getMonth()]} - ${endDate.getDate()} ${months[endDate.getMonth()]} ${endDate.getFullYear()}`;
   };
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-      calculado: { label: "Calculado", variant: "secondary" },
-      aprobado: { label: "Aprobado", variant: "default" },
-      autorizado: { label: "Autorizado", variant: "outline" },
-      enviado: { label: "Enviado", variant: "outline" },
+    const statusConfig: Record<string, { labelKey: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+      calculado: { labelKey: "status.calculated", variant: "secondary" },
+      aprobado: { labelKey: "status.approved", variant: "default" },
+      autorizado: { labelKey: "status.authorized", variant: "outline" },
+      enviado: { labelKey: "status.sent", variant: "outline" },
     };
-    const config = statusConfig[status] || { label: status, variant: "secondary" as const };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
+    const config = statusConfig[status] || { labelKey: status, variant: "secondary" as const };
+    return <Badge variant={config.variant}>{t(config.labelKey)}</Badge>;
   };
 
   const getPayrollTypeBadge = (type: string) => {
-    const typeConfig: Record<string, { label: string; className: string }> = {
-      adelanto: { label: "1ª Quincena", className: "bg-amber-100 text-amber-800 border-amber-200" },
-      segunda: { label: "2ª Quincena", className: "bg-indigo-100 text-indigo-800 border-indigo-200" },
-      completa: { label: "Mensual", className: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+    const typeConfig: Record<string, { labelKey: string; className: string }> = {
+      adelanto: { labelKey: "payroll_type.adelanto", className: "bg-amber-100 text-amber-800 border-amber-200" },
+      segunda: { labelKey: "payroll_type.segunda", className: "bg-indigo-100 text-indigo-800 border-indigo-200" },
+      completa: { labelKey: "payroll_type.completa", className: "bg-emerald-100 text-emerald-800 border-emerald-200" },
     };
-    const config = typeConfig[type] || { label: type, className: "" };
-    return <Badge variant="outline" className={config.className}>{config.label}</Badge>;
+    const config = typeConfig[type] || { labelKey: type, className: "" };
+    return <Badge variant="outline" className={config.className}>{t(config.labelKey)}</Badge>;
   };
 
   const handleViewDetail = (line: PayrollLine) => {
@@ -576,9 +584,9 @@ export function PreColilla() {
         <div className="flex items-center gap-4">
           <img src={logoACL} alt="ACL" className="h-10 w-auto hidden lg:block" />
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Pre-Colilla</h1>
+            <h1 className="text-2xl font-bold text-foreground">{t('precolilla.title')}</h1>
             <p className="text-muted-foreground">
-              Revise y valide las colillas antes del envío
+              {t('precolilla.description')}
             </p>
           </div>
         </div>
@@ -589,7 +597,7 @@ export function PreColilla() {
             onValueChange={setSelectedBatchId}
           >
             <SelectTrigger className="w-full sm:w-[320px]">
-              <SelectValue placeholder="Seleccionar período..." />
+              <SelectValue placeholder={t('common.select_period')} />
             </SelectTrigger>
             <SelectContent>
               {batchesLoading ? (
@@ -609,7 +617,7 @@ export function PreColilla() {
           {currentBatch?.status === 'autorizado' && (
             <Button onClick={handleApproveAndSend} className="gap-2 bg-green-600 hover:bg-green-700 w-full sm:w-auto">
               <Send className="h-4 w-4" />
-              Enviar Colillas
+              {t('common.send_payslips')}
             </Button>
           )}
         </div>
@@ -626,19 +634,19 @@ export function PreColilla() {
                 T.C. ₡{exchangeRate.toFixed(2)}
               </Badge>
               <span className="text-sm text-muted-foreground">
-                {payrollLines?.length || 0} colaboradores
+                {payrollLines?.length || 0} {t('common.collaborators')}
               </span>
               
               {/* Summary Totals */}
               <div className="ml-auto flex flex-wrap gap-4 text-sm">
                 <div className="text-muted-foreground">
-                  Bruto: <span className="font-mono font-medium text-foreground">₡{formatNumber(totals.gross)}</span>
+                  {t('payroll.gross')}: <span className="font-mono font-medium text-foreground">₡{formatNumber(totals.gross)}</span>
                 </div>
                 <div className="text-muted-foreground">
-                  Deduc: <span className="font-mono font-medium text-orange-600">–₡{formatNumber(totals.deductions)}</span>
+                  {t('payroll.deductions')}: <span className="font-mono font-medium text-orange-600">–₡{formatNumber(totals.deductions)}</span>
                 </div>
                 <div className="text-muted-foreground">
-                  Neto: <span className="font-mono font-bold text-green-600">₡{formatNumber(totals.net)}</span>
+                  {t('payroll.net')}: <span className="font-mono font-bold text-green-600">₡{formatNumber(totals.net)}</span>
                 </div>
               </div>
             </div>
@@ -650,22 +658,22 @@ export function PreColilla() {
         <Card className="border-dashed">
           <CardContent className="py-16 text-center text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-4 opacity-30" />
-            <p className="text-lg font-medium mb-1">Seleccione un período</p>
-            <p className="text-sm">Elija un período de planilla para revisar las colillas</p>
+            <p className="text-lg font-medium mb-1">{t('precolilla.no_period_selected')}</p>
+            <p className="text-sm">{t('precolilla.select_period_hint')}</p>
           </CardContent>
         </Card>
       ) : linesLoading ? (
         <Card>
           <CardContent className="py-16 text-center">
             <Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" />
-            <p className="mt-4 text-muted-foreground">Cargando datos de planilla...</p>
+            <p className="mt-4 text-muted-foreground">{t('precolilla.loading_data')}</p>
           </CardContent>
         </Card>
       ) : !payrollLines || payrollLines.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center text-muted-foreground">
             <FileText className="h-12 w-12 mx-auto mb-4 opacity-30" />
-            <p>No hay datos para este período</p>
+            <p>{t('precolilla.no_data')}</p>
           </CardContent>
         </Card>
       ) : (
@@ -674,7 +682,7 @@ export function PreColilla() {
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar colaborador por nombre o código..."
+              placeholder={t('precolilla.search_placeholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -689,6 +697,7 @@ export function PreColilla() {
                 line={line}
                 exchangeRate={exchangeRate}
                 onViewDetail={() => handleViewDetail(line)}
+                t={t}
               />
             ))}
           </div>
@@ -697,7 +706,7 @@ export function PreColilla() {
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
                 <Search className="h-8 w-8 mx-auto mb-3 opacity-30" />
-                <p>No se encontraron colaboradores que coincidan con "{searchTerm}"</p>
+                <p>{t('precolilla.no_results')} "{searchTerm}"</p>
               </CardContent>
             </Card>
           )}
@@ -714,6 +723,7 @@ export function PreColilla() {
         periodLabel={currentBatch ? formatPeriod(currentBatch.period_start, currentBatch.period_end) : ''}
         onDownloadPDF={handleDownloadPDF}
         isDownloading={isDownloading}
+        t={t}
       />
     </div>
   );
