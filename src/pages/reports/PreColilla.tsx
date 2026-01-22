@@ -503,16 +503,18 @@ export function PreColilla() {
                     <TableRow className="text-xs">
                       <TableHead>Empleado</TableHead>
                       <TableHead>Centro Costo</TableHead>
-                      <TableHead className="text-right">Bruto USD</TableHead>
+                      <TableHead className="text-right">Salario Bruto</TableHead>
                       <TableHead className="text-right">Deducciones</TableHead>
-                      <TableHead className="text-right">Neto USD</TableHead>
-                      <TableHead className="text-right">Neto CRC</TableHead>
+                      <TableHead className="text-right">Neto a Pagar</TableHead>
                       <TableHead className="text-center">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredLines.map((line) => {
-                      const netUSD = Number(line.net_pay) / exchangeRate;
+                      // Calcular bruto en CRC (si es USD, convertir)
+                      const grossCRC = line.currency === 'USD' 
+                        ? Number(line.gross_salary) * exchangeRate 
+                        : Number(line.gross_salary);
                       
                       return (
                         <TableRow key={line.id} className="text-sm">
@@ -528,15 +530,12 @@ export function PreColilla() {
                             {line.cost_center?.code || '-'}
                           </TableCell>
                           <TableCell className="text-right font-mono">
-                            ${formatNumber(Number(line.gross_salary))}
+                            ₡{formatNumber(grossCRC)}
                           </TableCell>
                           <TableCell className="text-right font-mono text-orange-600">
                             ₡{formatNumber(Number(line.deductions))}
                           </TableCell>
                           <TableCell className="text-right font-mono font-semibold text-green-600">
-                            ${netUSD.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-muted-foreground">
                             ₡{formatNumber(Number(line.net_pay))}
                           </TableCell>
                           <TableCell className="text-center">
