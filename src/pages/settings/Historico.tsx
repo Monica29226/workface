@@ -93,19 +93,16 @@ export function Historico() {
         const periodo = line.batch.period_start.substring(0, 7); // YYYY-MM format
         const exchangeRate = line.exchange_rate_to_base || 505.10;
         
-        // net_pay is stored in the line's currency
-        // If currency is USD: net_pay is in USD, calculate CRC equivalent
-        // If currency is CRC: net_pay is in CRC, calculate USD equivalent
+        // IMPORTANT: net_pay is ALWAYS stored in CRC after deduction calculations
+        // gross_salary is stored in the employee's original currency
+        // For USD employees: gross_salary is in USD, net_pay is in CRC
+        // For CRC employees: both gross_salary and net_pay are in CRC
         let total_crc: number;
         let total_usd: number;
         
-        if (line.currency === 'USD') {
-          total_usd = line.net_pay;
-          total_crc = line.net_pay * exchangeRate;
-        } else {
-          total_crc = line.net_pay;
-          total_usd = line.net_pay / exchangeRate;
-        }
+        // net_pay is always in CRC (the deductions are calculated in CRC)
+        total_crc = line.net_pay;
+        total_usd = line.net_pay / exchangeRate;
         
         return {
           id: line.id,
