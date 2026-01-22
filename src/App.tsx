@@ -25,8 +25,8 @@ const Historico = lazy(() => import("@/pages/settings/Historico").then(m => ({ d
 const Parameters = lazy(() => import("@/pages/settings/Parameters").then(m => ({ default: m.Parameters })));
 const CostCenters = lazy(() => import("@/pages/CostCenters").then(m => ({ default: m.CostCenters })));
 const VacationReport = lazy(() => import("@/pages/reports/VacationReport").then(m => ({ default: m.VacationReport })));
-const PayrollBreakdownReport = lazy(() => import("@/pages/reports/PayrollBreakdownReport").then(m => ({ default: m.PayrollBreakdownReport })));
-const EditablePayrollReport = lazy(() => import("@/pages/reports/EditablePayrollReport").then(m => ({ default: m.EditablePayrollReport })));
+const PreNomina = lazy(() => import("@/pages/reports/PreNomina").then(m => ({ default: m.PreNomina })));
+const PreColilla = lazy(() => import("@/pages/reports/PreColilla").then(m => ({ default: m.PreColilla })));
 const VacationApproval = lazy(() => import("@/pages/VacationApproval").then(m => ({ default: m.VacationApproval })));
 const EmployeeProfile = lazy(() => import("@/pages/EmployeeProfile").then(m => ({ default: m.EmployeeProfile })));
 const EmployeeVacations = lazy(() => import("@/pages/EmployeeVacations").then(m => ({ default: m.EmployeeVacations })));
@@ -91,8 +91,8 @@ const App = () => (
                     <Route path="/horas-proyecto" element={<HorasProyecto />} />
                     <Route path="/liquidations" element={<Liquidations />} />
                     <Route path="/reports/vacations" element={<VacationReport />} />
-                    <Route path="/reports/payroll-breakdown" element={<PayrollBreakdownReport />} />
-                    <Route path="/reports/editable-payroll" element={<EditablePayrollReport />} />
+                    <Route path="/reports/pre-nomina" element={<PreNomina />} />
+                    <Route path="/reports/pre-colilla" element={<PreColilla />} />
                     <Route path="/vacation-approval" element={<VacationApproval />} />
                     <Route path="/historico" element={<Historico />} />
                     <Route path="/users" element={<UsersPage />} />
