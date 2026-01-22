@@ -14,6 +14,15 @@ import { formatNumber } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import logoACL from "@/assets/logotipo_acl.png";
 
+// Format currency in CRC with proper symbol
+const formatCRC = (amount: number): string => {
+  return `₡${new Intl.NumberFormat('es-CR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: true
+  }).format(amount).replace(/\./g, ' ').replace(',', ',')}`;
+};
+
 interface DeductionsDetail {
   ccss_obrero?: number;
   ccss_rate?: number;
@@ -122,33 +131,33 @@ function EmployeePayrollCard({
               <Badge variant="secondary" className="text-xs font-normal">Bruto</Badge>
               <span className="text-sm text-muted-foreground">Salario Bruto</span>
             </div>
-            <span className="font-mono text-base font-medium text-foreground">
-              ₡{formatNumber(grossCRC)}
+            <span className="font-mono text-base font-medium text-foreground tabular-nums">
+              {formatCRC(grossCRC)}
             </span>
           </div>
 
           {/* Deductions */}
-          <div className="flex items-center justify-between py-2 px-3 bg-destructive/5 rounded-lg">
+          <div className="flex items-center justify-between py-2 px-3 bg-red-50 dark:bg-red-900/10 rounded-lg">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs font-normal text-orange-600 border-orange-200 bg-orange-50">
+              <Badge variant="outline" className="text-xs font-normal text-red-600 border-red-200 bg-red-50">
                 <Minus className="h-3 w-3 mr-1" />
                 Deduc.
               </Badge>
               <span className="text-sm text-muted-foreground">Deducciones</span>
             </div>
-            <span className="font-mono text-base font-medium text-orange-600">
-              –₡{formatNumber(Number(line.deductions))}
+            <span className="font-mono text-base font-medium text-red-600 tabular-nums">
+              -{formatCRC(Number(line.deductions))}
             </span>
           </div>
 
           {/* Net Pay - Highlighted */}
-          <div className="flex items-center justify-between py-3 px-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+          <div className="flex items-center justify-between py-3 px-4 bg-green-600 rounded-lg">
             <div className="flex items-center gap-2">
-              <Badge className="text-xs font-normal bg-green-600 hover:bg-green-600">Neto</Badge>
-              <span className="text-sm font-medium text-green-700 dark:text-green-400">Salario Neto</span>
+              <Badge className="text-xs font-normal bg-white/20 text-white hover:bg-white/20">Neto</Badge>
+              <span className="text-sm font-medium text-white">Salario Neto</span>
             </div>
-            <span className="font-mono text-xl font-bold text-green-700 dark:text-green-400">
-              ₡{formatNumber(Number(line.net_pay))}
+            <span className="font-mono text-xl font-bold text-white tabular-nums">
+              {formatCRC(Number(line.net_pay))}
             </span>
           </div>
         </div>
@@ -237,90 +246,89 @@ function PayrollDetailModal({
               </div>
             </div>
 
-            {/* USD Banner if applicable */}
-            {line.currency === 'USD' && (
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+            {/* Ingresos Section */}
+            <div className="bg-green-50 dark:bg-green-900/10 rounded-lg overflow-hidden">
+              <div className="bg-green-600 dark:bg-green-700 px-4 py-2">
+                <h4 className="text-sm font-semibold text-white uppercase tracking-wide">
+                  Ingresos
+                </h4>
+              </div>
+              <div className="p-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-blue-700 dark:text-blue-400">Salario Original (USD):</span>
-                  <span className="font-mono font-semibold text-blue-800 dark:text-blue-300">
-                    ${formatNumber(Number(line.gross_salary))}
+                  <span className="text-muted-foreground">Total Ingresos</span>
+                  <span className="font-mono text-lg font-semibold tabular-nums">
+                    {formatCRC(grossCRC)}
                   </span>
                 </div>
-                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                  T.C. BCCR: ₡{exchangeRate.toFixed(2)} / $1 USD
-                </p>
-              </div>
-            )}
-
-            {/* Gross Salary */}
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wide">
-                Ingresos
-              </h4>
-              <div className="bg-muted/30 rounded-lg p-4">
-                <div className="flex justify-between items-center">
-                  <span>Salario Bruto</span>
-                  <span className="font-mono text-lg font-semibold">₡{formatNumber(grossCRC)}</span>
-                </div>
                 {Number(line.additional_bonuses) > 0 && (
-                  <div className="flex justify-between items-center mt-2 text-green-600">
-                    <span>Bonificaciones</span>
-                    <span className="font-mono">+₡{formatNumber(Number(line.additional_bonuses))}</span>
+                  <div className="flex justify-between items-center mt-2 text-sm">
+                    <span className="text-muted-foreground">Bonificaciones</span>
+                    <span className="font-mono text-green-600 tabular-nums">
+                      +{formatCRC(Number(line.additional_bonuses))}
+                    </span>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Deductions Breakdown */}
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wide flex items-center gap-2">
-                <ArrowDown className="h-4 w-4 text-orange-500" />
-                Deducciones
-              </h4>
-              <div className="bg-orange-50 dark:bg-orange-900/10 rounded-lg p-4 space-y-2">
+            {/* Deducciones Section */}
+            <div className="bg-red-50 dark:bg-red-900/10 rounded-lg overflow-hidden">
+              <div className="bg-red-600 dark:bg-red-700 px-4 py-2">
+                <h4 className="text-sm font-semibold text-white uppercase tracking-wide">
+                  Deducciones
+                </h4>
+              </div>
+              <div className="p-4 space-y-2">
                 {deductionItems.map((item, index) => (
                   <div key={index} className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">{item.label}</span>
-                    <span className="font-mono text-orange-600">–₡{formatNumber(item.amount)}</span>
+                    <span className="font-mono text-red-600 tabular-nums">
+                      -{formatCRC(item.amount)}
+                    </span>
                   </div>
                 ))}
-                <div className="flex justify-between items-center pt-2 mt-2 border-t border-orange-200 dark:border-orange-800 font-medium">
+                <div className="flex justify-between items-center pt-2 mt-2 border-t border-red-200 dark:border-red-800 font-medium">
                   <span>Total Deducciones</span>
-                  <span className="font-mono text-orange-700">–₡{formatNumber(Number(line.deductions))}</span>
+                  <span className="font-mono text-red-700 tabular-nums">
+                    -{formatCRC(Number(line.deductions))}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Net Pay - Highlighted */}
-            <div className="bg-green-100 dark:bg-green-900/30 rounded-lg p-5 text-center border-2 border-green-300 dark:border-green-700">
-              <p className="text-sm text-green-700 dark:text-green-400 mb-1 font-medium uppercase tracking-wide">
-                Salario Neto a Depositar
-              </p>
-              <p className="font-mono text-3xl font-bold text-green-700 dark:text-green-400">
-                ₡{formatNumber(Number(line.net_pay))}
-              </p>
-            </div>
-
-            {/* Accruals */}
-            <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-2 uppercase tracking-wide">
-                Provisiones Acumuladas
-              </h4>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
-                  <p className="text-xs text-blue-600 dark:text-blue-400">Vacaciones</p>
-                  <p className="font-semibold text-blue-700 dark:text-blue-300">
+            {/* Provisiones Section */}
+            <div className="bg-blue-50 dark:bg-blue-900/10 rounded-lg overflow-hidden">
+              <div className="bg-blue-600 dark:bg-blue-700 px-4 py-2">
+                <h4 className="text-sm font-semibold text-white uppercase tracking-wide">
+                  Provisiones del Período
+                </h4>
+              </div>
+              <div className="p-4 space-y-2">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Vacaciones Acumuladas</span>
+                  <span className="font-mono tabular-nums">
                     {Number(line.vacation_accrued_days).toFixed(2)} días
-                  </p>
+                  </span>
                 </div>
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-center">
-                  <p className="text-xs text-blue-600 dark:text-blue-400">Aguinaldo</p>
-                  <p className="font-semibold text-blue-700 dark:text-blue-300">
-                    ₡{formatNumber(Number(line.aguinaldo_accrued))}
-                  </p>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">Aguinaldo Acumulado</span>
+                  <span className="font-mono tabular-nums">
+                    {formatCRC(Number(line.aguinaldo_accrued))}
+                  </span>
                 </div>
               </div>
             </div>
+
+            {/* Total a Depositar - Only CRC */}
+            <div className="bg-green-600 dark:bg-green-700 rounded-lg p-6 text-center">
+              <p className="text-sm text-white/90 mb-2 font-medium uppercase tracking-wide">
+                Total a Depositar
+              </p>
+              <p className="font-mono text-4xl font-bold text-white tabular-nums">
+                {formatCRC(Number(line.net_pay))}
+              </p>
+            </div>
+
           </div>
         </ScrollArea>
 
