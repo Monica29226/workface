@@ -14,13 +14,14 @@ import { formatNumber } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import logoACL from "@/assets/logotipo_acl.png";
 
-// Format currency in CRC with proper symbol
+// Format CRC without decimals
 const formatCRC = (amount: number): string => {
-  return `₡${new Intl.NumberFormat('es-CR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-    useGrouping: true
-  }).format(amount).replace(/\./g, ' ').replace(',', ',')}`;
+  return `₡${Math.round(amount).toLocaleString('es-CR')}`;
+};
+
+// Format USD without decimals
+const formatUSD = (amount: number): string => {
+  return `$${Math.round(amount).toLocaleString('en-US')}`;
 };
 
 interface DeductionsDetail {
@@ -96,6 +97,9 @@ function EmployeePayrollCard({
   const grossCRC = line.currency === 'USD' 
     ? Number(line.gross_salary) * exchangeRate 
     : Number(line.gross_salary);
+  
+  const grossUSD = grossCRC / exchangeRate;
+  const netUSD = Number(line.net_pay) / exchangeRate;
 
   return (
     <Card className="hover:shadow-lg transition-shadow duration-200 border-l-4 border-l-primary/20 hover:border-l-primary">
@@ -123,42 +127,51 @@ function EmployeePayrollCard({
           )}
         </div>
 
-        {/* Salary Breakdown */}
+        {/* Salary Breakdown with dual currency */}
         <div className="space-y-3">
           {/* Gross Salary */}
           <div className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg">
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs font-normal">Bruto</Badge>
-              <span className="text-sm text-muted-foreground">Salario Bruto</span>
             </div>
-            <span className="font-mono text-base font-medium text-foreground tabular-nums">
-              {formatCRC(grossCRC)}
-            </span>
+            <div className="text-right">
+              <span className="font-mono text-base font-medium text-foreground tabular-nums block">
+                {formatCRC(grossCRC)}
+              </span>
+              <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                {formatUSD(grossUSD)}
+              </span>
+            </div>
           </div>
 
           {/* Deductions */}
-          <div className="flex items-center justify-between py-2 px-3 bg-red-50 dark:bg-red-900/10 rounded-lg">
+          <div className="flex items-center justify-between py-2 px-3 bg-destructive/5 rounded-lg">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs font-normal text-red-600 border-red-200 bg-red-50">
+              <Badge variant="outline" className="text-xs font-normal text-destructive border-destructive/20">
                 <Minus className="h-3 w-3 mr-1" />
                 Deduc.
               </Badge>
-              <span className="text-sm text-muted-foreground">Deducciones</span>
             </div>
-            <span className="font-mono text-base font-medium text-red-600 tabular-nums">
-              -{formatCRC(Number(line.deductions))}
-            </span>
+            <div className="text-right">
+              <span className="font-mono text-base font-medium text-destructive tabular-nums block">
+                -{formatCRC(Number(line.deductions))}
+              </span>
+            </div>
           </div>
 
-          {/* Net Pay - Highlighted */}
-          <div className="flex items-center justify-between py-3 px-4 bg-green-600 rounded-lg">
-            <div className="flex items-center gap-2">
+          {/* Net Pay - Highlighted with dual currency */}
+          <div className="bg-primary rounded-lg p-3">
+            <div className="flex items-center justify-between">
               <Badge className="text-xs font-normal bg-white/20 text-white hover:bg-white/20">Neto</Badge>
-              <span className="text-sm font-medium text-white">Salario Neto</span>
+              <div className="text-right">
+                <span className="font-mono text-lg font-bold text-white tabular-nums block">
+                  {formatCRC(Number(line.net_pay))}
+                </span>
+                <span className="font-mono text-sm text-white/80 tabular-nums">
+                  {formatUSD(netUSD)}
+                </span>
+              </div>
             </div>
-            <span className="font-mono text-xl font-bold text-white tabular-nums">
-              {formatCRC(Number(line.net_pay))}
-            </span>
           </div>
         </div>
 
@@ -179,7 +192,7 @@ function EmployeePayrollCard({
   );
 }
 
-// Detail Modal Component
+// Detail Modal Component - Unified with Histórico view (CRC/USD dual display)
 function PayrollDetailModal({
   isOpen,
   onClose,
@@ -205,6 +218,11 @@ function PayrollDetailModal({
   const grossCRC = line.currency === 'USD' 
     ? Number(line.gross_salary) * exchangeRate 
     : Number(line.gross_salary);
+  
+  // USD conversions
+  const grossUSD = grossCRC / exchangeRate;
+  const deductionsUSD = Number(line.deductions) / exchangeRate;
+  const netUSD = Number(line.net_pay) / exchangeRate;
 
   // Build deductions list from detail
   const deductionItems = detail.items || [
@@ -217,142 +235,142 @@ function PayrollDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh]">
-        <DialogHeader className="pb-4 border-b">
-          <div className="flex items-center gap-3">
-            <img src={logoACL} alt="ACL" className="h-8 w-auto" />
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="space-y-4">
+          {/* Company Header */}
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 rounded-lg border bg-muted flex items-center justify-center">
+              <Building2 className="h-6 w-6 text-muted-foreground" />
+            </div>
             <div>
-              <DialogTitle className="text-lg">Detalle de Colilla</DialogTitle>
-              <p className="text-sm text-muted-foreground">{periodLabel}</p>
+              <DialogTitle className="text-lg font-semibold">
+                {companyName || 'Detalle de Pre-Colilla'}
+              </DialogTitle>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                <FileText className="h-4 w-4" />
+                <span>Período: {periodLabel}</span>
+              </div>
             </div>
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] pr-4">
-          <div className="space-y-6 py-4">
-            {/* Employee Header */}
-            <div className="flex items-center gap-4 p-4 bg-primary/5 rounded-lg">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <User className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">{line.employee.full_name}</h3>
-                <p className="text-sm text-muted-foreground">{line.employee.employee_id}</p>
-                {line.cost_center && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Centro de Costo: {line.cost_center.name}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Ingresos Section */}
-            <div className="bg-green-50 dark:bg-green-900/10 rounded-lg overflow-hidden">
-              <div className="bg-green-600 dark:bg-green-700 px-4 py-2">
-                <h4 className="text-sm font-semibold text-white uppercase tracking-wide">
-                  Ingresos
-                </h4>
-              </div>
-              <div className="p-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Total Ingresos</span>
-                  <span className="font-mono text-lg font-semibold tabular-nums">
-                    {formatCRC(grossCRC)}
-                  </span>
+        <div className="space-y-4 mt-4">
+          {/* Summary Cards - CRC with USD below */}
+          <div className="grid grid-cols-2 gap-3">
+            <Card className="bg-muted/30">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                  <span>+ Salario Bruto</span>
                 </div>
-                {Number(line.additional_bonuses) > 0 && (
-                  <div className="flex justify-between items-center mt-2 text-sm">
-                    <span className="text-muted-foreground">Bonificaciones</span>
-                    <span className="font-mono text-green-600 tabular-nums">
-                      +{formatCRC(Number(line.additional_bonuses))}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Deducciones Section */}
-            <div className="bg-red-50 dark:bg-red-900/10 rounded-lg overflow-hidden">
-              <div className="bg-red-600 dark:bg-red-700 px-4 py-2">
-                <h4 className="text-sm font-semibold text-white uppercase tracking-wide">
-                  Deducciones
-                </h4>
-              </div>
-              <div className="p-4 space-y-2">
-                {deductionItems.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">{item.label}</span>
-                    <span className="font-mono text-red-600 tabular-nums">
-                      -{formatCRC(item.amount)}
-                    </span>
-                  </div>
-                ))}
-                <div className="flex justify-between items-center pt-2 mt-2 border-t border-red-200 dark:border-red-800 font-medium">
-                  <span>Total Deducciones</span>
-                  <span className="font-mono text-red-700 tabular-nums">
-                    -{formatCRC(Number(line.deductions))}
-                  </span>
+                <p className="text-xl font-bold text-foreground">
+                  {formatCRC(grossCRC)}
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-destructive/5 border-destructive/20">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                  <span>− Total Deducciones</span>
                 </div>
-              </div>
-            </div>
-
-            {/* Provisiones Section */}
-            <div className="bg-blue-50 dark:bg-blue-900/10 rounded-lg overflow-hidden">
-              <div className="bg-blue-600 dark:bg-blue-700 px-4 py-2">
-                <h4 className="text-sm font-semibold text-white uppercase tracking-wide">
-                  Provisiones del Período
-                </h4>
-              </div>
-              <div className="p-4 space-y-2">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Vacaciones Acumuladas</span>
-                  <span className="font-mono tabular-nums">
-                    {Number(line.vacation_accrued_days).toFixed(2)} días
-                  </span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground">Aguinaldo Acumulado</span>
-                  <span className="font-mono tabular-nums">
-                    {formatCRC(Number(line.aguinaldo_accrued))}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Total a Depositar - Only CRC */}
-            <div className="bg-green-600 dark:bg-green-700 rounded-lg p-6 text-center">
-              <p className="text-sm text-white/90 mb-2 font-medium uppercase tracking-wide">
-                Total a Depositar
-              </p>
-              <p className="font-mono text-4xl font-bold text-white tabular-nums">
-                {formatCRC(Number(line.net_pay))}
-              </p>
-            </div>
-
+                <p className="text-xl font-bold text-destructive">
+                  {formatCRC(Number(line.deductions))}
+                </p>
+              </CardContent>
+            </Card>
           </div>
-        </ScrollArea>
 
-        {/* Footer */}
-        <div className="pt-4 border-t flex justify-between items-center">
-          <p className="text-xs text-muted-foreground">
-            ACL Workforce HUB
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={onClose}>
-              Cerrar
-            </Button>
+          {/* Net Pay Highlight - CRC primary, USD secondary */}
+          <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/30">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Total a Recibir</span>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-primary">
+                    {formatCRC(Number(line.net_pay))}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatUSD(netUSD)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Exchange Rate Info */}
+          <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+            <CardContent className="p-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-blue-700 dark:text-blue-300">Tipo de cambio BCCR:</span>
+                <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
+                  {formatCRC(exchangeRate)} / $1 USD
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Deductions Breakdown */}
+          <div>
+            <h4 className="font-semibold mb-3 flex items-center gap-2">
+              − Desglose de Deducciones
+            </h4>
+            
+            {deductionItems.length > 0 ? (
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="text-left p-3 font-medium">Concepto</th>
+                      <th className="text-right p-3 font-medium">CRC</th>
+                      <th className="text-right p-3 font-medium">USD</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {deductionItems.map((item, index) => (
+                      <tr key={index} className="border-t">
+                        <td className="p-3">{item.label}</td>
+                        <td className="p-3 text-right font-mono text-destructive">
+                          -{formatCRC(item.amount)}
+                        </td>
+                        <td className="p-3 text-right font-mono text-muted-foreground">
+                          -{formatUSD(item.amount / exchangeRate)}
+                        </td>
+                      </tr>
+                    ))}
+                    <tr className="border-t bg-muted/30 font-semibold">
+                      <td className="p-3">Total</td>
+                      <td className="p-3 text-right font-mono text-destructive">
+                        -{formatCRC(Number(line.deductions))}
+                      </td>
+                      <td className="p-3 text-right font-mono text-muted-foreground">
+                        -{formatUSD(deductionsUSD)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No hay detalles de deducciones disponibles para este período.
+              </p>
+            )}
+          </div>
+
+          {/* Download Button */}
+          <div className="flex justify-end pt-2">
             <Button 
-              size="sm" 
-              className="gap-2"
               onClick={onDownloadPDF}
               disabled={isDownloading}
+              className="gap-2"
             >
               {isDownloading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Download className="h-4 w-4" />
               )}
-              {isDownloading ? 'Generando...' : 'Descargar PDF'}
+              {isDownloading ? 'Generando...' : 'Descargar Comprobante PDF'}
             </Button>
           </div>
         </div>
