@@ -655,6 +655,7 @@ export type Database = {
           created_by: string | null
           frequency: Database["public"]["Enums"]["payroll_frequency"]
           id: string
+          payroll_type: Database["public"]["Enums"]["payroll_type"] | null
           period_end: string
           period_start: string
           status: Database["public"]["Enums"]["payroll_batch_status"] | null
@@ -668,6 +669,7 @@ export type Database = {
           created_by?: string | null
           frequency: Database["public"]["Enums"]["payroll_frequency"]
           id?: string
+          payroll_type?: Database["public"]["Enums"]["payroll_type"] | null
           period_end: string
           period_start: string
           status?: Database["public"]["Enums"]["payroll_batch_status"] | null
@@ -681,6 +683,7 @@ export type Database = {
           created_by?: string | null
           frequency?: Database["public"]["Enums"]["payroll_frequency"]
           id?: string
+          payroll_type?: Database["public"]["Enums"]["payroll_type"] | null
           period_end?: string
           period_start?: string
           status?: Database["public"]["Enums"]["payroll_batch_status"] | null
@@ -1453,6 +1456,7 @@ export type Database = {
         | "autorizado"
         | "enviado"
       payroll_frequency: "semanal" | "quincenal" | "mensual"
+      payroll_type: "adelanto" | "segunda" | "completa"
       project_status: "activo" | "cerrado"
     }
     CompositeTypes: {
@@ -1604,6 +1608,7 @@ export const Constants = {
         "enviado",
       ],
       payroll_frequency: ["semanal", "quincenal", "mensual"],
+      payroll_type: ["adelanto", "segunda", "completa"],
       project_status: ["activo", "cerrado"],
     },
   },

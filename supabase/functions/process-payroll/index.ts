@@ -14,6 +14,7 @@ interface ProcessPayrollRequest {
   periodStart: string;
   periodEnd: string;
   frequency: 'mensual' | 'quincenal' | 'semanal';
+  payrollType?: 'adelanto' | 'segunda' | 'completa';  // For biweekly: adelanto=1st half, segunda=2nd half
   exchangeRate?: number;
   copyFromBatchId?: string;
 }
@@ -52,6 +53,9 @@ interface DeductionItem {
 interface DeductionsDetail {
   items: DeductionItem[];
   total_deductions: number;
+  payroll_type?: string;
+  is_biweekly?: boolean;
+  deduction_multiplier?: number;
 }
 
 // Function to fetch BCCR exchange rate
@@ -119,7 +123,15 @@ serve(async (req) => {
       );
     }
 
-    const { companyId, periodStart, periodEnd, frequency, exchangeRate = 1.0, copyFromBatchId }: ProcessPayrollRequest = await req.json();
+    const { companyId, periodStart, periodEnd, frequency, payrollType = 'completa', exchangeRate = 1.0, copyFromBatchId }: ProcessPayrollRequest = await req.json();
+    
+    // Biweekly payroll: adelanto = 50% net with 50% deductions, segunda = remaining 50%
+    const isBiweekly = frequency === 'quincenal';
+    const deductionMultiplier = isBiweekly ? 0.5 : 1.0;  // Apply 50% of deductions for each half
+    const payrollTypeLabel = payrollType === 'adelanto' ? 'Adelanto de Salario' : 
+                             payrollType === 'segunda' ? 'Segunda Quincena' : 'Planilla Completa';
+    
+    console.log(`Processing ${payrollTypeLabel} for company:`, companyId, { frequency, payrollType, deductionMultiplier });
 
     console.log("Processing payroll for company:", companyId);
 
@@ -204,7 +216,8 @@ serve(async (req) => {
     }
 
     // Create payroll batch
-    const batchId = `BATCH-${new Date(periodStart).getFullYear()}${String(new Date(periodStart).getMonth() + 1).padStart(2, '0')}-${Date.now()}`;
+    const typePrefix = payrollType === 'adelanto' ? 'ADL' : payrollType === 'segunda' ? 'Q2' : 'BATCH';
+    const batchId = `${typePrefix}-${new Date(periodStart).getFullYear()}${String(new Date(periodStart).getMonth() + 1).padStart(2, '0')}-${Date.now()}`;
     
     const { data: batch, error: batchError } = await supabaseClient
       .from('payroll_batches')
@@ -214,6 +227,7 @@ serve(async (req) => {
         period_start: periodStart,
         period_end: periodEnd,
         frequency: frequency,
+        payroll_type: payrollType,  // Store the payroll type
         base_currency: company.base_currency,
         status: 'borrador',
         created_by: user.id
@@ -416,31 +430,43 @@ serve(async (req) => {
       
       // ========================================
       // GROSS SALARY CALCULATION (in CRC for deductions)
+      // For biweekly: Calculate 50% of monthly salary
       // ========================================
-      const grossSalary = baseSalary + projectHoursAmount + additionalBonuses;
+      const monthlyGrossSalary = baseSalary + projectHoursAmount + additionalBonuses;
+      const grossSalary = isBiweekly ? monthlyGrossSalary * 0.5 : monthlyGrossSalary;
       
       // ========================================
       // DEDUCTIONS CALCULATION (per company rules)
+      // For biweekly: Apply 50% of each deduction (calculated on full monthly salary, then halved)
       // ========================================
-      const ccssResult = calculateCCSS(grossSalary);
-      const magisterioResult = calculateMagisterio(grossSalary);
+      const ccssResult = calculateCCSS(monthlyGrossSalary);
+      const magisterioResult = calculateMagisterio(monthlyGrossSalary);
       const polizaVida = calculatePolizaVida();
-      const incomeTax = calculateIncomeTax(grossSalary);
+      const incomeTax = calculateIncomeTax(monthlyGrossSalary);
       
-      // Get loan deduction from employee record
-      const loanDeduction = Number(employee.loan_monthly_deduction || 0);
+      // Get loan deduction from employee record (already monthly, apply half for biweekly)
+      const monthlyLoanDeduction = Number(employee.loan_monthly_deduction || 0);
+      const loanDeduction = monthlyLoanDeduction * deductionMultiplier;
       
       // Additional deductions (from previous line or manual)
-      const additionalDeductions = prevLine?.additional_deductions || 0;
+      const monthlyAdditionalDeductions = prevLine?.additional_deductions || 0;
+      const additionalDeductions = monthlyAdditionalDeductions * deductionMultiplier;
       
       // ========================================
       // BUILD STRUCTURED DEDUCTIONS DETAIL (REQUIRED)
       // This JSON is used for reports, PDFs, employee view, and auditing
+      // For biweekly: Each amount is 50% of the monthly deduction
       // ========================================
       const deductionItems: DeductionItem[] = [];
       
+      // Apply deduction multiplier (0.5 for biweekly, 1.0 for monthly)
+      const ccssAmount = ccssResult.amount * deductionMultiplier;
+      const magisterioAmount = magisterioResult.amount * deductionMultiplier;
+      const polizaAmount = polizaVida * deductionMultiplier;
+      const rentaAmount = incomeTax * deductionMultiplier;
+      
       // CCSS Obrero - Always present
-      if (ccssResult.amount > 0) {
+      if (ccssAmount > 0) {
         deductionItems.push({
           code: 'CCSS_OBRERO',
           label: params.is_education_sector 
@@ -448,42 +474,42 @@ serve(async (req) => {
             : `CCSS (Obrero) ${(ccssResult.rate * 100).toFixed(2)}%`,
           type: 'percentage',
           rate: ccssResult.rate,
-          amount: ccssResult.amount
+          amount: ccssAmount
         });
       }
       
       // Magisterio - Only for education sector
-      if (magisterioResult.amount > 0) {
+      if (magisterioAmount > 0) {
         deductionItems.push({
           code: 'MAGISTERIO',
           label: `Magisterio ${(magisterioResult.rate * 100).toFixed(1)}%`,
           type: 'percentage',
           rate: magisterioResult.rate,
-          amount: magisterioResult.amount
+          amount: magisterioAmount
         });
       }
       
-      // Poliza de Vida - Only for education sector (fixed amount)
-      if (polizaVida > 0) {
+      // Poliza de Vida - Only for education sector (fixed amount, halved for biweekly)
+      if (polizaAmount > 0) {
         deductionItems.push({
           code: 'POLIZA_VIDA',
           label: 'Póliza de Vida Magisterio',
           type: 'fixed',
-          amount: polizaVida
+          amount: polizaAmount
         });
       }
       
-      // Income Tax
-      if (incomeTax > 0) {
+      // Income Tax (halved for biweekly)
+      if (rentaAmount > 0) {
         deductionItems.push({
           code: 'RENTA',
           label: 'Impuesto sobre la Renta',
           type: 'calculated',
-          amount: incomeTax
+          amount: rentaAmount
         });
       }
       
-      // Loans
+      // Loans (already halved above)
       if (loanDeduction > 0) {
         deductionItems.push({
           code: 'PRESTAMOS',
@@ -493,7 +519,7 @@ serve(async (req) => {
         });
       }
       
-      // Additional deductions (lunches, others, etc.)
+      // Additional deductions (lunches, others, etc.) - already halved
       if (additionalDeductions > 0) {
         deductionItems.push({
           code: 'OTROS',
@@ -503,13 +529,16 @@ serve(async (req) => {
         });
       }
       
-      // Total deductions
-      const totalDeductions = ccssResult.amount + magisterioResult.amount + polizaVida + incomeTax + loanDeduction + additionalDeductions;
+      // Total deductions (all amounts already adjusted for biweekly)
+      const totalDeductions = ccssAmount + magisterioAmount + polizaAmount + rentaAmount + loanDeduction + additionalDeductions;
       
       // Build the deductions_detail JSON
       const deductionsDetail: DeductionsDetail = {
         items: deductionItems,
-        total_deductions: totalDeductions
+        total_deductions: totalDeductions,
+        payroll_type: payrollType,
+        is_biweekly: isBiweekly,
+        deduction_multiplier: deductionMultiplier
       };
       
       // ========================================
