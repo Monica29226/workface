@@ -18,22 +18,28 @@ export function useDashboardData() {
   const { selectedCompany } = useCompany();
   const companyId = selectedCompany?.id;
 
-  // Fetch latest batch
-  const { data: latestBatch } = useQuery({
+  // Fetch latest batch - include all relevant statuses for dashboard
+  const { data: latestBatch, isLoading: batchLoading, error: batchError } = useQuery({
     queryKey: ["latestBatch", companyId],
     queryFn: async () => {
       if (!companyId) return null;
+      
+      console.log("[Dashboard] Fetching latest batch for company:", companyId);
       
       const { data, error } = await supabase
         .from("payroll_batches")
         .select("id, period_start, period_end, status, batch_id")
         .eq("company_id", companyId)
-        .in("status", ["aprobado", "enviado", "calculado"])
         .order("period_end", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error("[Dashboard] Error fetching batch:", error);
+        throw error;
+      }
+      
+      console.log("[Dashboard] Latest batch found:", data);
       return data;
     },
     enabled: !!companyId,
@@ -41,17 +47,24 @@ export function useDashboardData() {
   });
 
   // Fetch payroll lines for the batch
-  const { data: payrollLines } = useQuery({
+  const { data: payrollLines, isLoading: linesLoading } = useQuery({
     queryKey: ["payrollLines", latestBatch?.id],
     queryFn: async () => {
       if (!latestBatch?.id) return [];
+      
+      console.log("[Dashboard] Fetching payroll lines for batch:", latestBatch.id);
       
       const { data, error } = await supabase
         .from("payroll_lines")
         .select("gross_salary, deductions, net_pay, employer_contrib, currency, exchange_rate_to_base")
         .eq("batch_id", latestBatch.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("[Dashboard] Error fetching payroll lines:", error);
+        throw error;
+      }
+      
+      console.log("[Dashboard] Payroll lines found:", data?.length || 0);
       return data || [];
     },
     enabled: !!latestBatch?.id,
@@ -146,11 +159,12 @@ export function useDashboardData() {
     };
   }, [payrollLines, employeeCount, pendingVacations, pendingPayslips]);
 
-  const isLoading = !companyId;
+  const isLoading = !companyId || batchLoading || linesLoading;
 
   return {
     kpiData,
     latestBatch,
     isLoading,
+    error: batchError,
   };
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useCompany } from "@/contexts/CompanyContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -412,6 +412,13 @@ export function PreColilla() {
     },
     enabled: !!selectedCompany?.id,
   });
+
+  // Auto-select first batch when available
+  useEffect(() => {
+    if (batches && batches.length > 0 && !selectedBatchId) {
+      setSelectedBatchId(batches[0].id);
+    }
+  }, [batches, selectedBatchId]);
 
   // Fetch payroll lines for selected batch
   const { data: payrollLines, isLoading: linesLoading } = useQuery({
