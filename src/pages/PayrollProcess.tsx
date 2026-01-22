@@ -63,6 +63,7 @@ interface PayrollLine {
   employer_contrib: number;
   aguinaldo_accrued: number;
   currency: string;
+  exchange_rate_to_base?: number;
 }
 
 export function PayrollProcess() {
@@ -823,10 +824,10 @@ export function PayrollProcess() {
                   <CardContent className="pt-6">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-orange-600">
-                        {formatCurrency(stats.totalDeductions, currentBatch?.base_currency || 'CRC')}
+                        {formatCurrency(stats.totalDeductions, 'CRC')}
                       </div>
                       <div className="text-sm text-muted-foreground mt-1">
-                        Deducciones
+                        Deducciones (CRC)
                       </div>
                     </div>
                   </CardContent>
@@ -836,10 +837,10 @@ export function PayrollProcess() {
                   <CardContent className="pt-6">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-green-600">
-                        {formatCurrency(stats.totalNet, currentBatch?.base_currency || 'CRC')}
+                        {formatCurrency(stats.totalNet, 'CRC')}
                       </div>
                       <div className="text-sm text-muted-foreground mt-1">
-                        Neto a Pagar
+                        Neto a Pagar (CRC)
                       </div>
                     </div>
                   </CardContent>
@@ -849,10 +850,10 @@ export function PayrollProcess() {
                   <CardContent className="pt-6">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-blue-600">
-                        {formatCurrency(stats.totalEmployerContrib, currentBatch?.base_currency || 'CRC')}
+                        {formatCurrency(stats.totalEmployerContrib, 'CRC')}
                       </div>
                       <div className="text-sm text-muted-foreground mt-1">
-                        Cargas Patronales
+                        Cargas Patronales (CRC)
                       </div>
                     </div>
                   </CardContent>
@@ -944,13 +945,18 @@ export function PayrollProcess() {
                                 {formatCurrency(Number(line.gross_salary), line.currency)}
                               </TableCell>
                               <TableCell className="text-right font-mono text-destructive">
-                                {formatCurrency(Number(line.deductions), line.currency)}
+                                {formatCurrency(Number(line.deductions), 'CRC')}
                               </TableCell>
                               <TableCell className="text-right font-mono font-semibold text-green-600">
-                                {formatCurrency(Number(line.net_pay), line.currency)}
+                                <div>{formatCurrency(Number(line.net_pay), 'CRC')}</div>
+                                {line.currency === 'USD' && line.exchange_rate_to_base && (
+                                  <div className="text-xs text-muted-foreground">
+                                    ≈ {formatCurrency(Number(line.net_pay) / Number(line.exchange_rate_to_base), 'USD')}
+                                  </div>
+                                )}
                               </TableCell>
                               <TableCell className="text-right font-mono text-primary">
-                                {formatCurrency(Number(line.employer_contrib), line.currency)}
+                                {formatCurrency(Number(line.employer_contrib), 'CRC')}
                               </TableCell>
                             </TableRow>
                           );
