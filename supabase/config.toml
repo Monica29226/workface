@@ -18,6 +18,9 @@ verify_jwt = true
 [functions.generate-payslip-pdf]
 verify_jwt = true
 
+[functions.generate-precolilla-pdf]
+verify_jwt = false
+
 [functions.update-payroll-line]
 verify_jwt = true
 
