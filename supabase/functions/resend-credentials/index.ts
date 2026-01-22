@@ -32,7 +32,10 @@ const handler = async (req: Request): Promise<Response> => {
     const cleanedFrom = rawFromEmail.replace(/^\"+|\"+$/g, "").trim();
     const from = cleanedFrom.includes("<") && cleanedFrom.includes(">")
       ? cleanedFrom
-      : `Aureon <${cleanedFrom}>`;
+      : `ACL Workforce HUB <${cleanedFrom}>`;
+
+    const systemName = "ACL Workforce HUB";
+    const supportEmail = "soporte@aureoncr.com";
 
     console.log("Using FROM:", from);
 
@@ -115,67 +118,121 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from,
       to: [email],
-      subject: "Nuevas credenciales de acceso - PlanicasHR",
+      subject: `Nuevas credenciales de acceso - ${systemName}`,
       html: `
         <!DOCTYPE html>
         <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
-            .container { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
-            .card { background: white; border-radius: 12px; padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-            .header { text-align: center; margin-bottom: 30px; }
-            .logo { font-size: 28px; font-weight: bold; color: #0f172a; }
-            h1 { color: #0f172a; margin-bottom: 20px; }
-            .credentials { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 25px 0; }
-            .credential-item { margin: 12px 0; }
-            .label { color: #64748b; font-size: 14px; }
-            .value { color: #0f172a; font-size: 16px; font-weight: 600; word-break: break-all; }
-            .button { display: inline-block; background: #3b82f6; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 30px; color: #64748b; font-size: 13px; }
-            .warning { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 15px; margin-top: 20px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="card">
-              <div class="header">
-                <div class="logo">PlanicasHR</div>
-              </div>
-              
-              <h1>¡Nuevas credenciales de acceso!</h1>
-              
-              <p>Hola ${full_name || email},</p>
-              
-              <p>Se han generado nuevas credenciales de acceso para tu cuenta en el sistema de nóminas PlanicasHR.</p>
-              
-              <div class="credentials">
-                <div class="credential-item">
-                  <div class="label">Correo electrónico</div>
-                  <div class="value">${email}</div>
-                </div>
-                <div class="credential-item">
-                  <div class="label">Nueva contraseña temporal</div>
-                  <div class="value">${tempPassword}</div>
-                </div>
-              </div>
-              
-              <div style="text-align: center;">
-                <a href="${platformUrl}" class="button">Iniciar Sesión</a>
-              </div>
-              
-              <div class="warning">
-                <strong>⚠️ Importante:</strong> Por seguridad, te recomendamos cambiar tu contraseña después de iniciar sesión.
-              </div>
-              
-              <div class="footer">
-                <p>Este correo fue enviado automáticamente por el sistema PlanicasHR.</p>
-                <p>Si no solicitaste este acceso, por favor contacta al administrador.</p>
-              </div>
-            </div>
-          </div>
-        </body>
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          </head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#f4f6f9; margin:0; padding:0;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px; margin:0 auto; padding: 40px 20px;">
+              <tr>
+                <td>
+                  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <tr>
+                      <td style="background: linear-gradient(135deg, #0f172a, #1e3a8a); padding: 32px; text-align: center;">
+                        <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">
+                          ${systemName}
+                        </h1>
+                        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">
+                          Sistema de Gestión de Nómina y Planillas
+                        </p>
+                      </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                      <td style="padding: 40px 32px;">
+                        <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 20px;">
+                          Nuevas Credenciales de Acceso
+                        </h2>
+                        
+                        <p style="color: #475569; line-height: 1.7; margin: 0 0 24px 0; font-size: 15px;">
+                          Hola <strong>${full_name || "Usuario"}</strong>,
+                        </p>
+                        
+                        <p style="color: #475569; line-height: 1.7; margin: 0 0 24px 0; font-size: 15px;">
+                          Se han generado nuevas credenciales de acceso para su cuenta en el <strong>${systemName}</strong>, 
+                          el sistema de gestión de planillas y nómina de su empresa.
+                        </p>
+                        
+                        <!-- Credentials Box -->
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin: 0 0 24px 0;">
+                          <tr>
+                            <td style="padding: 20px;">
+                              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                                <tr>
+                                  <td style="padding: 0 0 12px 0;">
+                                    <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Portal de Acceso</p>
+                                    <a href="${platformUrl}" style="color: #1e40af; font-size: 14px; text-decoration: underline; word-break: break-all;">${platformUrl}</a>
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td style="padding: 12px 0; border-top: 1px solid #e2e8f0;">
+                                    <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Usuario (Correo electrónico)</p>
+                                    <p style="margin: 0; color: #0f172a; font-weight: 600; font-size: 15px; word-break: break-all;">${email}</p>
+                                  </td>
+                                </tr>
+                                <tr>
+                                  <td style="padding: 12px 0 0 0; border-top: 1px solid #e2e8f0;">
+                                    <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Nueva Contraseña Temporal</p>
+                                    <p style="margin: 0; color: #0f172a; font-weight: 600; font-size: 15px; font-family: monospace; background: #fff; padding: 8px 12px; border-radius: 6px; border: 1px dashed #cbd5e1;">${tempPassword}</p>
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                        
+                        <!-- Security Notice -->
+                        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0; margin: 0 0 24px 0;">
+                          <tr>
+                            <td style="padding: 14px 16px;">
+                              <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.5;">
+                                <strong>⚠️ Importante:</strong> Por seguridad, le recomendamos cambiar su contraseña temporal después de iniciar sesión.
+                              </p>
+                            </td>
+                          </tr>
+                        </table>
+                        
+                        <!-- CTA Button -->
+                        <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
+                          <tr>
+                            <td style="background: linear-gradient(135deg, #0f172a, #1e3a8a); border-radius: 10px;">
+                              <a href="${platformUrl}" style="display: inline-block; padding: 16px 40px; color: white; text-decoration: none; font-weight: 600; font-size: 16px;">
+                                Acceder al Sistema de Planillas
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                      <td style="background: #f8fafc; padding: 24px 32px; border-top: 1px solid #e2e8f0;">
+                        <p style="margin: 0 0 8px 0; color: #64748b; font-size: 13px; line-height: 1.6; text-align: center;">
+                          ¿Tiene preguntas o necesita ayuda? Contáctenos:
+                        </p>
+                        <p style="margin: 0 0 16px 0; text-align: center;">
+                          <a href="mailto:${supportEmail}" style="color: #1e40af; font-size: 14px; text-decoration: underline;">${supportEmail}</a>
+                        </p>
+                        <p style="margin: 0; color: #94a3b8; font-size: 12px; text-align: center;">
+                          © ${new Date().getFullYear()} ACL Workforce HUB. Todos los derechos reservados.
+                        </p>
+                        <p style="margin: 8px 0 0 0; color: #cbd5e1; font-size: 11px; text-align: center;">
+                          Si no solicitó nuevas credenciales, por favor contacte al administrador de su empresa.
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </body>
         </html>
       `,
     });

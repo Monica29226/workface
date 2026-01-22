@@ -119,7 +119,7 @@ const handler = async (req: Request): Promise<Response> => {
     ).replace(/\/$/, "");
 
     const inviteLink = `${appOrigin}/auth?invite=${invitation.token}`;
-    const systemName = "Sistema de Planillas Aureon";
+    const systemName = "ACL Workforce HUB";
     const supportEmail = "soporte@aureoncr.com";
 
     // Send the invitation email
@@ -157,26 +157,26 @@ const handler = async (req: Request): Promise<Response> => {
                       <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">
                         ${systemName}
                       </h1>
-                      <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">
-                        Gestión de Nómina y Recursos Humanos
-                      </p>
+                        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">
+                          Sistema de Gestión de Nómina y Planillas
+                        </p>
                     </td>
                   </tr>
                   
                   <!-- Content -->
                   <tr>
                     <td style="padding: 40px 32px;">
-                      <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 20px;">
-                        ¡Ha sido invitado al Sistema de Planillas!
-                      </h2>
+                        <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 20px;">
+                          ¡Ha sido invitado al Sistema de Planillas!
+                        </h2>
                       
                       <p style="color: #475569; line-height: 1.7; margin: 0 0 24px 0; font-size: 15px;">
                         <strong>${inviterName}</strong> lo ha invitado a unirse al <strong>${systemName}</strong>${company_name ? ` para gestionar la nómina de <strong>${company_name}</strong>` : ""}.
                       </p>
                       
-                      <p style="color: #475569; line-height: 1.7; margin: 0 0 24px 0; font-size: 15px;">
-                        Este sistema le permitirá gestionar información de nómina, generar reportes, administrar empleados y mucho más.
-                      </p>
+                        <p style="color: #475569; line-height: 1.7; margin: 0 0 24px 0; font-size: 15px;">
+                          Este sistema de planillas le permitirá gestionar su información de nómina, consultar recibos de pago, reportes y mucho más.
+                        </p>
                       
                       <!-- Details Box -->
                       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin: 0 0 24px 0;">
@@ -245,9 +245,9 @@ const handler = async (req: Request): Promise<Response> => {
                       <p style="margin: 0 0 16px 0; text-align: center;">
                         <a href="mailto:${supportEmail}" style="color: #1e40af; font-size: 14px; text-decoration: underline;">${supportEmail}</a>
                       </p>
-                      <p style="margin: 0; color: #94a3b8; font-size: 12px; text-align: center;">
-                        © ${new Date().getFullYear()} Aureon. Todos los derechos reservados.
-                      </p>
+                        <p style="margin: 0; color: #94a3b8; font-size: 12px; text-align: center;">
+                          © ${new Date().getFullYear()} ACL Workforce HUB. Todos los derechos reservados.
+                        </p>
                       <p style="margin: 8px 0 0 0; color: #cbd5e1; font-size: 11px; text-align: center;">
                         Si no esperaba esta invitación o cree que la recibió por error, puede ignorar este correo de forma segura.
                       </p>
