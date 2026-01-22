@@ -9,6 +9,22 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Download, FileSpreadsheet, Printer } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
+interface DeductionsDetail {
+  ccss_obrero?: number;
+  ccss_rate?: number;
+  isr_neto?: number;
+  isr_bruto?: number;
+  isr_credito?: number;
+  isr_10?: number;
+  isr_15?: number;
+  isr_20?: number;
+  isr_25?: number;
+  base_imponible_crc?: number;
+  magisterio?: number;
+  poliza_vida?: number;
+  loan_deduction?: number;
+}
+
 interface PayrollLine {
   id: string;
   employee_id: string;
@@ -20,6 +36,7 @@ interface PayrollLine {
   additional_deductions: number;
   currency: string;
   notes: string | null;
+  deductions_detail: DeductionsDetail | null;
   manual_adjustments: {
     ccss?: number;
     magisterio?: number;
@@ -115,21 +132,38 @@ export function PayrollBreakdownReport() {
     return usdLine ? (usdLine as any).exchange_rate_to_base : null;
   }, [payrollLines]);
 
+  // Helper to get deduction values from deductions_detail (primary) or manual_adjustments (fallback)
+  const getDeductionValues = (line: PayrollLine) => {
+    const detail = line.deductions_detail || {};
+    const manual = line.manual_adjustments || {};
+    
+    return {
+      ccss: Number(detail.ccss_obrero || manual.ccss || 0),
+      isr: Number(detail.isr_neto || manual.income_tax || 0),
+      magisterio: Number(detail.magisterio || manual.magisterio || 0),
+      polizaVida: Number(detail.poliza_vida || manual.poliza_vida || 0),
+      loan: Number(detail.loan_deduction || manual.loan_deduction || 0),
+    };
+  };
+
   // Calculate totals
   const totals = useMemo(() => {
     if (!payrollLines) return null;
 
     return payrollLines.reduce(
       (acc, line) => {
-        const adjustments = line.manual_adjustments || {};
+        const ded = getDeductionValues(line);
+        const knownDeductions = ded.ccss + ded.isr + ded.magisterio + ded.polizaVida + ded.loan;
+        const otherDed = Math.max(0, Number(line.deductions || 0) - knownDeductions);
+        
         return {
           grossSalary: acc.grossSalary + Number(line.gross_salary),
-          ccss: acc.ccss + Number(adjustments.ccss || 0),
-          magisterio: acc.magisterio + Number(adjustments.magisterio || 0),
-          polizaVida: acc.polizaVida + Number(adjustments.poliza_vida || 0),
-          incomeTax: acc.incomeTax + Number(adjustments.income_tax || 0),
-          loans: acc.loans + Number(adjustments.loan_deduction || 0),
-          otherDeductions: acc.otherDeductions + Number(line.additional_deductions || 0) - Number(adjustments.loan_deduction || 0),
+          ccss: acc.ccss + ded.ccss,
+          magisterio: acc.magisterio + ded.magisterio,
+          polizaVida: acc.polizaVida + ded.polizaVida,
+          incomeTax: acc.incomeTax + ded.isr,
+          loans: acc.loans + ded.loan,
+          otherDeductions: acc.otherDeductions + otherDed,
           totalDeductions: acc.totalDeductions + Number(line.deductions),
           netPay: acc.netPay + Number(line.net_pay),
           employerContrib: acc.employerContrib + Number(line.employer_contrib),
@@ -174,26 +208,27 @@ export function PayrollBreakdownReport() {
     ];
 
     const rows = payrollLines.map((line) => {
-      const adjustments = line.manual_adjustments || {};
-      const otherDed = Number(line.additional_deductions || 0) - Number(adjustments.loan_deduction || 0);
+      const ded = getDeductionValues(line);
+      const knownDeductions = ded.ccss + ded.isr + ded.magisterio + ded.polizaVida + ded.loan;
+      const otherDed = Math.max(0, Number(line.deductions || 0) - knownDeductions);
       
       const baseRow = [
         line.employee.full_name,
         line.employee.employee_id,
         Number(line.gross_salary).toFixed(2),
-        Number(adjustments.ccss || 0).toFixed(2),
+        ded.ccss.toFixed(2),
       ];
 
       if (isEducationSector) {
         baseRow.push(
-          Number(adjustments.magisterio || 0).toFixed(2),
-          Number(adjustments.poliza_vida || 0).toFixed(2)
+          ded.magisterio.toFixed(2),
+          ded.polizaVida.toFixed(2)
         );
       }
 
       baseRow.push(
-        Number(adjustments.income_tax || 0).toFixed(2),
-        Number(adjustments.loan_deduction || 0).toFixed(2),
+        ded.isr.toFixed(2),
+        ded.loan.toFixed(2),
         otherDed.toFixed(2),
         Number(line.deductions).toFixed(2),
         Number(line.net_pay).toFixed(2)
@@ -434,8 +469,9 @@ export function PayrollBreakdownReport() {
                   </TableHeader>
                   <TableBody>
                     {payrollLines.map((line) => {
-                      const adjustments = line.manual_adjustments || {};
-                      const otherDed = Math.max(0, Number(line.additional_deductions || 0) - Number(adjustments.loan_deduction || 0));
+                      const ded = getDeductionValues(line);
+                      const knownDeductions = ded.ccss + ded.isr + ded.magisterio + ded.polizaVida + ded.loan;
+                      const otherDed = Math.max(0, Number(line.deductions || 0) - knownDeductions);
                       
                       return (
                         <TableRow key={line.id} className="text-xs">
@@ -451,23 +487,23 @@ export function PayrollBreakdownReport() {
                             {formatNumber(Number(line.gross_salary))}
                           </TableCell>
                           <TableCell className="text-right font-mono text-orange-600">
-                            {formatNumber(Number(adjustments.ccss || 0))}
+                            {formatNumber(ded.ccss)}
                           </TableCell>
                           {isEducationSector && (
                             <>
                               <TableCell className="text-right font-mono text-orange-600">
-                                {formatNumber(Number(adjustments.magisterio || 0))}
+                                {formatNumber(ded.magisterio)}
                               </TableCell>
                               <TableCell className="text-right font-mono text-orange-600">
-                                {formatNumber(Number(adjustments.poliza_vida || 0))}
+                                {formatNumber(ded.polizaVida)}
                               </TableCell>
                             </>
                           )}
                           <TableCell className="text-right font-mono text-orange-600">
-                            {formatNumber(Number(adjustments.income_tax || 0))}
+                            {formatNumber(ded.isr)}
                           </TableCell>
                           <TableCell className="text-right font-mono text-orange-600">
-                            {formatNumber(Number(adjustments.loan_deduction || 0))}
+                            {formatNumber(ded.loan)}
                           </TableCell>
                           <TableCell className="text-right font-mono text-orange-600">
                             {formatNumber(otherDed)}
