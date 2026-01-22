@@ -162,11 +162,19 @@ export function SalaryDetailModal({
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                   <Plus className="h-4 w-4 text-primary" />
-                  <span>Salario Bruto {showExchangeRate ? '(CRC)' : ''}</span>
+                  <span>Salario Bruto {showExchangeRate ? '(USD)' : ''}</span>
                 </div>
                 <p className="text-xl font-bold text-primary">
-                  {formatCurrency(payrollLine.gross_salary, 'CRC')}
+                  {showExchangeRate 
+                    ? `$${originalSalary?.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`
+                    : formatCurrency(payrollLine.gross_salary, 'CRC')
+                  }
                 </p>
+                {showExchangeRate && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Base CRC: {formatCurrency(payrollLine.gross_salary * exchangeRate!, 'CRC')}
+                  </p>
+                )}
               </CardContent>
             </Card>
             
@@ -179,6 +187,11 @@ export function SalaryDetailModal({
                 <p className="text-xl font-bold text-destructive">
                   {formatCurrency(totalDeductions, 'CRC')}
                 </p>
+                {showExchangeRate && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ~${(totalDeductions / exchangeRate!).toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -191,9 +204,22 @@ export function SalaryDetailModal({
                   <DollarSign className="h-5 w-5 text-primary" />
                   <span className="font-medium">Total a Recibir</span>
                 </div>
-                <p className="text-2xl font-bold text-primary">
-                  {formatCurrency(totalToPay, currency)}
-                </p>
+                <div className="text-right">
+                  {showExchangeRate ? (
+                    <>
+                      <p className="text-2xl font-bold text-primary">
+                        ${(totalToPay / exchangeRate!).toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatCurrency(totalToPay, 'CRC')}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-2xl font-bold text-primary">
+                      {formatCurrency(totalToPay, currency)}
+                    </p>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
