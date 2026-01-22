@@ -74,6 +74,7 @@ export function PreColilla() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState<PayrollLine | null>(null);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   // Fetch payroll batches (only authorized ones for pre-colilla review)
   const { data: batches, isLoading: batchesLoading } = useQuery({
@@ -191,6 +192,48 @@ export function PreColilla() {
       title: "Funcionalidad pendiente",
       description: "La generación y envío de colillas se ejecuta desde la página de Colillas de Pago",
     });
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!selectedEmployee) return;
+
+    setIsDownloading(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      
+      const response = await supabase.functions.invoke('generate-precolilla-pdf', {
+        body: { payrollLineId: selectedEmployee.id },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Error al generar PDF');
+      }
+
+      // Create blob from response and download
+      const blob = new Blob([response.data], { type: 'text/html' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pre-colilla-${selectedEmployee.employee.employee_id}-${currentBatch?.period_end || 'periodo'}.html`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "PDF Generado",
+        description: `Pre-colilla de ${selectedEmployee.employee.full_name} descargada exitosamente`,
+      });
+    } catch (error: any) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo generar el PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   // Pre-Colilla PDF Preview Component
@@ -536,9 +579,17 @@ export function PreColilla() {
             <Button variant="outline" onClick={() => setIsPdfModalOpen(false)}>
               Cerrar
             </Button>
-            <Button className="gap-2">
-              <Download className="h-4 w-4" />
-              Descargar PDF
+            <Button 
+              className="gap-2" 
+              onClick={handleDownloadPDF}
+              disabled={isDownloading}
+            >
+              {isDownloading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {isDownloading ? 'Generando...' : 'Descargar PDF'}
             </Button>
           </div>
         </DialogContent>
