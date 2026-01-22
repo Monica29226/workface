@@ -29,6 +29,9 @@ const translations = {
     'nav.create_company': 'Crear Empresa',
     'nav.admin': 'Administración',
     'nav.manager': 'Administrador',
+    'nav.my_profile': 'Mi Perfil',
+    'nav.my_salary_history': 'Mi Historial Salarial',
+    'nav.my_vacations': 'Mis Vacaciones',
 
     // Dashboard
     'dashboard.title': 'Panel Principal',
@@ -103,6 +106,9 @@ const translations = {
     'nav.create_company': 'Create Company',
     'nav.admin': 'Administration',
     'nav.manager': 'Manager',
+    'nav.my_profile': 'My Profile',
+    'nav.my_salary_history': 'My Salary History',
+    'nav.my_vacations': 'My Vacations',
 
     // Dashboard
     'dashboard.title': 'Dashboard',

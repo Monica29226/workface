@@ -14,7 +14,9 @@ import {
   Plus,
   LogOut,
   Calendar,
-  UserCircle
+  UserCircle,
+  History,
+  Palmtree
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +34,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useUserRole } from "@/hooks/useUserRole";
 
 interface NavigationItem {
   title: string;
@@ -39,132 +42,169 @@ interface NavigationItem {
   icon: any;
   group: string;
   isAction?: boolean;
+  roles?: ('admin' | 'company_manager' | 'employee')[];
 }
 
-const navigationItems: NavigationItem[] = [
+// Items for HR/Admin users
+const hrNavigationItems: NavigationItem[] = [
   { 
     title: 'nav.dashboard', 
     url: '/dashboard', 
     icon: LayoutDashboard,
-    group: 'main'
+    group: 'main',
+    roles: ['admin', 'company_manager']
   },
   { 
     title: 'nav.payroll_process', 
     url: '/payroll-process', 
     icon: Calculator,
-    group: 'main'
+    group: 'main',
+    roles: ['admin', 'company_manager']
   },
   { 
     title: 'nav.employees', 
     url: '/employees', 
     icon: Users,
-    group: 'main'
+    group: 'main',
+    roles: ['admin', 'company_manager']
   },
   { 
     title: 'nav.projects', 
     url: '/projects', 
     icon: Clock,
-    group: 'main'
+    group: 'main',
+    roles: ['admin', 'company_manager']
   },
   { 
     title: 'nav.payslips', 
     url: '/payslips', 
     icon: Receipt,
-    group: 'main'
+    group: 'main',
+    roles: ['admin', 'company_manager']
   },
   { 
     title: 'nav.historico', 
     url: '/historico', 
     icon: BarChart3,
-    group: 'reports'
+    group: 'reports',
+    roles: ['admin', 'company_manager']
   },
   { 
     title: 'nav.contracts', 
     url: '/contracts', 
     icon: FileText,
-    group: 'reports'
+    group: 'reports',
+    roles: ['admin', 'company_manager']
   },
   { 
     title: 'nav.cost_centers', 
     url: '/cost-centers', 
     icon: Building2,
-    group: 'reports'
+    group: 'reports',
+    roles: ['admin', 'company_manager']
   },
   { 
     title: 'nav.vacation_report', 
     url: '/reports/vacations', 
     icon: Calendar,
-    group: 'reports'
+    group: 'reports',
+    roles: ['admin', 'company_manager']
   },
   { 
     title: 'Desglose Planilla', 
     url: '/reports/payroll-breakdown', 
     icon: Receipt,
-    group: 'reports'
+    group: 'reports',
+    roles: ['admin', 'company_manager']
   },
   { 
     title: 'Planilla Editable', 
     url: '/reports/editable-payroll', 
     icon: Calculator,
-    group: 'reports'
+    group: 'reports',
+    roles: ['admin', 'company_manager']
   },
   { 
     title: 'Aprobar Vacaciones', 
     url: '/vacation-approval', 
     icon: UserCheck,
-    group: 'reports'
+    group: 'reports',
+    roles: ['admin', 'company_manager']
   },
   { 
     title: 'nav.liquidations', 
     url: '/liquidations', 
     icon: DollarSign,
-    group: 'reports'
+    group: 'reports',
+    roles: ['admin', 'company_manager']
   },
   { 
     title: 'nav.email_center', 
     url: '/email-center', 
     icon: Mail,
-    group: 'communications'
+    group: 'communications',
+    roles: ['admin', 'company_manager']
   },
   { 
     title: 'nav.users', 
     url: '/users', 
     icon: UserCheck,
-    group: 'admin'
+    group: 'admin',
+    roles: ['admin']
   },
   { 
     title: 'nav.parameters', 
     url: '/settings/parameters', 
     icon: Settings,
-    group: 'admin'
+    group: 'admin',
+    roles: ['admin', 'company_manager']
   },
   { 
     title: 'nav.create_company', 
     url: '/create-company', 
     icon: Plus,
-    group: 'admin'
-  },
-  { 
-    title: 'nav.my_profile', 
-    url: '/employee-profile', 
-    icon: UserCircle,
-    group: 'employee'
-  },
-  { 
-    title: 'Cerrar Sesión', 
-    url: '/logout', 
-    icon: LogOut,
     group: 'admin',
-    isAction: true
+    roles: ['admin']
   },
 ];
 
-const groups = {
-  main: 'ACL Payroll CR',
+// Items for Employee Portal
+const employeeNavigationItems: NavigationItem[] = [
+  { 
+    title: 'nav.my_salary_history', 
+    url: '/employee-profile', 
+    icon: History,
+    group: 'employee',
+    roles: ['employee']
+  },
+  { 
+    title: 'nav.my_vacations', 
+    url: '/employee-vacations', 
+    icon: Palmtree,
+    group: 'employee',
+    roles: ['employee']
+  },
+];
+
+const logoutItem: NavigationItem = { 
+  title: 'Cerrar Sesión', 
+  url: '/logout', 
+  icon: LogOut,
+  group: 'actions',
+  isAction: true
+};
+
+const hrGroups = {
+  main: 'ACL Workforce HUB',
   reports: 'Reportes',
   communications: 'Comunicaciones',
   admin: 'Administración',
-  employee: 'Mi Portal'
+  actions: 'Sesión'
+};
+
+const employeeGroups = {
+  employee: 'Mi Portal',
+  actions: 'Sesión'
 };
 
 export function AppSidebar() {
@@ -172,6 +212,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { role, loading } = useUserRole();
   const currentPath = location.pathname;
   const collapsed = state === "collapsed";
 
@@ -185,7 +226,13 @@ export function AppSidebar() {
       ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
       : "hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground";
 
-  const isActive = (path: string) => currentPath === path;
+  // Determine which navigation items to show based on role
+  const isEmployeeOnly = role === 'employee';
+  const navigationItems = isEmployeeOnly 
+    ? [...employeeNavigationItems, logoutItem]
+    : [...hrNavigationItems.filter(item => !item.roles || item.roles.includes(role || 'employee')), logoutItem];
+
+  const groups = isEmployeeOnly ? employeeGroups : hrGroups;
 
   const groupedItems = navigationItems.reduce((acc, item) => {
     if (!acc[item.group]) {
@@ -196,9 +243,7 @@ export function AppSidebar() {
   }, {} as Record<string, typeof navigationItems>);
 
   return (
-    <Sidebar
-      collapsible="icon"
-    >
+    <Sidebar collapsible="icon">
       <SidebarContent className="bg-sidebar text-sidebar-foreground">
         {Object.entries(groupedItems).map(([groupKey, items]) => (
           <SidebarGroup key={groupKey}>
@@ -256,16 +301,16 @@ export function AppSidebar() {
             <div className="flex items-center gap-2">
               <img 
                 src={aclLogo} 
-                alt="ACL Payroll CR" 
+                alt="ACL Workforce HUB" 
                 className={collapsed ? "h-8 w-auto" : "h-10 w-auto"}
               />
               {!collapsed && (
                 <div>
                   <h3 className="text-sm font-semibold text-sidebar-foreground">
-                    Sistema de Planillas
+                    ACL Workforce HUB
                   </h3>
                   <p className="text-xs text-sidebar-foreground/60">
-                    Multi-Compañía Costa Rica
+                    {isEmployeeOnly ? 'Portal del Colaborador' : 'Gestión de Nómina CR'}
                   </p>
                 </div>
               )}
