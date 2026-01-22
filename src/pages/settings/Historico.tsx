@@ -7,12 +7,27 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Download, FileText, Search, Filter, Calendar, Mail } from "lucide-react";
+import { Upload, Download, FileText, Search, Filter, Calendar, Mail, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { ImportHistoricalPayrollDialog } from "@/components/historico/ImportHistoricalPayrollDialog";
+import { SalaryDetailModal } from "@/components/payroll/SalaryDetailModal";
+
+interface PayrollLineDetail {
+  id: string;
+  gross_salary: number;
+  deductions: number | null;
+  deductions_detail: any;
+  net_pay: number;
+  total_to_pay: number | null;
+  currency: string;
+  additional_bonuses: number | null;
+  project_hours_amount: number | null;
+  exchange_rate_to_base: number | null;
+  manual_adjustments: any;
+}
 
 interface HistoricalPayroll {
   id?: string;
@@ -28,6 +43,7 @@ interface HistoricalPayroll {
   total_usd: number;
   tc?: number;
   fuente: string;
+  payroll_line?: PayrollLineDetail;
 }
 
 interface PivotData {
@@ -36,8 +52,9 @@ interface PivotData {
     cedula: string;
     email: string;
     centro_costo?: string;
+    employee_id?: string;
   };
-  periodos: Record<string, { crc: number; usd: number }>;
+  periodos: Record<string, { crc: number; usd: number; payroll_line?: PayrollLineDetail }>;
   total_crc: number;
   total_usd: number;
 }
@@ -53,6 +70,13 @@ export function Historico() {
   const [centroFilter, setCentroFilter] = useState('todos');
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [viewMode, setViewMode] = useState<'pivot' | 'detail'>('pivot');
+  
+  // Modal and action states
+  const [selectedPayrollLine, setSelectedPayrollLine] = useState<PayrollLineDetail | null>(null);
+  const [selectedPeriodLabel, setSelectedPeriodLabel] = useState('');
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState<string | null>(null);
 
   useEffect(() => {
     if (selectedCompany?.id) {
@@ -104,6 +128,21 @@ export function Historico() {
         total_crc = line.net_pay;
         total_usd = line.net_pay / exchangeRate;
         
+        // Build payroll line detail for modal
+        const payroll_line: PayrollLineDetail = {
+          id: line.id,
+          gross_salary: line.gross_salary,
+          deductions: line.deductions,
+          deductions_detail: line.deductions_detail,
+          net_pay: line.net_pay,
+          total_to_pay: line.total_to_pay,
+          currency: line.currency,
+          additional_bonuses: line.additional_bonuses,
+          project_hours_amount: line.project_hours_amount,
+          exchange_rate_to_base: line.exchange_rate_to_base,
+          manual_adjustments: line.manual_adjustments
+        };
+        
         return {
           id: line.id,
           company_id: line.company_id,
@@ -117,7 +156,8 @@ export function Historico() {
           total_crc,
           total_usd,
           tc: exchangeRate,
-          fuente: 'payroll_lines'
+          fuente: 'payroll_lines',
+          payroll_line
         };
       });
 
@@ -170,7 +210,8 @@ export function Historico() {
             nombre: item.nombre,
             cedula: item.cedula,
             email: item.email,
-            centro_costo: item.centro_costo
+            centro_costo: item.centro_costo,
+            employee_id: item.employee_id
           },
           periodos: {},
           total_crc: 0,
@@ -180,7 +221,8 @@ export function Historico() {
       
       grouped[key].periodos[item.periodo] = {
         crc: item.total_crc,
-        usd: item.total_usd
+        usd: item.total_usd,
+        payroll_line: item.payroll_line
       };
       
       grouped[key].total_crc += item.total_crc;
@@ -218,12 +260,197 @@ export function Historico() {
     });
   };
 
-  const handleSendEmail = (empleado: PivotData['empleado']) => {
-    // Implementation for sending email would go here
-    toast({
-      title: "Enviar correo",
-      description: `Funcionalidad de envío de correo a ${empleado.email} pendiente de implementación`,
-    });
+  // Handle view detail action - opens modal with payroll line details
+  const handleViewDetail = (employee: PivotData, periodo?: string) => {
+    // Get the first available period's payroll line if no specific period
+    let payrollLine: PayrollLineDetail | undefined;
+    let periodLabel = '';
+    
+    if (periodo && employee.periodos[periodo]?.payroll_line) {
+      payrollLine = employee.periodos[periodo].payroll_line;
+      periodLabel = periodo;
+    } else {
+      // Get most recent period
+      const sortedPeriods = Object.keys(employee.periodos).sort().reverse();
+      for (const p of sortedPeriods) {
+        if (employee.periodos[p]?.payroll_line) {
+          payrollLine = employee.periodos[p].payroll_line;
+          periodLabel = p;
+          break;
+        }
+      }
+    }
+    
+    if (payrollLine) {
+      setSelectedPayrollLine(payrollLine);
+      setSelectedPeriodLabel(periodLabel);
+      setIsDetailModalOpen(true);
+    } else {
+      toast({
+        title: "Sin datos",
+        description: "No hay detalles de planilla disponibles para este colaborador",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Handle PDF download
+  const handleDownloadPDF = async (employee: PivotData, periodo?: string) => {
+    if (!selectedCompany?.id) return;
+    
+    setIsDownloadingPDF(true);
+    try {
+      // Find the payroll line for this employee
+      let payrollLineId: string | undefined;
+      
+      if (periodo && employee.periodos[periodo]?.payroll_line) {
+        payrollLineId = employee.periodos[periodo].payroll_line?.id;
+      } else {
+        const sortedPeriods = Object.keys(employee.periodos).sort().reverse();
+        for (const p of sortedPeriods) {
+          if (employee.periodos[p]?.payroll_line?.id) {
+            payrollLineId = employee.periodos[p].payroll_line?.id;
+            break;
+          }
+        }
+      }
+      
+      if (!payrollLineId) {
+        throw new Error("No se encontró línea de planilla");
+      }
+      
+      const { data, error } = await supabase.functions.invoke('generate-payslip-pdf', {
+        body: { 
+          payrollLineId,
+          companyId: selectedCompany.id 
+        }
+      });
+      
+      if (error) throw error;
+      
+      // If PDF URL is returned, download it
+      if (data?.pdfUrl) {
+        window.open(data.pdfUrl, '_blank');
+      } else if (data?.pdfBase64) {
+        // Handle base64 PDF download
+        const link = document.createElement('a');
+        link.href = `data:application/pdf;base64,${data.pdfBase64}`;
+        link.download = `colilla_${employee.empleado.nombre.replace(/\s+/g, '_')}.pdf`;
+        link.click();
+      }
+      
+      toast({
+        title: "PDF generado",
+        description: `Colilla descargada para ${employee.empleado.nombre}`,
+      });
+    } catch (error: any) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo generar el PDF",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDownloadingPDF(false);
+    }
+  };
+
+  // Handle send email action
+  const handleSendEmail = async (employee: PivotData, periodo?: string) => {
+    if (!selectedCompany?.id) return;
+    
+    const employeeKey = employee.empleado.cedula;
+    setIsSendingEmail(employeeKey);
+    
+    try {
+      // Find the payroll line for this employee
+      let payrollLineId: string | undefined;
+      let periodLabel = '';
+      
+      if (periodo && employee.periodos[periodo]?.payroll_line) {
+        payrollLineId = employee.periodos[periodo].payroll_line?.id;
+        periodLabel = periodo;
+      } else {
+        const sortedPeriods = Object.keys(employee.periodos).sort().reverse();
+        for (const p of sortedPeriods) {
+          if (employee.periodos[p]?.payroll_line?.id) {
+            payrollLineId = employee.periodos[p].payroll_line?.id;
+            periodLabel = p;
+            break;
+          }
+        }
+      }
+      
+      if (!payrollLineId) {
+        throw new Error("No se encontró línea de planilla");
+      }
+      
+      const { error } = await supabase.functions.invoke('send-payslip-email', {
+        body: { 
+          payrollLineId,
+          companyId: selectedCompany.id,
+          employeeEmail: employee.empleado.email,
+          employeeName: employee.empleado.nombre,
+          periodLabel
+        }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Correo enviado",
+        description: `Colilla enviada a ${employee.empleado.email}`,
+      });
+    } catch (error: any) {
+      console.error('Error sending email:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo enviar el correo",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSendingEmail(null);
+    }
+  };
+
+  // Handle modal PDF download
+  const handleModalDownloadPDF = async () => {
+    if (!selectedPayrollLine || !selectedCompany?.id) return;
+    
+    setIsDownloadingPDF(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-payslip-pdf', {
+        body: { 
+          payrollLineId: selectedPayrollLine.id,
+          companyId: selectedCompany.id 
+        }
+      });
+      
+      if (error) throw error;
+      
+      if (data?.pdfUrl) {
+        window.open(data.pdfUrl, '_blank');
+      } else if (data?.pdfBase64) {
+        const link = document.createElement('a');
+        link.href = `data:application/pdf;base64,${data.pdfBase64}`;
+        link.download = `colilla_${selectedPeriodLabel}.pdf`;
+        link.click();
+      }
+      
+      toast({
+        title: "PDF generado",
+        description: "Colilla descargada exitosamente",
+      });
+    } catch (error: any) {
+      console.error('Error downloading PDF:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo generar el PDF",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDownloadingPDF(false);
+    }
   };
 
   const getCurrencyValue = (periodo: string, employee: PivotData) => {
@@ -417,7 +644,7 @@ export function Historico() {
                           {periodo}
                         </TableHead>
                       ))}
-                      <TableHead className="text-center font-bold bg-green-50">
+                      <TableHead className="text-center font-bold bg-accent/20">
                         TOTAL {selectedCurrency === 'CRC' ? 'CRC' : selectedCurrency === 'USD' ? 'USD' : ''}
                       </TableHead>
                       <TableHead className="text-center">Acciones</TableHead>
@@ -443,24 +670,44 @@ export function Historico() {
                             {getCurrencyValue(periodo, employee)}
                           </TableCell>
                         ))}
-                        <TableCell className="text-center font-bold bg-green-50">
+                        <TableCell className="text-center font-bold bg-accent/20">
                           {getTotalValue(employee)}
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex gap-1 justify-center">
-                            <Button size="sm" variant="outline" title="Ver detalle">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              title="Ver detalle"
+                              onClick={() => handleViewDetail(employee)}
+                            >
                               <FileText className="h-3 w-3" />
                             </Button>
-                            <Button size="sm" variant="outline" title="Descargar PDF">
-                              <Download className="h-3 w-3" />
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              title="Descargar PDF"
+                              disabled={isDownloadingPDF}
+                              onClick={() => handleDownloadPDF(employee)}
+                            >
+                              {isDownloadingPDF ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Download className="h-3 w-3" />
+                              )}
                             </Button>
                             <Button 
                               size="sm" 
                               variant="outline" 
                               title="Enviar por correo"
-                              onClick={() => handleSendEmail(employee.empleado)}
+                              disabled={isSendingEmail === employee.empleado.cedula}
+                              onClick={() => handleSendEmail(employee)}
                             >
-                              <Mail className="h-3 w-3" />
+                              {isSendingEmail === employee.empleado.cedula ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Mail className="h-3 w-3" />
+                              )}
                             </Button>
                           </div>
                         </TableCell>
@@ -546,6 +793,38 @@ export function Historico() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Salary Detail Modal */}
+      <SalaryDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedPayrollLine(null);
+          setSelectedPeriodLabel('');
+        }}
+        payrollLine={selectedPayrollLine ? {
+          id: selectedPayrollLine.id,
+          gross_salary: selectedPayrollLine.gross_salary,
+          deductions: selectedPayrollLine.deductions || 0,
+          deductions_detail: selectedPayrollLine.deductions_detail,
+          net_pay: selectedPayrollLine.net_pay,
+          total_to_pay: selectedPayrollLine.total_to_pay || undefined,
+          currency: selectedPayrollLine.currency,
+          additional_bonuses: selectedPayrollLine.additional_bonuses || undefined,
+          project_hours_amount: selectedPayrollLine.project_hours_amount || undefined,
+          exchange_rate_to_base: selectedPayrollLine.exchange_rate_to_base || undefined,
+          manual_adjustments: selectedPayrollLine.manual_adjustments
+        } : null}
+        company={selectedCompany ? {
+          id: selectedCompany.id,
+          display_name: selectedCompany.name,
+          logo_url: null,
+          tax_id: null
+        } : null}
+        periodLabel={selectedPeriodLabel}
+        onDownloadPDF={handleModalDownloadPDF}
+        isDownloading={isDownloadingPDF}
+      />
     </div>
   );
 }
