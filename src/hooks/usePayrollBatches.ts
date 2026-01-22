@@ -66,11 +66,12 @@ export function useUpdateBatchStatus() {
   return useMutation({
     mutationFn: async ({ batchId, status }: { 
       batchId: string; 
-      status: "borrador" | "calculado" | "aprobado" | "enviado" 
+      status: "borrador" | "calculado" | "aprobado" | "autorizado" | "enviado" 
     }) => {
+      // Use type assertion since 'autorizado' was added to the enum
       const { error } = await supabase
         .from("payroll_batches")
-        .update({ status })
+        .update({ status: status as any })
         .eq("id", batchId);
 
       if (error) throw error;

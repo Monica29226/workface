@@ -1446,7 +1446,12 @@ export type Database = {
       contract_type: "mensual" | "por_horas"
       currency_type: "CRC" | "USD" | "EUR" | "GBP"
       employee_status: "activo" | "inactivo"
-      payroll_batch_status: "borrador" | "calculado" | "aprobado" | "enviado"
+      payroll_batch_status:
+        | "borrador"
+        | "calculado"
+        | "aprobado"
+        | "autorizado"
+        | "enviado"
       payroll_frequency: "semanal" | "quincenal" | "mensual"
       project_status: "activo" | "cerrado"
     }
@@ -1591,7 +1596,13 @@ export const Constants = {
       contract_type: ["mensual", "por_horas"],
       currency_type: ["CRC", "USD", "EUR", "GBP"],
       employee_status: ["activo", "inactivo"],
-      payroll_batch_status: ["borrador", "calculado", "aprobado", "enviado"],
+      payroll_batch_status: [
+        "borrador",
+        "calculado",
+        "aprobado",
+        "autorizado",
+        "enviado",
+      ],
       payroll_frequency: ["semanal", "quincenal", "mensual"],
       project_status: ["activo", "cerrado"],
     },

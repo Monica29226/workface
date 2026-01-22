@@ -212,12 +212,12 @@ export function Payslips() {
       return;
     }
 
-    // Check if there's an approved batch for the selected period
-    const { data: approvedBatches, error: batchError } = await supabase
+    // Check if there's an authorized batch for the selected period
+    const { data: authorizedBatches, error: batchError } = await supabase
       .from('payroll_batches')
       .select('*')
       .eq('company_id', selectedCompany.id)
-      .eq('status', 'aprobado')
+      .eq('status', 'autorizado' as any) // Type assertion for new enum value
       .gte('period_end', `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`)
       .lt('period_end', `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`)
       .limit(1);
@@ -226,22 +226,22 @@ export function Payslips() {
       console.error('Error checking batches:', batchError);
       toast({
         title: "Error",
-        description: "No se pudo verificar planillas aprobadas",
+        description: "No se pudo verificar planillas autorizadas",
         variant: "destructive",
       });
       return;
     }
 
-    if (!approvedBatches || approvedBatches.length === 0) {
+    if (!authorizedBatches || authorizedBatches.length === 0) {
       toast({
-        title: "No hay planilla aprobada",
-        description: `No existe una planilla aprobada para ${monthNames[selectedMonth - 1]} ${selectedYear}. Debes crear y aprobar una planilla primero en "Proceso de Planilla".`,
+        title: "No hay planilla autorizada",
+        description: `No existe una planilla autorizada para ${monthNames[selectedMonth - 1]} ${selectedYear}. Flujo requerido: Calculado → Aprobado → Autorizado → Enviado`,
         variant: "destructive",
       });
       return;
     }
 
-    const batch = approvedBatches[0];
+    const batch = authorizedBatches[0];
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-payslips', {

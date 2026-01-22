@@ -275,6 +275,7 @@ export function EditablePayrollReport() {
       borrador: { label: "Borrador", variant: "secondary" },
       calculado: { label: "Calculado", variant: "default" },
       aprobado: { label: "Aprobado", variant: "outline" },
+      autorizado: { label: "Autorizado", variant: "default" },
       enviado: { label: "Enviado", variant: "outline" },
     };
     const config = statusConfig[status] || { label: status, variant: "secondary" as const };

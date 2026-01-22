@@ -315,14 +315,56 @@ export function PayrollProcess() {
     }
   };
 
-  const handleGeneratePayslips = async () => {
+  const handleAuthorize = async () => {
     if (!selectedBatch) return;
 
     const currentBatch = batches.find(b => b.id === selectedBatch);
     if (currentBatch?.status !== 'aprobado') {
       toast({
         title: "Planilla no aprobada",
-        description: "Debes aprobar la planilla antes de generar colillas",
+        description: "Debes aprobar la planilla antes de autorizarla",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // Use type assertion since 'autorizado' was just added to the enum
+      const { error } = await supabase
+        .from('payroll_batches')
+        .update({ status: 'autorizado' as any })
+        .eq('id', selectedBatch);
+
+      if (error) throw error;
+
+      toast({
+        title: "✓ Planilla autorizada",
+        description: "Ahora puedes generar y enviar las colillas de pago",
+      });
+
+      fetchBatches();
+      fetchPayrollLines();
+    } catch (error) {
+      console.error('Error authorizing batch:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo autorizar la planilla",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleGeneratePayslips = async () => {
+    if (!selectedBatch) return;
+
+    const currentBatch = batches.find(b => b.id === selectedBatch);
+    if (currentBatch?.status !== 'autorizado') {
+      toast({
+        title: "Planilla no autorizada",
+        description: "Debes autorizar la planilla antes de generar colillas. Flujo: Calculado → Aprobado → Autorizado → Enviado",
         variant: "destructive",
       });
       return;
@@ -456,6 +498,7 @@ export function PayrollProcess() {
       borrador: { label: "Borrador", className: "bg-gray-100 text-gray-800" },
       calculado: { label: "Calculado", className: "bg-blue-100 text-blue-800" },
       aprobado: { label: "Aprobado", className: "bg-green-100 text-green-800" },
+      autorizado: { label: "Autorizado", className: "bg-amber-100 text-amber-800" },
       enviado: { label: "Enviado", className: "bg-purple-100 text-purple-800" },
     };
     const variant = variants[status] || variants.borrador;
@@ -679,6 +722,18 @@ export function PayrollProcess() {
                           <XCircle className="h-4 w-4" />
                           Desaprobar
                         </Button>
+                        <Button onClick={handleAuthorize} disabled={isProcessing} className="gap-2 bg-amber-600 hover:bg-amber-700">
+                          {isProcessing ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle className="h-4 w-4" />
+                          )}
+                          Autorizar Envío
+                        </Button>
+                      </>
+                    )}
+                    {currentBatch.status === 'autorizado' && (
+                      <>
                         <Button onClick={handleGeneratePayslips} disabled={isProcessing} className="gap-2">
                           {isProcessing ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
