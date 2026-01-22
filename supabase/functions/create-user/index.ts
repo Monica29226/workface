@@ -97,7 +97,7 @@ const handler = async (req: Request): Promise<Response> => {
     ).replace(/\/$/, "");
 
     const loginLink = `${appOrigin}/auth`;
-    const systemName = "Sistema de Planillas Aureon";
+    const systemName = "ACL Workforce HUB";
     const supportEmail = "soporte@aureoncr.com";
 
     const resend = new Resend(resendApiKey);
@@ -124,7 +124,7 @@ const handler = async (req: Request): Promise<Response> => {
                           ${systemName}
                         </h1>
                         <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">
-                          Gestión de Nómina y Recursos Humanos
+                          Sistema de Gestión de Nómina y Planillas
                         </p>
                       </td>
                     </tr>
@@ -137,7 +137,7 @@ const handler = async (req: Request): Promise<Response> => {
                         </h2>
                         
                         <p style="color: #475569; line-height: 1.7; margin: 0 0 24px 0; font-size: 15px;">
-                          Su empresa lo ha registrado en el <strong>${systemName}</strong> para gestionar su información de nómina, recibos de pago y más.
+                          Su empresa lo ha registrado en el <strong>${systemName}</strong>, el sistema de gestión de planillas y nómina para administrar su información de pagos, recibos de salario y más.
                         </p>
                         
                         <p style="color: #475569; line-height: 1.7; margin: 0 0 24px 0; font-size: 15px;">
@@ -206,7 +206,7 @@ const handler = async (req: Request): Promise<Response> => {
                           <a href="mailto:${supportEmail}" style="color: #1e40af; font-size: 14px; text-decoration: underline;">${supportEmail}</a>
                         </p>
                         <p style="margin: 0; color: #94a3b8; font-size: 12px; text-align: center;">
-                          © ${new Date().getFullYear()} Aureon. Todos los derechos reservados.
+                          © ${new Date().getFullYear()} ACL Workforce HUB. Todos los derechos reservados.
                         </p>
                         <p style="margin: 8px 0 0 0; color: #cbd5e1; font-size: 11px; text-align: center;">
                           Este correo fue enviado porque su empresa lo registró en nuestro sistema. Si cree que recibió este mensaje por error, por favor contáctenos.
