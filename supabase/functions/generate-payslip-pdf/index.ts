@@ -152,6 +152,22 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
     }).format(amount || 0);
   };
 
+  const formatUSD = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+    }).format(amount || 0);
+  };
+
+  const formatCRC = (amount: number) => {
+    return new Intl.NumberFormat('es-CR', {
+      style: 'currency',
+      currency: 'CRC',
+      minimumFractionDigits: 2,
+    }).format(amount || 0);
+  };
+
   // Parse deductions_detail JSON
   let deductionsDetail: DeductionsDetail = { items: [], total_deductions: 0 };
   try {
@@ -166,25 +182,80 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
     console.error("Error parsing deductions_detail:", e);
   }
 
+  // Parse manual_adjustments for USD salary info
+  let manualAdjustments: any = {};
+  try {
+    if (payrollLine.manual_adjustments) {
+      if (typeof payrollLine.manual_adjustments === 'string') {
+        manualAdjustments = JSON.parse(payrollLine.manual_adjustments);
+      } else {
+        manualAdjustments = payrollLine.manual_adjustments;
+      }
+    }
+  } catch (e) {
+    console.error("Error parsing manual_adjustments:", e);
+  }
+
   const deductionItems = deductionsDetail.items || [];
   const logoUrl = payslip.company.logo_url;
 
-  // Generate deductions rows HTML
+  // Check if this is a USD salary
+  const exchangeRate = payrollLine.exchange_rate_to_base || manualAdjustments?.exchange_rate_applied;
+  const originalCurrency = manualAdjustments?.original_currency || payslip.employee.currency;
+  const originalSalary = manualAdjustments?.original_salary || payslip.employee.base_salary;
+  const isUSDSalary = originalCurrency === 'USD' && exchangeRate && exchangeRate > 1;
+
+  // Calculate values in both currencies for USD employees
+  const grossSalaryCRC = isUSDSalary ? originalSalary * exchangeRate : payrollLine.gross_salary;
+  const netPayCRC = payrollLine.net_pay;
+  const netPayUSD = isUSDSalary ? netPayCRC / exchangeRate : null;
+  const deductionsCRC = payrollLine.deductions;
+  const deductionsUSD = isUSDSalary ? deductionsCRC / exchangeRate : null;
+
+  // Generate USD salary banner HTML
+  const usdBannerHTML = isUSDSalary ? `
+    <div class="usd-banner">
+      <div class="usd-banner-icon">💵</div>
+      <div class="usd-banner-content">
+        <div class="usd-banner-title">Salario Original en Dólares</div>
+        <div class="usd-banner-details">
+          <div class="usd-detail">
+            <span class="usd-label">Salario Bruto USD:</span>
+            <span class="usd-value">${formatUSD(originalSalary)}</span>
+          </div>
+          <div class="usd-detail">
+            <span class="usd-label">Tipo de Cambio (BCCR):</span>
+            <span class="usd-value">₡${exchangeRate.toFixed(2)}</span>
+          </div>
+          <div class="usd-detail">
+            <span class="usd-label">Equivalente CRC:</span>
+            <span class="usd-value">${formatCRC(grossSalaryCRC)}</span>
+          </div>
+        </div>
+        <div class="usd-banner-note">* Tipo de cambio de venta del Banco Central de Costa Rica aplicado a la fecha del período</div>
+      </div>
+    </div>
+  ` : '';
+
+  // Generate deductions rows HTML with USD equivalents for USD employees
   const deductionsRowsHTML = deductionItems.length > 0 
     ? deductionItems.map((item: DeductionItem) => `
       <div class="info-row">
         <span class="info-label">${item.label}${item.type === 'percentage' && item.rate ? ` (${(item.rate * 100).toFixed(1)}%)` : ''}:</span>
-        <span class="deduction-amount">-${formatCurrency(item.amount, payrollLine.currency)}</span>
+        <span class="deduction-amount">
+          -${formatCRC(item.amount)}
+          ${isUSDSalary ? `<span class="usd-equivalent">(~${formatUSD(item.amount / exchangeRate)})</span>` : ''}
+        </span>
       </div>
     `).join('')
     : `
       <div class="info-row">
         <span class="info-label">CCSS Obrero:</span>
-        <span class="deduction-amount">-${formatCurrency(payrollLine.deductions * 0.095, payrollLine.currency)}</span>
+        <span class="deduction-amount">-${formatCRC(payrollLine.deductions * 0.095)}</span>
       </div>
       <div class="info-row">
         <span class="info-label">Impuesto sobre la Renta:</span>
-        <span class="deduction-amount">-${formatCurrency(payrollLine.deductions * 0.05, payrollLine.currency)}</span>
+        <span class="deduction-amount">-${formatCRC(payrollLine.deductions * 0.05)}</span>
       </div>
     `;
 
@@ -271,6 +342,59 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
     .content {
       padding: 25px 30px;
     }
+    .usd-banner {
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+      border: 2px solid #1976d2;
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin-bottom: 25px;
+      display: flex;
+      align-items: flex-start;
+      gap: 15px;
+    }
+    .usd-banner-icon {
+      font-size: 32px;
+    }
+    .usd-banner-content {
+      flex: 1;
+    }
+    .usd-banner-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #0d47a1;
+      margin-bottom: 12px;
+    }
+    .usd-banner-details {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .usd-detail {
+      display: flex;
+      flex-direction: column;
+    }
+    .usd-label {
+      font-size: 11px;
+      color: #1565c0;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .usd-value {
+      font-size: 15px;
+      font-weight: bold;
+      color: #0d47a1;
+    }
+    .usd-banner-note {
+      font-size: 11px;
+      color: #1976d2;
+      margin-top: 12px;
+      font-style: italic;
+    }
+    .usd-equivalent {
+      font-size: 11px;
+      color: #1976d2;
+      margin-left: 5px;
+    }
     .employee-info {
       background: #f8f9fa;
       border-radius: 8px;
@@ -331,10 +455,18 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
     .deduction-amount {
       font-weight: 600;
       color: #dc3545;
+      text-align: right;
     }
     .income-amount {
       font-weight: 600;
       color: #28a745;
+      text-align: right;
+    }
+    .income-detail {
+      font-size: 11px;
+      color: #1976d2;
+      display: block;
+      margin-top: 2px;
     }
     .totals {
       background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
@@ -353,6 +485,19 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
       padding-bottom: 15px;
       margin-bottom: 10px;
     }
+    .total-value-container {
+      text-align: right;
+    }
+    .total-usd-main {
+      font-size: 20px;
+      font-weight: bold;
+      color: #0d47a1;
+    }
+    .total-crc-secondary {
+      font-size: 13px;
+      color: #666;
+      margin-top: 2px;
+    }
     .net-pay {
       font-size: 20px;
       font-weight: bold;
@@ -360,6 +505,13 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
       padding-top: 15px;
       border-top: 2px solid #003d7a;
       margin-top: 10px;
+    }
+    .net-pay-usd {
+      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+      border: 2px solid #1976d2;
+      border-radius: 8px;
+      padding: 15px 20px;
+      margin-top: 15px;
     }
     .footer {
       text-align: center;
@@ -388,6 +540,11 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
       background: #fff3e0;
       color: #e65100;
     }
+    .badge-usd {
+      background: #e8f5e9;
+      color: #2e7d32;
+      margin-left: 8px;
+    }
   </style>
 </head>
 <body>
@@ -410,6 +567,8 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
     </div>
 
     <div class="content">
+      ${usdBannerHTML}
+      
       <div class="employee-info">
         <div class="employee-info-item">
           <span class="employee-info-label">Nombre del Colaborador</span>
@@ -429,6 +588,7 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
             <span class="badge ${payslip.employee.contract_type === 'mensual' ? 'badge-mensual' : 'badge-horas'}">
               ${payslip.employee.contract_type === 'mensual' ? 'Mensual' : 'Por Horas'}
             </span>
+            ${isUSDSalary ? '<span class="badge badge-usd">USD</span>' : ''}
           </span>
         </div>
       </div>
@@ -438,24 +598,29 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
         <div class="section-content">
           <div class="info-row">
             <span class="info-label">Salario Base</span>
-            <span class="income-amount">${formatCurrency(payrollLine.gross_salary, payrollLine.currency)}</span>
+            <span class="income-amount">
+              ${isUSDSalary 
+                ? `${formatUSD(originalSalary)}<span class="income-detail">(${formatCRC(grossSalaryCRC)})</span>`
+                : formatCRC(payrollLine.gross_salary)
+              }
+            </span>
           </div>
           ${payrollLine.overtime > 0 ? `
           <div class="info-row">
             <span class="info-label">Horas Extra (${payrollLine.overtime_hours || 0} hrs)</span>
-            <span class="income-amount">+${formatCurrency(payrollLine.overtime, payrollLine.currency)}</span>
+            <span class="income-amount">+${formatCRC(payrollLine.overtime)}</span>
           </div>
           ` : ''}
           ${payrollLine.project_hours_amount > 0 ? `
           <div class="info-row">
             <span class="info-label">Horas de Proyecto</span>
-            <span class="income-amount">+${formatCurrency(payrollLine.project_hours_amount, payrollLine.currency)}</span>
+            <span class="income-amount">+${formatCRC(payrollLine.project_hours_amount)}</span>
           </div>
           ` : ''}
           ${payrollLine.additional_bonuses > 0 ? `
           <div class="info-row">
             <span class="info-label">Bonificaciones Adicionales</span>
-            <span class="income-amount">+${formatCurrency(payrollLine.additional_bonuses, payrollLine.currency)}</span>
+            <span class="income-amount">+${formatCRC(payrollLine.additional_bonuses)}</span>
           </div>
           ` : ''}
         </div>
@@ -467,7 +632,10 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
           ${deductionsRowsHTML}
           <div class="info-row" style="background: #fff5f5;">
             <span class="info-label" style="font-weight: bold;">Total Deducciones</span>
-            <span class="deduction-amount" style="font-size: 15px;">-${formatCurrency(payrollLine.deductions, payrollLine.currency)}</span>
+            <span class="deduction-amount" style="font-size: 15px;">
+              -${formatCRC(deductionsCRC)}
+              ${isUSDSalary ? `<span class="usd-equivalent">(~${formatUSD(deductionsUSD)})</span>` : ''}
+            </span>
           </div>
         </div>
       </div>
@@ -477,7 +645,7 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
         <div class="section-content">
           <div class="info-row">
             <span class="info-label">Aguinaldo Acumulado</span>
-            <span class="info-value">${formatCurrency(payrollLine.aguinaldo_accrued || 0, payrollLine.currency)}</span>
+            <span class="info-value">${formatCRC(payrollLine.aguinaldo_accrued || 0)}</span>
           </div>
           <div class="info-row">
             <span class="info-label">Vacaciones Acumuladas</span>
@@ -495,25 +663,35 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
       <div class="totals">
         <div class="total-row subtotal">
           <span>Salario Bruto:</span>
-          <span style="font-weight: 600;">${formatCurrency(payrollLine.gross_salary, payrollLine.currency)}</span>
+          <span class="total-value-container">
+            ${isUSDSalary 
+              ? `<div class="total-usd-main">${formatUSD(originalSalary)}</div><div class="total-crc-secondary">${formatCRC(grossSalaryCRC)}</div>`
+              : `<span style="font-weight: 600;">${formatCRC(payrollLine.gross_salary)}</span>`
+            }
+          </span>
         </div>
         <div class="total-row">
           <span>Total Deducciones:</span>
-          <span style="color: #dc3545; font-weight: 600;">-${formatCurrency(payrollLine.deductions, payrollLine.currency)}</span>
+          <span style="color: #dc3545; font-weight: 600;">
+            -${formatCRC(deductionsCRC)}
+            ${isUSDSalary ? ` <span style="font-size: 12px; color: #666;">(~${formatUSD(deductionsUSD)})</span>` : ''}
+          </span>
         </div>
-        <div class="total-row">
-          <span>Salario Neto:</span>
-          <span style="font-weight: 600;">${formatCurrency(payrollLine.net_pay, payrollLine.currency)}</span>
-        </div>
-        ${payrollLine.total_to_pay && payrollLine.total_to_pay !== payrollLine.net_pay ? `
-        <div class="total-row net-pay">
-          <span>TOTAL A DEPOSITAR:</span>
-          <span>${formatCurrency(payrollLine.total_to_pay, payrollLine.currency)}</span>
+        
+        ${isUSDSalary ? `
+        <div class="net-pay-usd">
+          <div class="total-row" style="padding: 0; align-items: center;">
+            <span style="font-size: 18px; font-weight: bold; color: #0d47a1;">💵 TOTAL A DEPOSITAR:</span>
+            <span class="total-value-container">
+              <div class="total-usd-main" style="font-size: 24px;">${formatUSD(netPayUSD)}</div>
+              <div class="total-crc-secondary">${formatCRC(netPayCRC)}</div>
+            </span>
+          </div>
         </div>
         ` : `
         <div class="total-row net-pay">
           <span>TOTAL A DEPOSITAR:</span>
-          <span>${formatCurrency(payrollLine.net_pay, payrollLine.currency)}</span>
+          <span>${formatCRC(payrollLine.total_to_pay || payrollLine.net_pay)}</span>
         </div>
         `}
       </div>
@@ -522,7 +700,7 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
     <div class="footer">
       <p><strong>Colilla generada el ${new Date().toLocaleDateString('es-CR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong></p>
       <p>Este documento es una representación electrónica de su recibo de pago</p>
-      <p>ID Colilla: ${payslip.payslip_id} | ID Lote: ${payslip.batch.batch_id}</p>
+      <p>ID Colilla: ${payslip.payslip_id} | ID Lote: ${payslip.batch.batch_id}${isUSDSalary ? ` | TC: ₡${exchangeRate.toFixed(2)}` : ''}</p>
     </div>
   </div>
 </body>
