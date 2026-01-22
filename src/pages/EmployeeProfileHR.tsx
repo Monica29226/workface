@@ -355,8 +355,9 @@ export function EmployeeProfileHR() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-5 w-5" />
+          <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Ir a Inicio
           </Button>
           <div className="h-14 w-14 rounded-xl border bg-primary/10 flex items-center justify-center">
             <User className="h-7 w-7 text-primary" />
