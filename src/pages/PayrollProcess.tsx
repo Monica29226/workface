@@ -490,11 +490,20 @@ export function PayrollProcess() {
   };
 
   const currentBatch = batches.find(b => b.id === selectedBatch);
+  
+  // Get exchange rate from first USD line (if any)
+  const exchangeRateFromLines = payrollLines.find(l => l.currency === 'USD')?.exchange_rate_to_base || 505.10;
+  
   const stats = {
     totalGross: payrollLines.reduce((sum, line) => sum + Number(line.gross_salary), 0),
     totalDeductions: payrollLines.reduce((sum, line) => sum + Number(line.deductions), 0),
     totalNet: payrollLines.reduce((sum, line) => sum + Number(line.net_pay), 0),
     totalEmployerContrib: payrollLines.reduce((sum, line) => sum + Number(line.employer_contrib), 0),
+    // Calculate total net in USD (net is stored in CRC, convert back to USD)
+    totalNetUSD: payrollLines.reduce((sum, line) => {
+      const rate = line.exchange_rate_to_base || exchangeRateFromLines;
+      return sum + (Number(line.net_pay) / rate);
+    }, 0),
   };
 
   const getStatusBadge = (status: string) => {
@@ -806,12 +815,12 @@ export function PayrollProcess() {
           {/* Summary Cards */}
           {payrollLines.length > 0 && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-primary">
-                        {formatCurrency(stats.totalGross, currentBatch?.base_currency || 'CRC')}
+                        {formatCurrency(stats.totalGross, 'USD')}
                       </div>
                       <div className="text-sm text-muted-foreground mt-1">
                         Total Bruto
@@ -823,37 +832,11 @@ export function PayrollProcess() {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-orange-600">
-                        {formatCurrency(stats.totalDeductions, 'CRC')}
-                      </div>
-                      <div className="text-sm text-muted-foreground mt-1">
-                        Deducciones (CRC)
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center">
                       <div className="text-2xl font-bold text-green-600">
-                        {formatCurrency(stats.totalNet, 'CRC')}
+                        {formatCurrency(stats.totalNetUSD, 'USD')}
                       </div>
                       <div className="text-sm text-muted-foreground mt-1">
-                        Neto a Pagar (CRC)
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {formatCurrency(stats.totalEmployerContrib, 'CRC')}
-                      </div>
-                      <div className="text-sm text-muted-foreground mt-1">
-                        Cargas Patronales (CRC)
+                        Total a Pagar
                       </div>
                     </div>
                   </CardContent>
