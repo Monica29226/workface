@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CompanySwitcher } from "./CompanySwitcher";
+import { UserMenu } from "./UserMenu";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "next-themes";
 
@@ -64,6 +65,9 @@ export function AppHeader() {
               <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
               <span className="sr-only">Toggle theme</span>
             </Button>
+
+            {/* User Menu */}
+            <UserMenu />
           </div>
         </div>
       </div>
