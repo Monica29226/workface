@@ -243,196 +243,112 @@ export function Parameters() {
 
         {/* Cargas Sociales Tab */}
         <TabsContent value="cargas" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* CCSS Patronal */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">CCSS Patronal</CardTitle>
-                <CardDescription>Aportes del empleador a la CCSS</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>SEM (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={parameters?.ccss_patronal_sem || 0}
-                      onChange={(e) => updateParameter('ccss_patronal_sem', parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div>
-                    <Label>IVM (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={parameters?.ccss_patronal_ivm || 0}
-                      onChange={(e) => updateParameter('ccss_patronal_ivm', parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label>Total Patronal (%)</Label>
+          {/* Cuotas Totales - Simplificado */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Cuotas de Cargas Sociales</CardTitle>
+              <CardDescription>
+                Porcentajes totales para cálculo de planilla según CCSS
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-4 border rounded-lg">
+                  <Label>Cuota Patronal Total (%)</Label>
                   <Input
                     type="number"
                     step="0.01"
+                    className="mt-2 text-lg font-semibold"
                     value={parameters?.ccss_patronal_total || 0}
                     onChange={(e) => updateParameter('ccss_patronal_total', parseFloat(e.target.value) || 0)}
                   />
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Incluye CCSS, INA, IMAS, FODESAF, BP, INS
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* CCSS Obrero */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">CCSS Obrero</CardTitle>
-                <CardDescription>Deducciones del trabajador</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>SEM (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={parameters?.ccss_obrero_sem || 0}
-                      onChange={(e) => updateParameter('ccss_obrero_sem', parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div>
-                    <Label>IVM (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={parameters?.ccss_obrero_ivm || 0}
-                      onChange={(e) => updateParameter('ccss_obrero_ivm', parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label>Total Obrero (%)</Label>
+                <div className="p-4 border rounded-lg">
+                  <Label>Cuota Obrera Total (%)</Label>
                   <Input
                     type="number"
                     step="0.01"
+                    className="mt-2 text-lg font-semibold"
                     value={parameters?.ccss_obrero_total || 0}
                     onChange={(e) => updateParameter('ccss_obrero_total', parseFloat(e.target.value) || 0)}
                   />
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Incluye CCSS SEM, IVM y Banco Popular
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Otras Cargas */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Otras Cargas Patronales</CardTitle>
-                <CardDescription>INA, IMAS, FODESAF y otros</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>INA (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={parameters?.ina_rate || 0}
-                      onChange={(e) => updateParameter('ina_rate', parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div>
-                    <Label>IMAS (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={parameters?.imas_rate || 0}
-                      onChange={(e) => updateParameter('imas_rate', parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>FODESAF (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={parameters?.fodesaf_rate || 0}
-                      onChange={(e) => updateParameter('fodesaf_rate', parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div>
-                    <Label>INS Riesgos (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={parameters?.ins_riesgos_trabajo || 0}
-                      onChange={(e) => updateParameter('ins_riesgos_trabajo', parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Resumen estilo tabla como la imagen */}
+          <Card className="bg-[#0F2A44] text-white">
+            <CardContent className="p-0">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-white/20">
+                    <th className="text-left p-4 font-semibold">RESUMEN</th>
+                    <th className="text-center p-4 font-semibold">Patrono</th>
+                    <th className="text-center p-4 font-semibold">Trabajador</th>
+                    <th className="text-center p-4 font-semibold">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-white/10">
+                    <td className="p-4">PORCENTAJES TOTALES</td>
+                    <td className="text-center p-4 font-bold text-lg">
+                      {(parameters?.ccss_patronal_total || 0).toFixed(2)}%
+                    </td>
+                    <td className="text-center p-4 font-bold text-lg">
+                      {(parameters?.ccss_obrero_total || 0).toFixed(2)}%
+                    </td>
+                    <td className="text-center p-4 font-bold text-lg">
+                      {((parameters?.ccss_patronal_total || 0) + (parameters?.ccss_obrero_total || 0)).toFixed(2)}%
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-4">Ejemplo sobre salario mínimo</td>
+                    <td className="text-center p-4 text-[#C9A24D]">
+                      {formatCurrency((parameters?.salario_minimo_referencia || 0) * 30 * (parameters?.ccss_patronal_total || 0) / 100)}
+                    </td>
+                    <td className="text-center p-4 text-[#C9A24D]">
+                      {formatCurrency((parameters?.salario_minimo_referencia || 0) * 30 * (parameters?.ccss_obrero_total || 0) / 100)}
+                    </td>
+                    <td className="text-center p-4 text-[#C9A24D]">
+                      {formatCurrency((parameters?.salario_minimo_referencia || 0) * 30 * ((parameters?.ccss_patronal_total || 0) + (parameters?.ccss_obrero_total || 0)) / 100)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </CardContent>
+          </Card>
 
-            {/* Banco Popular */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Banco Popular</CardTitle>
-                <CardDescription>Aportes obrero y patronal</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Patronal (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={parameters?.banco_popular_patronal || 0}
-                      onChange={(e) => updateParameter('banco_popular_patronal', parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                  <div>
-                    <Label>Obrero (%)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={parameters?.banco_popular_obrero || 0}
-                      onChange={(e) => updateParameter('banco_popular_obrero', parseFloat(e.target.value) || 0)}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Summary Card */}
-          <Card className="bg-primary/5 border-primary/20">
+          {/* Salario Mínimo - Movido aquí */}
+          <Card>
             <CardHeader>
-              <CardTitle>Resumen de Cargas Sociales</CardTitle>
+              <CardTitle>Salario Mínimo de Referencia</CardTitle>
+              <CardDescription>
+                Salario mínimo diario según MTSS (trabajador no calificado)
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-2xl font-bold text-primary">
-                    {((parameters?.ccss_patronal_total || 0) + (parameters?.ina_rate || 0) + (parameters?.imas_rate || 0) + (parameters?.fodesaf_rate || 0) + (parameters?.banco_popular_patronal || 0) + (parameters?.ins_riesgos_trabajo || 0)).toFixed(2)}%
-                  </p>
-                  <p className="text-sm text-muted-foreground">Total Patronal</p>
+                  <Label>Salario Mínimo Diario (₡)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={parameters?.salario_minimo_referencia || 0}
+                    onChange={(e) => updateParameter('salario_minimo_referencia', parseFloat(e.target.value) || 0)}
+                  />
                 </div>
-                <div>
-                  <p className="text-2xl font-bold text-primary">
-                    {((parameters?.ccss_obrero_total || 0) + (parameters?.banco_popular_obrero || 0)).toFixed(2)}%
-                  </p>
-                  <p className="text-sm text-muted-foreground">Total Obrero</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">
-                    {formatCurrency(parameters?.salario_minimo_referencia || 0)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Salario Mínimo/día</p>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">
-                    {formatCurrency((parameters?.salario_minimo_referencia || 0) * 30)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Salario Mínimo/mes</p>
+                <div className="flex items-end">
+                  <div className="p-3 bg-muted rounded-lg w-full text-center">
+                    <p className="text-sm text-muted-foreground">Mensual (30 días)</p>
+                    <p className="text-xl font-bold">{formatCurrency((parameters?.salario_minimo_referencia || 0) * 30)}</p>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -563,35 +479,6 @@ export function Parameters() {
                   </div>
                   <div className="text-sm text-muted-foreground">
                     Tasa máxima
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Salario Mínimo */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Salario Mínimo de Referencia</CardTitle>
-              <CardDescription>
-                Salario mínimo diario según MTSS (trabajador no calificado)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Salario Mínimo Diario (₡)</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={parameters?.salario_minimo_referencia || 0}
-                    onChange={(e) => updateParameter('salario_minimo_referencia', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <div className="flex items-end">
-                  <div className="p-3 bg-muted rounded-lg w-full text-center">
-                    <p className="text-sm text-muted-foreground">Mensual (30 días)</p>
-                    <p className="text-xl font-bold">{formatCurrency((parameters?.salario_minimo_referencia || 0) * 30)}</p>
                   </div>
                 </div>
               </div>
