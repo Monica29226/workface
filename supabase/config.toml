@@ -50,3 +50,6 @@ verify_jwt = true
 
 [functions.delete-user]
 verify_jwt = false
+
+[functions.get-bccr-exchange-rate]
+verify_jwt = false
