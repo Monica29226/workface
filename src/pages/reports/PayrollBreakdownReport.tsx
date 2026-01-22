@@ -66,7 +66,7 @@ export function PayrollBreakdownReport() {
     enabled: !!selectedCompany?.id,
   });
 
-  // Fetch payroll lines for selected batch
+  // Fetch payroll lines for selected batch (including exchange_rate_to_base)
   const { data: payrollLines, isLoading: linesLoading } = useQuery({
     queryKey: ["payrollLinesBreakdown", selectedBatchId],
     queryFn: async () => {
@@ -82,7 +82,7 @@ export function PayrollBreakdownReport() {
         .order("employee(full_name)");
 
       if (error) throw error;
-      return data as unknown as PayrollLine[];
+      return data as unknown as (PayrollLine & { exchange_rate_to_base?: number })[];
     },
     enabled: !!selectedBatchId,
   });
@@ -107,6 +107,13 @@ export function PayrollBreakdownReport() {
 
   const isEducationSector = companyParams?.is_education_sector || false;
   const currentBatch = batches?.find(b => b.id === selectedBatchId);
+  
+  // Get exchange rate from payroll lines
+  const exchangeRate = useMemo(() => {
+    if (!payrollLines || payrollLines.length === 0) return null;
+    const usdLine = payrollLines.find(line => line.currency === 'USD');
+    return usdLine ? (usdLine as any).exchange_rate_to_base : null;
+  }, [payrollLines]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -346,6 +353,19 @@ export function PayrollBreakdownReport() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Exchange Rate Banner */}
+          {exchangeRate && (
+            <Card className="border-blue-200 bg-blue-50/50 print:break-inside-avoid">
+              <CardContent className="py-3">
+                <div className="flex items-center gap-2 text-sm text-blue-800">
+                  <span className="font-medium">Tipo de Cambio BCCR (Venta):</span>
+                  <span className="font-bold">₡{Number(exchangeRate).toFixed(2)}</span>
+                  <span className="text-muted-foreground">/ $1 USD</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Deductions Breakdown Summary */}
           <Card className="print:break-inside-avoid">
