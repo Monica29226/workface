@@ -1511,10 +1511,13 @@ export type Database = {
     }
     Functions: {
       can_access_salary_data: { Args: { _user_id: string }; Returns: boolean }
+      has_admin_level_role: { Args: { _user_id: string }; Returns: boolean }
+      has_client_access_role: { Args: { _user_id: string }; Returns: boolean }
       has_company_access: {
         Args: { _company_id: string; _user_id: string }
         Returns: boolean
       }
+      has_manager_level_role: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
