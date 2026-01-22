@@ -53,6 +53,20 @@ const COLUMN_ALIASES: Record<string, string> = {
   'código': 'employee_id',
   'cedula': 'employee_id',
   'cédula': 'employee_id',
+  'no cedula': 'employee_id',
+  'no. cedula': 'employee_id',
+  'numero cedula': 'employee_id',
+  'número cédula': 'employee_id',
+  'num cedula': 'employee_id',
+  'identificacion': 'employee_id',
+  'identificación': 'employee_id',
+  'id': 'employee_id',
+  'no': 'employee_id',
+  'no.': 'employee_id',
+  'numero': 'employee_id',
+  'número': 'employee_id',
+  'codigo empleado': 'employee_id',
+  'código empleado': 'employee_id',
   
   // full_name variations
   'full_name': 'full_name',
@@ -67,6 +81,18 @@ const COLUMN_ALIASES: Record<string, string> = {
   'employee name': 'full_name',
   'employee_name': 'full_name',
   'employeename': 'full_name',
+  'colaborador': 'full_name',
+  'empleado': 'full_name',
+  'trabajador': 'full_name',
+  'funcionario': 'full_name',
+  'nombre del colaborador': 'full_name',
+  'nombre del empleado': 'full_name',
+  'nombre empleado': 'full_name',
+  'nombre funcionario': 'full_name',
+  'nombres': 'full_name',
+  'apellidos': 'full_name',
+  'nombre y apellidos': 'full_name',
+  'nombres y apellidos': 'full_name',
   
   // work_email variations
   'work_email': 'work_email',
@@ -81,6 +107,12 @@ const COLUMN_ALIASES: Record<string, string> = {
   'email trabajo': 'work_email',
   'email_trabajo': 'work_email',
   'emailtrabajo': 'work_email',
+  'e-mail': 'work_email',
+  'mail': 'work_email',
+  'email laboral': 'work_email',
+  'correo laboral': 'work_email',
+  'correo empresa': 'work_email',
+  'correo corporativo': 'work_email',
   
   // base_salary variations
   'base_salary': 'base_salary',
@@ -94,6 +126,20 @@ const COLUMN_ALIASES: Record<string, string> = {
   'salariobase': 'base_salary',
   'sueldo': 'base_salary',
   'sueldo base': 'base_salary',
+  'salario bruto': 'base_salary',
+  'salario mensual': 'base_salary',
+  'sueldo mensual': 'base_salary',
+  'monto': 'base_salary',
+  'monto salario': 'base_salary',
+  'salario ordinario': 'base_salary',
+  'ingreso base': 'base_salary',
+  'ingreso': 'base_salary',
+  'remuneracion': 'base_salary',
+  'remuneración': 'base_salary',
+  'pago base': 'base_salary',
+  'total salario': 'base_salary',
+  'gross salary': 'base_salary',
+  'gross_salary': 'base_salary',
   
   // hire_date variations
   'hire_date': 'hire_date',
@@ -110,6 +156,11 @@ const COLUMN_ALIASES: Record<string, string> = {
   'start date': 'hire_date',
   'start_date': 'hire_date',
   'startdate': 'hire_date',
+  'fecha inicio': 'hire_date',
+  'fecha de ingreso': 'hire_date',
+  'fecha entrada': 'hire_date',
+  'antiguedad': 'hire_date',
+  'antigüedad': 'hire_date',
   
   // contract_type variations
   'contract_type': 'contract_type',
@@ -121,11 +172,18 @@ const COLUMN_ALIASES: Record<string, string> = {
   'tipocontrato': 'contract_type',
   'tipo de contrato': 'contract_type',
   'contrato': 'contract_type',
+  'modalidad': 'contract_type',
+  'tipo pago': 'contract_type',
+  'tipo de pago': 'contract_type',
+  'forma pago': 'contract_type',
   
   // currency variations
   'currency': 'currency',
   'moneda': 'currency',
   'divisa': 'currency',
+  'tipo moneda': 'currency',
+  'tipo_moneda': 'currency',
+  'coin': 'currency',
 };
 
 // Normalize column name to snake_case and check aliases
@@ -169,6 +227,7 @@ export function ImportEmployeesDialog({
   const [parsedData, setParsedData] = useState<ImportRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const [importResults, setImportResults] = useState<{ success: number; failed: number; errors: string[] }>({
     success: 0,
     failed: 0,
@@ -179,9 +238,38 @@ export function ImportEmployeesDialog({
     setStep('upload');
     setParsedData([]);
     setProgress(0);
+    setIsDragging(false);
     setImportResults({ success: 0, failed: 0, errors: [] });
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      await processFile(files[0]);
     }
   };
 
@@ -264,10 +352,7 @@ export function ImportEmployeesDialog({
     };
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processFile = async (file: File) => {
     const fileExt = file.name.split('.').pop()?.toLowerCase();
     if (!['xlsx', 'xls', 'csv'].includes(fileExt || '')) {
       toast({
@@ -336,6 +421,12 @@ export function ImportEmployeesDialog({
         variant: "destructive",
       });
     }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processFile(file);
   };
 
   const handleImport = async () => {
@@ -420,11 +511,21 @@ export function ImportEmployeesDialog({
         {step === 'upload' && (
           <div className="space-y-6">
             <div 
-              className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-12 text-center hover:border-primary/50 transition-colors cursor-pointer"
+              className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors cursor-pointer ${
+                isDragging 
+                  ? 'border-primary bg-primary/5' 
+                  : 'border-muted-foreground/25 hover:border-primary/50'
+              }`}
               onClick={() => fileInputRef.current?.click()}
+              onDragOver={handleDragOver}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
-              <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-lg font-medium mb-2">Arrastra un archivo aquí o haz clic para seleccionar</p>
+              <Upload className={`h-12 w-12 mx-auto mb-4 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
+              <p className="text-lg font-medium mb-2">
+                {isDragging ? 'Suelta el archivo aquí' : 'Arrastra un archivo aquí o haz clic para seleccionar'}
+              </p>
               <p className="text-sm text-muted-foreground">
                 Formatos soportados: .xlsx, .xls, .csv
               </p>
@@ -442,11 +543,11 @@ export function ImportEmployeesDialog({
               <AlertDescription>
                 <p className="font-medium mb-2">Columnas requeridas:</p>
                 <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                  employee_id, full_name, work_email, base_salary
+                  Cédula, Nombre, Email, Salario
                 </code>
                 <p className="font-medium mt-2 mb-2">Columnas opcionales:</p>
                 <code className="text-xs bg-muted px-1 py-0.5 rounded">
-                  hire_date, contract_type (mensual/por_horas), currency (CRC/USD/EUR/GBP)
+                  Fecha Ingreso, Tipo Contrato (mensual/por_horas), Moneda (CRC/USD/EUR/GBP)
                 </code>
               </AlertDescription>
             </Alert>
