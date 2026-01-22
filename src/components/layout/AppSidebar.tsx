@@ -247,15 +247,18 @@ export function AppSidebar() {
 
   // Determine which navigation items to show based on role
   const isEmployeeOnly = role === 'employee' || role === 'Employee_Portal';
-  const hasHRAccess = HR_ROLES.includes(role as AppRole);
+  const hasHRAccess = role !== null && HR_ROLES.includes(role as AppRole);
   
-  const navigationItems = isEmployeeOnly 
-    ? [...employeeNavigationItems, logoutItem]
-    : hasHRAccess 
-      ? [...hrNavigationItems.filter(item => !item.roles || item.roles.includes(role as AppRole)), logoutItem]
-      : [...employeeNavigationItems, logoutItem]; // Fallback to employee view
+  // While loading, show HR navigation by default for a better UX (will filter once role loads)
+  const navigationItems = loading 
+    ? [...hrNavigationItems, logoutItem] // Show full menu while loading
+    : isEmployeeOnly 
+      ? [...employeeNavigationItems, logoutItem]
+      : hasHRAccess 
+        ? [...hrNavigationItems.filter(item => !item.roles || item.roles.includes(role as AppRole)), logoutItem]
+        : [...employeeNavigationItems, logoutItem]; // Fallback to employee view
 
-  const groups = isEmployeeOnly || !hasHRAccess ? employeeGroups : hrGroups;
+  const groups = loading ? hrGroups : (isEmployeeOnly || !hasHRAccess ? employeeGroups : hrGroups);
 
   const groupedItems = navigationItems.reduce((acc, item) => {
     if (!acc[item.group]) {
