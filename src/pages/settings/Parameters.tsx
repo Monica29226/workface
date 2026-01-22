@@ -56,12 +56,15 @@ interface CompanyParameters {
 
 // Valores actualizados 2026 según CCSS y Ministerio de Hacienda
 const defaultParameters: Omit<CompanyParameters, 'company_id'> = {
+  // CCSS desglosado (solo para referencia interna)
   ccss_patronal_sem: 9.25,
   ccss_patronal_ivm: 5.25,
-  ccss_patronal_total: 14.50,
+  // Cuota Patronal Total: CCSS 14.50% + INA 1.50% + IMAS 0.50% + FODESAF 5.00% + BP 0.25% + Ley Protección 3.58% + INS 1.50% = 26.83%
+  ccss_patronal_total: 26.83,
   ccss_obrero_sem: 5.50,
-  ccss_obrero_ivm: 4.33, // Actualizado 2026: 10.83% total - 5.50% SEM = 4.33% IVM (ajuste 0.33% adicional)
-  ccss_obrero_total: 10.83, // Actualizado 2026: nuevo porcentaje total obrero
+  ccss_obrero_ivm: 4.33,
+  // Cuota Obrera Total: CCSS 9.83% + BP 1.00% = 10.83%
+  ccss_obrero_total: 10.83,
   ina_rate: 1.50,
   imas_rate: 0.50,
   fodesaf_rate: 5.00,
