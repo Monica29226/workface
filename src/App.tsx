@@ -26,6 +26,7 @@ const Parameters = lazy(() => import("@/pages/settings/Parameters").then(m => ({
 const CostCenters = lazy(() => import("@/pages/CostCenters").then(m => ({ default: m.CostCenters })));
 const VacationReport = lazy(() => import("@/pages/reports/VacationReport").then(m => ({ default: m.VacationReport })));
 const PayrollBreakdownReport = lazy(() => import("@/pages/reports/PayrollBreakdownReport").then(m => ({ default: m.PayrollBreakdownReport })));
+const EditablePayrollReport = lazy(() => import("@/pages/reports/EditablePayrollReport").then(m => ({ default: m.EditablePayrollReport })));
 const VacationApproval = lazy(() => import("@/pages/VacationApproval").then(m => ({ default: m.VacationApproval })));
 const EmployeeProfile = lazy(() => import("@/pages/EmployeeProfile").then(m => ({ default: m.EmployeeProfile })));
 const UsersPage = lazy(() => import("@/pages/Users").then(m => ({ default: m.Users })));
@@ -90,6 +91,7 @@ const App = () => (
                     <Route path="/liquidations" element={<Liquidations />} />
                     <Route path="/reports/vacations" element={<VacationReport />} />
                     <Route path="/reports/payroll-breakdown" element={<PayrollBreakdownReport />} />
+                    <Route path="/reports/editable-payroll" element={<EditablePayrollReport />} />
                     <Route path="/vacation-approval" element={<VacationApproval />} />
                     <Route path="/historico" element={<Historico />} />
                     <Route path="/users" element={<UsersPage />} />

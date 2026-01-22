@@ -103,6 +103,12 @@ const navigationItems: NavigationItem[] = [
     group: 'reports'
   },
   { 
+    title: 'Planilla Editable', 
+    url: '/reports/editable-payroll', 
+    icon: Calculator,
+    group: 'reports'
+  },
+  { 
     title: 'Aprobar Vacaciones', 
     url: '/vacation-approval', 
     icon: UserCheck,
