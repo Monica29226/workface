@@ -889,6 +889,95 @@ export type Database = {
           },
         ]
       }
+      payslip_settings: {
+        Row: {
+          company_id: string
+          created_at: string
+          document_title: string
+          employee_label: string
+          footer_text: string | null
+          id: string
+          net_pay_label: string
+          show_absence_days: boolean
+          show_accruals_section: boolean
+          show_aguinaldo_accrued: boolean
+          show_bonuses: boolean
+          show_company_logo: boolean
+          show_cost_center: boolean
+          show_deductions_section: boolean
+          show_earnings_section: boolean
+          show_hire_date: boolean
+          show_hours_section: boolean
+          show_loans: boolean
+          show_overtime_hours: boolean
+          show_platform_branding: boolean
+          show_usd_banner: boolean
+          show_vacation_accrued: boolean
+          show_vacation_days: boolean
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          document_title?: string
+          employee_label?: string
+          footer_text?: string | null
+          id?: string
+          net_pay_label?: string
+          show_absence_days?: boolean
+          show_accruals_section?: boolean
+          show_aguinaldo_accrued?: boolean
+          show_bonuses?: boolean
+          show_company_logo?: boolean
+          show_cost_center?: boolean
+          show_deductions_section?: boolean
+          show_earnings_section?: boolean
+          show_hire_date?: boolean
+          show_hours_section?: boolean
+          show_loans?: boolean
+          show_overtime_hours?: boolean
+          show_platform_branding?: boolean
+          show_usd_banner?: boolean
+          show_vacation_accrued?: boolean
+          show_vacation_days?: boolean
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          document_title?: string
+          employee_label?: string
+          footer_text?: string | null
+          id?: string
+          net_pay_label?: string
+          show_absence_days?: boolean
+          show_accruals_section?: boolean
+          show_aguinaldo_accrued?: boolean
+          show_bonuses?: boolean
+          show_company_logo?: boolean
+          show_cost_center?: boolean
+          show_deductions_section?: boolean
+          show_earnings_section?: boolean
+          show_hire_date?: boolean
+          show_hours_section?: boolean
+          show_loans?: boolean
+          show_overtime_hours?: boolean
+          show_platform_branding?: boolean
+          show_usd_banner?: boolean
+          show_vacation_accrued?: boolean
+          show_vacation_days?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payslip_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payslips: {
         Row: {
           batch_id: string
