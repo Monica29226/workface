@@ -30,6 +30,7 @@ const PreNomina = lazy(() => import("@/pages/reports/PreNomina").then(m => ({ de
 const PreColilla = lazy(() => import("@/pages/reports/PreColilla").then(m => ({ default: m.PreColilla })));
 const VacationApproval = lazy(() => import("@/pages/VacationApproval").then(m => ({ default: m.VacationApproval })));
 const EmployeeProfile = lazy(() => import("@/pages/EmployeeProfile").then(m => ({ default: m.EmployeeProfile })));
+const EmployeeProfileHR = lazy(() => import("@/pages/EmployeeProfileHR").then(m => ({ default: m.EmployeeProfileHR })));
 const EmployeeVacations = lazy(() => import("@/pages/EmployeeVacations").then(m => ({ default: m.EmployeeVacations })));
 const UsersPage = lazy(() => import("@/pages/Users").then(m => ({ default: m.Users })));
 const EmailCenter = lazy(() => import("@/pages/EmailCenter").then(m => ({ default: m.EmailCenter })));
@@ -98,6 +99,7 @@ const App = () => (
                     <Route path="/historico" element={<Historico />} />
                     <Route path="/users" element={<UsersPage />} />
                     <Route path="/employee-profile" element={<EmployeeProfile />} />
+                    <Route path="/employee-profile/:employeeId" element={<EmployeeProfileHR />} />
                     <Route path="/employee-vacations" element={<EmployeeVacations />} />
                     <Route path="/create-company" element={<CreateCompany />} />
                     <Route path="/email-center" element={<EmailCenter />} />

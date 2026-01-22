@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useCompany } from "@/contexts/CompanyContext";
@@ -11,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Loader2, Search, Edit, Trash2, Upload } from "lucide-react";
+import { Plus, Loader2, Search, Edit, Trash2, Upload, Eye } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { ImportEmployeesDialog } from "@/components/employees/ImportEmployeesDialog";
 
@@ -38,6 +39,7 @@ interface Company {
 }
 
 export function Employees() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { role } = useUserRole();
   const { selectedCompany } = useCompany();
@@ -531,11 +533,20 @@ export function Employees() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/employee-profile/${employee.id}`)}
+                            title="Ver perfil"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(employee)}
+                            title="Editar"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -544,6 +555,7 @@ export function Employees() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleDelete(employee.id)}
+                              title="Eliminar"
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
