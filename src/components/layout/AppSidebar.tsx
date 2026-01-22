@@ -34,7 +34,19 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useUserRole } from "@/hooks/useUserRole";
+import { useUserRole, AppRole } from "@/hooks/useUserRole";
+
+// Roles that have HR/Admin access (can see full sidebar)
+const HR_ROLES: AppRole[] = ['admin', 'company_manager', 'ACL_SuperAdmin', 'ACL_PayrollSpecialist', 'ACL_Auditor', 'Client_Admin', 'Client_HR', 'Client_Viewer'];
+
+// Roles that are admin level (can manage users, create companies)
+const ADMIN_ROLES: AppRole[] = ['admin', 'ACL_SuperAdmin'];
+
+// Roles that can manage payroll and employees
+const MANAGER_ROLES: AppRole[] = ['admin', 'company_manager', 'ACL_SuperAdmin', 'ACL_PayrollSpecialist', 'Client_Admin', 'Client_HR'];
+
+// Roles that are read-only (can view but not edit)
+const VIEWER_ROLES: AppRole[] = ['ACL_Auditor', 'Client_Viewer'];
 
 interface NavigationItem {
   title: string;
@@ -42,136 +54,136 @@ interface NavigationItem {
   icon: any;
   group: string;
   isAction?: boolean;
-  roles?: ('admin' | 'company_manager' | 'employee')[];
+  roles?: AppRole[];
 }
 
-// Items for HR/Admin users
+// Items for HR/Admin users - using role groups for cleaner definitions
 const hrNavigationItems: NavigationItem[] = [
   { 
     title: 'nav.dashboard', 
     url: '/dashboard', 
     icon: LayoutDashboard,
     group: 'main',
-    roles: ['admin', 'company_manager']
+    roles: HR_ROLES
   },
   { 
     title: 'nav.payroll_process', 
     url: '/payroll-process', 
     icon: Calculator,
     group: 'main',
-    roles: ['admin', 'company_manager']
+    roles: MANAGER_ROLES
   },
   { 
     title: 'nav.employees', 
     url: '/employees', 
     icon: Users,
     group: 'main',
-    roles: ['admin', 'company_manager']
+    roles: HR_ROLES
   },
   { 
     title: 'nav.projects', 
     url: '/projects', 
     icon: Clock,
     group: 'main',
-    roles: ['admin', 'company_manager']
+    roles: HR_ROLES
   },
   { 
     title: 'nav.payslips', 
     url: '/payslips', 
     icon: Receipt,
     group: 'main',
-    roles: ['admin', 'company_manager']
+    roles: HR_ROLES
   },
   { 
     title: 'nav.historico', 
     url: '/historico', 
     icon: BarChart3,
     group: 'reports',
-    roles: ['admin', 'company_manager']
+    roles: HR_ROLES
   },
   { 
     title: 'nav.contracts', 
     url: '/contracts', 
     icon: FileText,
     group: 'reports',
-    roles: ['admin', 'company_manager']
+    roles: HR_ROLES
   },
   { 
     title: 'nav.cost_centers', 
     url: '/cost-centers', 
     icon: Building2,
     group: 'reports',
-    roles: ['admin', 'company_manager']
+    roles: HR_ROLES
   },
   { 
     title: 'nav.vacation_report', 
     url: '/reports/vacations', 
     icon: Calendar,
     group: 'reports',
-    roles: ['admin', 'company_manager']
+    roles: HR_ROLES
   },
   { 
     title: 'Aprobar Vacaciones', 
     url: '/vacation-approval', 
     icon: UserCheck,
     group: 'reports',
-    roles: ['admin', 'company_manager']
+    roles: MANAGER_ROLES
   },
   { 
     title: 'Pre-Nómina', 
     url: '/reports/pre-nomina', 
     icon: Calculator,
     group: 'reports',
-    roles: ['admin', 'company_manager']
+    roles: HR_ROLES
   },
   { 
     title: 'Pre-Colilla', 
     url: '/reports/pre-colilla', 
     icon: Receipt,
     group: 'reports',
-    roles: ['admin', 'company_manager']
+    roles: HR_ROLES
   },
   { 
     title: 'nav.liquidations', 
     url: '/liquidations', 
     icon: DollarSign,
     group: 'reports',
-    roles: ['admin', 'company_manager']
+    roles: HR_ROLES
   },
   { 
     title: 'nav.email_center', 
     url: '/email-center', 
     icon: Mail,
     group: 'communications',
-    roles: ['admin', 'company_manager']
+    roles: MANAGER_ROLES
   },
   { 
     title: 'nav.users', 
     url: '/users', 
     icon: UserCheck,
     group: 'admin',
-    roles: ['admin']
+    roles: ADMIN_ROLES
   },
   { 
     title: 'nav.parameters', 
     url: '/settings/parameters', 
     icon: Settings,
     group: 'admin',
-    roles: ['admin', 'company_manager']
+    roles: [...ADMIN_ROLES, 'Client_Admin']
   },
   { 
     title: 'Configurar Colillas', 
     url: '/settings/payslip', 
     icon: Receipt,
     group: 'admin',
-    roles: ['admin', 'company_manager']
+    roles: [...ADMIN_ROLES, 'Client_Admin']
   },
   { 
     title: 'nav.create_company', 
     url: '/create-company', 
     icon: Plus,
     group: 'admin',
-    roles: ['admin']
+    roles: ADMIN_ROLES
   },
 ];
 
@@ -234,12 +246,16 @@ export function AppSidebar() {
       : "hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground";
 
   // Determine which navigation items to show based on role
-  const isEmployeeOnly = role === 'employee';
+  const isEmployeeOnly = role === 'employee' || role === 'Employee_Portal';
+  const hasHRAccess = HR_ROLES.includes(role as AppRole);
+  
   const navigationItems = isEmployeeOnly 
     ? [...employeeNavigationItems, logoutItem]
-    : [...hrNavigationItems.filter(item => !item.roles || item.roles.includes(role || 'employee')), logoutItem];
+    : hasHRAccess 
+      ? [...hrNavigationItems.filter(item => !item.roles || item.roles.includes(role as AppRole)), logoutItem]
+      : [...employeeNavigationItems, logoutItem]; // Fallback to employee view
 
-  const groups = isEmployeeOnly ? employeeGroups : hrGroups;
+  const groups = isEmployeeOnly || !hasHRAccess ? employeeGroups : hrGroups;
 
   const groupedItems = navigationItems.reduce((acc, item) => {
     if (!acc[item.group]) {
