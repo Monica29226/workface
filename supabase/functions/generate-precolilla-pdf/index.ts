@@ -245,7 +245,7 @@ function generatePreColillaPDF(payrollLine: any, company: any): Uint8Array {
     y += 35;
   }
 
-  // ===== EMPLOYEE INFO =====
+  // ===== COLLABORATOR INFO =====
   doc.setFillColor(...lightGray);
   doc.roundedRect(marginLeft, y, contentWidth, 22, 2, 2, 'F');
 
@@ -258,7 +258,7 @@ function generatePreColillaPDF(payrollLine: any, company: any): Uint8Array {
   const infoCol3 = marginLeft + 105;
   const infoCol4 = marginLeft + 150;
 
-  doc.text("EMPLEADO", infoCol1, infoY);
+  doc.text("COLABORADOR", infoCol1, infoY);
   doc.text("CÉDULA / ID", infoCol2, infoY);
   doc.text("FECHA INGRESO", infoCol3, infoY);
   doc.text("CENTRO DE COSTO", infoCol4, infoY);
