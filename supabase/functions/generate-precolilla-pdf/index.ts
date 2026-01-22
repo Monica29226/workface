@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
+import { jsPDF } from "https://esm.sh/jspdf@2.5.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -91,18 +92,15 @@ serve(async (req) => {
       );
     }
 
-    // Generate HTML for PDF
-    const html = generatePreColillaHTML(payrollLine, company);
+    // Generate PDF
+    const pdfBytes = generatePreColillaPDF(payrollLine, company);
 
-    // Return as HTML (in production, convert to PDF)
-    const pdfBuffer = new TextEncoder().encode(html);
-
-    return new Response(pdfBuffer, {
+    return new Response(pdfBytes, {
       status: 200,
       headers: {
         ...corsHeaders,
-        "Content-Type": "text/html",
-        "Content-Disposition": `attachment; filename="pre-colilla-${payrollLine.employee.employee_id}-${payrollLine.batch.period_end}.html"`,
+        "Content-Type": "application/pdf",
+        "Content-Disposition": `attachment; filename="pre-colilla-${payrollLine.employee.employee_id}-${payrollLine.batch.period_end}.pdf"`,
       },
     });
 
@@ -118,20 +116,35 @@ serve(async (req) => {
   }
 });
 
-function generatePreColillaHTML(payrollLine: any, company: any): string {
+function generatePreColillaPDF(payrollLine: any, company: any): Uint8Array {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'letter'
+  });
+
+  // Colors
+  const primaryColor = [15, 42, 68]; // #0F2A44
+  const goldColor = [201, 162, 77]; // #C9A24D
+  const greenColor = [46, 125, 50]; // #2e7d32
+  const redColor = [198, 40, 40]; // #c62828
+  const blueColor = [25, 118, 210]; // #1976d2
+  const grayColor = [100, 100, 100];
+  const lightGray = [248, 249, 250];
+
+  // Helper functions
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num || 0);
+  };
+  const formatCRC = (amount: number) => `₡${formatNumber(amount)}`;
+  const formatUSD = (amount: number) => `$${formatNumber(amount)}`;
+
+  // Parse data
   const periodStart = new Date(payrollLine.batch.period_start);
   const periodEnd = new Date(payrollLine.batch.period_end);
   const months = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
   const periodLabel = `${periodStart.getDate()} ${months[periodStart.getMonth()]} - ${periodEnd.getDate()} ${months[periodEnd.getMonth()]} ${periodEnd.getFullYear()}`;
 
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num || 0);
-  };
-
-  const formatCRC = (amount: number) => `₡${formatNumber(amount)}`;
-  const formatUSD = (amount: number) => `$${formatNumber(amount)}`;
-
-  // Parse deductions detail
   let deductionsDetail: any = {};
   try {
     if (payrollLine.deductions_detail) {
@@ -148,476 +161,273 @@ function generatePreColillaHTML(payrollLine: any, company: any): string {
   const grossSalaryCRC = isUSDSalary ? Number(payrollLine.gross_salary) * exchangeRate : Number(payrollLine.gross_salary);
   const netPayCRC = Number(payrollLine.net_pay);
   const netPayUSD = netPayCRC / exchangeRate;
-
-  const logoUrl = company.logo_url;
   const hireDate = payrollLine.employee.hire_date 
     ? new Date(payrollLine.employee.hire_date).toLocaleDateString('es-CR')
     : 'N/A';
 
-  return `
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Pre-Colilla - ${payrollLine.employee.full_name}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      margin: 0;
-      padding: 30px;
-      color: #1a1a2e;
-      background: #fff;
-      font-size: 14px;
-    }
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      border: 1px solid #e0e0e0;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
-    .header {
-      background: linear-gradient(135deg, #0F2A44 0%, #1a3a5c 100%);
-      color: white;
-      padding: 25px 30px;
-    }
-    .header-top {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 15px;
-      padding-bottom: 15px;
-      border-bottom: 1px solid rgba(255,255,255,0.2);
-    }
-    .logo-container {
-      background: white;
-      border-radius: 10px;
-      padding: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      min-width: 120px;
-      min-height: 70px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .logo { max-width: 100px; max-height: 50px; object-fit: contain; }
-    .logo-placeholder {
-      width: 100px;
-      height: 50px;
-      background: #f0f0f0;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      color: #666;
-    }
-    .header-brand { text-align: right; }
-    .platform-name {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      opacity: 0.8;
-      margin-bottom: 3px;
-    }
-    .payslip-title {
-      font-size: 20px;
-      font-weight: bold;
-      color: #C9A24D;
-    }
-    .header-bottom {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .company-name {
-      font-size: 20px;
-      font-weight: bold;
-    }
-    .company-tax-id {
-      font-size: 12px;
-      opacity: 0.8;
-      margin-top: 4px;
-    }
-    .period-info {
-      text-align: right;
-      background: rgba(201, 162, 77, 0.15);
-      padding: 10px 15px;
-      border-radius: 8px;
-      border: 1px solid rgba(201, 162, 77, 0.3);
-    }
-    .period-label-title {
-      font-size: 10px;
-      text-transform: uppercase;
-      opacity: 0.8;
-    }
-    .period-label {
-      font-size: 14px;
-      font-weight: 600;
-      color: #C9A24D;
-    }
-    .draft-banner {
-      background: #fff3cd;
-      border: 2px dashed #ffc107;
-      color: #856404;
-      padding: 10px 20px;
-      text-align: center;
-      font-weight: bold;
-      font-size: 12px;
-    }
-    .content { padding: 25px 30px; }
-    .usd-banner {
-      background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-      border: 2px solid #1976d2;
-      border-radius: 10px;
-      padding: 18px 20px;
-      margin-bottom: 25px;
-    }
-    .usd-banner-title {
-      font-size: 16px;
-      font-weight: bold;
-      color: #0d47a1;
-      margin-bottom: 12px;
-    }
-    .usd-details {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-    }
-    .usd-detail { display: flex; flex-direction: column; }
-    .usd-label {
-      font-size: 11px;
-      color: #1565c0;
-      text-transform: uppercase;
-      margin-bottom: 3px;
-    }
-    .usd-value {
-      font-size: 15px;
-      font-weight: bold;
-      color: #0d47a1;
-    }
-    .usd-note {
-      font-size: 11px;
-      color: #1976d2;
-      margin-top: 12px;
-      font-style: italic;
-    }
-    .employee-info {
-      background: #f8f9fa;
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 25px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 15px;
-    }
-    .employee-info-item { display: flex; flex-direction: column; }
-    .employee-info-label {
-      font-size: 11px;
-      color: #666;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-    .employee-info-value {
-      font-size: 14px;
-      font-weight: 600;
-      color: #1a1a2e;
-    }
-    .section { margin-bottom: 20px; }
-    .section-title {
-      background: #003d7a;
-      color: white;
-      padding: 10px 15px;
-      font-weight: bold;
-      font-size: 13px;
-      border-radius: 6px 6px 0 0;
-    }
-    .section-title.earnings { background: #2e7d32; }
-    .section-title.deductions { background: #c62828; }
-    .section-title.accruals { background: #1565c0; }
-    .section-content {
-      border: 1px solid #e0e0e0;
-      border-top: none;
-      border-radius: 0 0 6px 6px;
-    }
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 10px 15px;
-      border-bottom: 1px solid #f0f0f0;
-    }
-    .info-row:last-child { border-bottom: none; }
-    .info-label { color: #444; }
-    .info-value { font-weight: 600; color: #1a1a2e; }
-    .info-value.green { color: #2e7d32; }
-    .info-value.red { color: #c62828; }
-    .hours-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      padding: 15px;
-    }
-    .hour-box {
-      background: #f5f5f5;
-      border-radius: 8px;
-      padding: 12px;
-      text-align: center;
-    }
-    .hour-label {
-      font-size: 10px;
-      color: #666;
-      text-transform: uppercase;
-      margin-bottom: 5px;
-    }
-    .hour-value {
-      font-size: 18px;
-      font-weight: bold;
-      color: #1a1a2e;
-    }
-    .net-pay-section {
-      background: linear-gradient(135deg, #2e7d32 0%, #388e3c 100%);
-      color: white;
-      border-radius: 10px;
-      padding: 25px;
-      text-align: center;
-      margin-top: 20px;
-    }
-    .net-pay-label {
-      font-size: 14px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 8px;
-      opacity: 0.9;
-    }
-    .net-pay-amount {
-      font-size: 32px;
-      font-weight: bold;
-      margin-bottom: 8px;
-    }
-    .net-pay-secondary {
-      font-size: 16px;
-      opacity: 0.9;
-    }
-    .footer {
-      margin-top: 25px;
-      padding-top: 20px;
-      border-top: 1px solid #e0e0e0;
-      text-align: center;
-      color: #999;
-      font-size: 11px;
-    }
-    .footer-warning {
-      background: #fff3cd;
-      border: 1px solid #ffc107;
-      border-radius: 6px;
-      padding: 10px;
-      margin-bottom: 15px;
-      color: #856404;
-      font-weight: 500;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <div class="header-top">
-        <div class="logo-container">
-          ${logoUrl 
-            ? `<img src="${logoUrl}" alt="Logo" class="logo" />` 
-            : `<div class="logo-placeholder">${company.display_name.substring(0, 2).toUpperCase()}</div>`
-          }
-        </div>
-        <div class="header-brand">
-          <div class="platform-name">ACL Workforce HUB</div>
-          <div class="payslip-title">Pre-Colilla</div>
-        </div>
-      </div>
-      <div class="header-bottom">
-        <div class="company-info">
-          <div class="company-name">${company.display_name}</div>
-          ${company.tax_id ? `<div class="company-tax-id">Cédula Jurídica: ${company.tax_id}</div>` : ''}
-        </div>
-        <div class="period-info">
-          <div class="period-label-title">Período</div>
-          <div class="period-label">${periodLabel}</div>
-        </div>
-      </div>
-    </div>
+  let y = 15;
+  const marginLeft = 15;
+  const pageWidth = 216; // Letter width in mm
+  const contentWidth = pageWidth - 30;
 
-    <div class="draft-banner">
-      ⚠️ DOCUMENTO DE VALIDACIÓN - NO ES COMPROBANTE OFICIAL ⚠️
-    </div>
+  // ===== HEADER =====
+  doc.setFillColor(...primaryColor);
+  doc.rect(0, 0, pageWidth, 45, 'F');
 
-    <div class="content">
-      ${isUSDSalary ? `
-      <div class="usd-banner">
-        <div class="usd-banner-title">💵 Salario Original en Dólares</div>
-        <div class="usd-details">
-          <div class="usd-detail">
-            <span class="usd-label">Salario Bruto USD</span>
-            <span class="usd-value">${formatUSD(Number(payrollLine.gross_salary))}</span>
-          </div>
-          <div class="usd-detail">
-            <span class="usd-label">Tipo de Cambio (BCCR)</span>
-            <span class="usd-value">₡${exchangeRate.toFixed(2)}</span>
-          </div>
-          <div class="usd-detail">
-            <span class="usd-label">Equivalente CRC</span>
-            <span class="usd-value">${formatCRC(grossSalaryCRC)}</span>
-          </div>
-        </div>
-        <div class="usd-note">* Tipo de cambio de venta del BCCR aplicado para cálculo de deducciones legales</div>
-      </div>
-      ` : ''}
+  // Platform name
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(8);
+  doc.text("ACL WORKFORCE HUB", pageWidth - marginLeft, 12, { align: 'right' });
 
-      <div class="employee-info">
-        <div class="employee-info-item">
-          <span class="employee-info-label">Empleado</span>
-          <span class="employee-info-value">${payrollLine.employee.full_name}</span>
-        </div>
-        <div class="employee-info-item">
-          <span class="employee-info-label">Cédula / ID</span>
-          <span class="employee-info-value">${payrollLine.employee.employee_id}</span>
-        </div>
-        <div class="employee-info-item">
-          <span class="employee-info-label">Fecha Ingreso</span>
-          <span class="employee-info-value">${hireDate}</span>
-        </div>
-        <div class="employee-info-item">
-          <span class="employee-info-label">Centro de Costo</span>
-          <span class="employee-info-value">${payrollLine.cost_center?.name || 'N/A'}</span>
-        </div>
-      </div>
+  // Title
+  doc.setFontSize(18);
+  doc.setTextColor(...goldColor);
+  doc.text("Pre-Colilla", pageWidth - marginLeft, 22, { align: 'right' });
 
-      <div class="section">
-        <div class="section-title">HORAS TRABAJADAS</div>
-        <div class="section-content">
-          <div class="hours-grid">
-            <div class="hour-box">
-              <div class="hour-label">Ordinarias</div>
-              <div class="hour-value">${Number(payrollLine.regular_hours) || 0}</div>
-            </div>
-            <div class="hour-box">
-              <div class="hour-label">Extra</div>
-              <div class="hour-value">${Number(payrollLine.overtime_hours) || 0}</div>
-            </div>
-            <div class="hour-box">
-              <div class="hour-label">Vacaciones</div>
-              <div class="hour-value">${Number(payrollLine.vacation_days_taken) || 0}</div>
-            </div>
-            <div class="hour-box">
-              <div class="hour-label">Ausencias</div>
-              <div class="hour-value">${Number(payrollLine.absence_days) || 0}</div>
-            </div>
-          </div>
-        </div>
-      </div>
+  // Company name
+  doc.setFontSize(16);
+  doc.setTextColor(255, 255, 255);
+  doc.text(company.display_name, marginLeft, 22);
 
-      <div class="section">
-        <div class="section-title earnings">INGRESOS</div>
-        <div class="section-content">
-          <div class="info-row">
-            <span class="info-label">Salario Base</span>
-            <span class="info-value green">${formatCRC(grossSalaryCRC)}</span>
-          </div>
-          ${Number(payrollLine.overtime) > 0 ? `
-          <div class="info-row">
-            <span class="info-label">Horas Extra</span>
-            <span class="info-value green">+${formatCRC(Number(payrollLine.overtime))}</span>
-          </div>
-          ` : ''}
-          ${Number(payrollLine.additional_bonuses) > 0 ? `
-          <div class="info-row">
-            <span class="info-label">Bonificaciones</span>
-            <span class="info-value green">+${formatCRC(Number(payrollLine.additional_bonuses))}</span>
-          </div>
-          ` : ''}
-          <div class="info-row" style="background: #f0fff0; font-weight: bold;">
-            <span class="info-label">Total Ingresos</span>
-            <span class="info-value green">${formatCRC(grossSalaryCRC + Number(payrollLine.overtime || 0) + Number(payrollLine.additional_bonuses || 0))}</span>
-          </div>
-        </div>
-      </div>
+  if (company.tax_id) {
+    doc.setFontSize(9);
+    doc.setTextColor(200, 200, 200);
+    doc.text(`Cédula Jurídica: ${company.tax_id}`, marginLeft, 28);
+  }
 
-      <div class="section">
-        <div class="section-title deductions">DEDUCCIONES</div>
-        <div class="section-content">
-          ${deductionsDetail.ccss_obrero ? `
-          <div class="info-row">
-            <span class="info-label">CCSS Obrero (${deductionsDetail.ccss_rate || 10.83}%)</span>
-            <span class="info-value red">-${formatCRC(deductionsDetail.ccss_obrero)}</span>
-          </div>
-          ` : ''}
-          ${deductionsDetail.isr_neto > 0 ? `
-          <div class="info-row">
-            <span class="info-label">Impuesto sobre la Renta</span>
-            <span class="info-value red">-${formatCRC(deductionsDetail.isr_neto)}</span>
-          </div>
-          ` : ''}
-          ${deductionsDetail.magisterio > 0 ? `
-          <div class="info-row">
-            <span class="info-label">Magisterio Nacional</span>
-            <span class="info-value red">-${formatCRC(deductionsDetail.magisterio)}</span>
-          </div>
-          ` : ''}
-          ${deductionsDetail.poliza_vida > 0 ? `
-          <div class="info-row">
-            <span class="info-label">Póliza de Vida</span>
-            <span class="info-value red">-${formatCRC(deductionsDetail.poliza_vida)}</span>
-          </div>
-          ` : ''}
-          ${deductionsDetail.loan_deduction > 0 ? `
-          <div class="info-row">
-            <span class="info-label">Préstamos</span>
-            <span class="info-value red">-${formatCRC(deductionsDetail.loan_deduction)}</span>
-          </div>
-          ` : ''}
-          ${Number(payrollLine.additional_deductions) > 0 ? `
-          <div class="info-row">
-            <span class="info-label">Otras Deducciones</span>
-            <span class="info-value red">-${formatCRC(Number(payrollLine.additional_deductions))}</span>
-          </div>
-          ` : ''}
-          <div class="info-row" style="background: #fff0f0; font-weight: bold;">
-            <span class="info-label">Total Deducciones</span>
-            <span class="info-value red">-${formatCRC(Number(payrollLine.deductions))}</span>
-          </div>
-        </div>
-      </div>
+  // Period
+  doc.setFontSize(9);
+  doc.setTextColor(...goldColor);
+  doc.text(`Período: ${periodLabel}`, marginLeft, 38);
 
-      <div class="section">
-        <div class="section-title accruals">PROVISIONES DEL PERÍODO</div>
-        <div class="section-content">
-          <div class="info-row">
-            <span class="info-label">Vacaciones Acumuladas</span>
-            <span class="info-value">${Number(payrollLine.vacation_accrued_days || 0).toFixed(2)} días</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Aguinaldo Acumulado</span>
-            <span class="info-value">${formatCRC(Number(payrollLine.aguinaldo_accrued || 0))}</span>
-          </div>
-        </div>
-      </div>
+  y = 50;
 
-      <div class="net-pay-section">
-        <div class="net-pay-label">Total a Depositar</div>
-        <div class="net-pay-amount">${formatUSD(netPayUSD)} USD</div>
-        <div class="net-pay-secondary">(${formatCRC(netPayCRC)} CRC)</div>
-      </div>
+  // ===== DRAFT WARNING BANNER =====
+  doc.setFillColor(255, 243, 205);
+  doc.rect(marginLeft, y, contentWidth, 10, 'F');
+  doc.setDrawColor(255, 193, 7);
+  doc.setLineWidth(0.5);
+  doc.rect(marginLeft, y, contentWidth, 10, 'S');
+  doc.setTextColor(133, 100, 4);
+  doc.setFontSize(9);
+  doc.text("⚠ DOCUMENTO DE VALIDACIÓN - NO ES COMPROBANTE OFICIAL", pageWidth / 2, y + 6.5, { align: 'center' });
 
-      <div class="footer">
-        <div class="footer-warning">
-          Este es un documento de pre-visualización para validación interna.
-          NO debe ser enviado al empleado como comprobante oficial.
-        </div>
-        <p>ACL Workforce HUB - Gestión de Nómina Costa Rica</p>
-        <p>Generado: ${new Date().toLocaleString('es-CR')}</p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>
-`;
+  y += 18;
+
+  // ===== USD SALARY BANNER =====
+  if (isUSDSalary) {
+    doc.setFillColor(227, 242, 253);
+    doc.roundedRect(marginLeft, y, contentWidth, 28, 3, 3, 'F');
+    doc.setDrawColor(...blueColor);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(marginLeft, y, contentWidth, 28, 3, 3, 'S');
+
+    doc.setFontSize(11);
+    doc.setTextColor(13, 71, 161);
+    doc.text("💵 Salario Original en Dólares", marginLeft + 5, y + 7);
+
+    doc.setFontSize(9);
+    const col1 = marginLeft + 5;
+    const col2 = marginLeft + 65;
+    const col3 = marginLeft + 125;
+
+    doc.setTextColor(21, 101, 192);
+    doc.text("Salario Bruto USD", col1, y + 15);
+    doc.text("Tipo de Cambio (BCCR)", col2, y + 15);
+    doc.text("Equivalente CRC", col3, y + 15);
+
+    doc.setFontSize(10);
+    doc.setTextColor(13, 71, 161);
+    doc.text(formatUSD(Number(payrollLine.gross_salary)), col1, y + 21);
+    doc.text(`₡${exchangeRate.toFixed(2)}`, col2, y + 21);
+    doc.text(formatCRC(grossSalaryCRC), col3, y + 21);
+
+    y += 35;
+  }
+
+  // ===== EMPLOYEE INFO =====
+  doc.setFillColor(...lightGray);
+  doc.roundedRect(marginLeft, y, contentWidth, 22, 2, 2, 'F');
+
+  const infoY = y + 6;
+  doc.setFontSize(8);
+  doc.setTextColor(...grayColor);
+
+  const infoCol1 = marginLeft + 5;
+  const infoCol2 = marginLeft + 55;
+  const infoCol3 = marginLeft + 105;
+  const infoCol4 = marginLeft + 150;
+
+  doc.text("EMPLEADO", infoCol1, infoY);
+  doc.text("CÉDULA / ID", infoCol2, infoY);
+  doc.text("FECHA INGRESO", infoCol3, infoY);
+  doc.text("CENTRO DE COSTO", infoCol4, infoY);
+
+  doc.setFontSize(10);
+  doc.setTextColor(26, 26, 46);
+  doc.text(payrollLine.employee.full_name.substring(0, 25), infoCol1, infoY + 8);
+  doc.text(payrollLine.employee.employee_id, infoCol2, infoY + 8);
+  doc.text(hireDate, infoCol3, infoY + 8);
+  doc.text((payrollLine.cost_center?.name || 'N/A').substring(0, 18), infoCol4, infoY + 8);
+
+  y += 30;
+
+  // ===== HOURS WORKED =====
+  doc.setFillColor(...primaryColor);
+  doc.roundedRect(marginLeft, y, contentWidth, 8, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.text("HORAS TRABAJADAS", marginLeft + 5, y + 5.5);
+
+  y += 10;
+
+  const hoursBoxWidth = (contentWidth - 15) / 4;
+  const hoursData = [
+    { label: "Ordinarias", value: Number(payrollLine.regular_hours) || 0 },
+    { label: "Extra", value: Number(payrollLine.overtime_hours) || 0 },
+    { label: "Vacaciones", value: `${Number(payrollLine.vacation_days_taken) || 0} días` },
+    { label: "Ausencias", value: Number(payrollLine.absence_days) || 0 },
+  ];
+
+  hoursData.forEach((item, i) => {
+    const boxX = marginLeft + (i * (hoursBoxWidth + 5));
+    doc.setFillColor(245, 245, 245);
+    doc.roundedRect(boxX, y, hoursBoxWidth, 18, 2, 2, 'F');
+    
+    doc.setFontSize(7);
+    doc.setTextColor(...grayColor);
+    doc.text(item.label.toUpperCase(), boxX + hoursBoxWidth / 2, y + 6, { align: 'center' });
+    
+    doc.setFontSize(14);
+    doc.setTextColor(26, 26, 46);
+    doc.text(String(item.value), boxX + hoursBoxWidth / 2, y + 14, { align: 'center' });
+  });
+
+  y += 25;
+
+  // ===== EARNINGS SECTION =====
+  doc.setFillColor(...greenColor);
+  doc.roundedRect(marginLeft, y, contentWidth, 8, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.text("INGRESOS", marginLeft + 5, y + 5.5);
+
+  y += 10;
+
+  const drawRow = (label: string, value: string, isTotal = false, color?: number[]) => {
+    if (isTotal) {
+      doc.setFillColor(240, 255, 240);
+      doc.rect(marginLeft, y - 1, contentWidth, 8, 'F');
+    }
+    doc.setFontSize(9);
+    doc.setTextColor(...grayColor);
+    doc.text(label, marginLeft + 5, y + 4);
+    doc.setTextColor(...(color || [26, 26, 46]));
+    if (isTotal) doc.setFont(undefined, 'bold');
+    doc.text(value, marginLeft + contentWidth - 5, y + 4, { align: 'right' });
+    doc.setFont(undefined, 'normal');
+    y += 8;
+  };
+
+  drawRow("Salario Base", formatCRC(grossSalaryCRC));
+  if (Number(payrollLine.overtime) > 0) {
+    drawRow("Horas Extra", `+${formatCRC(Number(payrollLine.overtime))}`, false, greenColor);
+  }
+  if (Number(payrollLine.additional_bonuses) > 0) {
+    drawRow("Bonificaciones", `+${formatCRC(Number(payrollLine.additional_bonuses))}`, false, greenColor);
+  }
+  const totalIngresos = grossSalaryCRC + Number(payrollLine.overtime || 0) + Number(payrollLine.additional_bonuses || 0);
+  drawRow("Total Ingresos", formatCRC(totalIngresos), true, greenColor);
+
+  y += 5;
+
+  // ===== DEDUCTIONS SECTION =====
+  doc.setFillColor(...redColor);
+  doc.roundedRect(marginLeft, y, contentWidth, 8, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.text("DEDUCCIONES", marginLeft + 5, y + 5.5);
+
+  y += 10;
+
+  if (deductionsDetail.ccss_obrero) {
+    drawRow(`CCSS Obrero (${deductionsDetail.ccss_rate || 10.83}%)`, `-${formatCRC(deductionsDetail.ccss_obrero)}`, false, redColor);
+  }
+  if (deductionsDetail.isr_neto > 0) {
+    drawRow("Impuesto sobre la Renta", `-${formatCRC(deductionsDetail.isr_neto)}`, false, redColor);
+  }
+  if (deductionsDetail.magisterio > 0) {
+    drawRow("Magisterio Nacional", `-${formatCRC(deductionsDetail.magisterio)}`, false, redColor);
+  }
+  if (deductionsDetail.poliza_vida > 0) {
+    drawRow("Póliza de Vida", `-${formatCRC(deductionsDetail.poliza_vida)}`, false, redColor);
+  }
+  if (deductionsDetail.loan_deduction > 0) {
+    drawRow("Préstamos", `-${formatCRC(deductionsDetail.loan_deduction)}`, false, redColor);
+  }
+  if (Number(payrollLine.additional_deductions) > 0) {
+    drawRow("Otras Deducciones", `-${formatCRC(Number(payrollLine.additional_deductions))}`, false, redColor);
+  }
+
+  // Total deductions with red background
+  doc.setFillColor(255, 240, 240);
+  doc.rect(marginLeft, y - 1, contentWidth, 8, 'F');
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'bold');
+  doc.setTextColor(...grayColor);
+  doc.text("Total Deducciones", marginLeft + 5, y + 4);
+  doc.setTextColor(...redColor);
+  doc.text(`-${formatCRC(Number(payrollLine.deductions))}`, marginLeft + contentWidth - 5, y + 4, { align: 'right' });
+  doc.setFont(undefined, 'normal');
+  y += 12;
+
+  // ===== ACCRUALS SECTION =====
+  doc.setFillColor(...blueColor);
+  doc.roundedRect(marginLeft, y, contentWidth, 8, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.text("PROVISIONES DEL PERÍODO", marginLeft + 5, y + 5.5);
+
+  y += 10;
+
+  drawRow("Vacaciones Acumuladas", `${Number(payrollLine.vacation_accrued_days || 0).toFixed(2)} días`);
+  drawRow("Aguinaldo Acumulado", formatCRC(Number(payrollLine.aguinaldo_accrued || 0)));
+
+  y += 8;
+
+  // ===== NET PAY BOX =====
+  doc.setFillColor(...greenColor);
+  doc.roundedRect(marginLeft, y, contentWidth, 35, 4, 4, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(10);
+  doc.text("TOTAL A DEPOSITAR", pageWidth / 2, y + 10, { align: 'center' });
+
+  doc.setFontSize(22);
+  doc.text(`${formatUSD(netPayUSD)} USD`, pageWidth / 2, y + 22, { align: 'center' });
+
+  doc.setFontSize(11);
+  doc.setTextColor(200, 255, 200);
+  doc.text(`(${formatCRC(netPayCRC)} CRC)`, pageWidth / 2, y + 30, { align: 'center' });
+
+  y += 45;
+
+  // ===== FOOTER =====
+  doc.setFillColor(255, 243, 205);
+  doc.roundedRect(marginLeft, y, contentWidth, 12, 2, 2, 'F');
+  doc.setTextColor(133, 100, 4);
+  doc.setFontSize(8);
+  doc.text("Este es un documento de pre-visualización para validación interna.", pageWidth / 2, y + 5, { align: 'center' });
+  doc.text("NO debe ser enviado al empleado como comprobante oficial.", pageWidth / 2, y + 10, { align: 'center' });
+
+  y += 18;
+
+  doc.setTextColor(150, 150, 150);
+  doc.setFontSize(7);
+  doc.text("ACL Workforce HUB - Gestión de Nómina Costa Rica", pageWidth / 2, y, { align: 'center' });
+  doc.text(`Generado: ${new Date().toLocaleString('es-CR')}`, pageWidth / 2, y + 5, { align: 'center' });
+
+  // Return as Uint8Array
+  const pdfOutput = doc.output('arraybuffer');
+  return new Uint8Array(pdfOutput);
 }
