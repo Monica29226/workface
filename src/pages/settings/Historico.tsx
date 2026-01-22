@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Upload, Download, FileText, Search, Filter, Calendar, Mail, Loader2 } from "lucide-react";
+import { Upload, Download, FileText, Search, Filter, Calendar, Mail, Loader2, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompany } from "@/contexts/CompanyContext";
 import { useToast } from "@/hooks/use-toast";
@@ -60,6 +61,7 @@ interface PivotData {
 }
 
 export function Historico() {
+  const navigate = useNavigate();
   const { selectedCompany } = useCompany();
   const { toast } = useToast();
   const [data, setData] = useState<HistoricalPayroll[]>([]);
@@ -514,9 +516,14 @@ export function Historico() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Histórico (CRC/USD)</h1>
-          <p className="text-muted-foreground">Consulta histórica de montos pagados por colaborador</p>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Histórico (CRC/USD)</h1>
+            <p className="text-muted-foreground">Consulta histórica de montos pagados por colaborador</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button onClick={handleRecalculate} variant="outline">
