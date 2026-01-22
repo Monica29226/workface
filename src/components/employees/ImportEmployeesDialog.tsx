@@ -36,6 +36,26 @@ const OPTIONAL_COLUMNS = ['hire_date', 'contract_type', 'currency'];
 const VALID_CONTRACT_TYPES = ['mensual', 'por_horas'];
 const VALID_CURRENCIES = ['CRC', 'USD', 'EUR', 'GBP'];
 
+// Indicators that suggest the file is a payroll report, not an employee list
+const PAYROLL_INDICATORS = [
+  'retencion ccss', 'retención ccss', 'ccss obrero', 'ccss patronal',
+  'renta', 'isr', 'impuesto renta', 'impuesto sobre la renta',
+  'deducciones', 'deduccion', 'deducción',
+  'neto', 'salario neto', 'net pay', 'neto a pagar',
+  'aguinaldo', 'vacaciones acumuladas', 'cesantia', 'cesantía',
+  'banco popular', 'magisterio', 'poliza', 'póliza',
+  'horas extra', 'overtime', 'bonificacion', 'bonificación',
+  'total devengado', 'total deducciones', 'patronal'
+];
+
+// Examples of accepted aliases for each required column
+const ALIAS_EXAMPLES: Record<string, string[]> = {
+  'employee_id': ['Cédula', 'ID', 'Código', 'Identificación', 'No. Cédula'],
+  'full_name': ['Nombre', 'Nombre Completo', 'Colaborador', 'Empleado'],
+  'work_email': ['Email', 'Correo', 'Correo Electrónico', 'E-mail'],
+  'base_salary': ['Salario', 'Sueldo', 'Salario Base', 'Salario Mensual', 'Salario $']
+};
+
 // Column name mapping: various formats -> normalized snake_case
 const COLUMN_ALIASES: Record<string, string> = {
   // employee_id variations
@@ -404,9 +424,33 @@ export function ImportEmployeesDialog({
       const missingColumns = REQUIRED_COLUMNS.filter(col => !normalizedColumns.includes(col));
       
       if (missingColumns.length > 0) {
+        // Check if this looks like a payroll file instead of an employee list
+        const lowerOriginalColumns = originalColumns.map(c => c.toLowerCase());
+        const hasPayrollColumns = lowerOriginalColumns.some(col => 
+          PAYROLL_INDICATORS.some(indicator => col.includes(indicator))
+        );
+
+        if (hasPayrollColumns) {
+          toast({
+            title: "Archivo de planilla detectado",
+            description: "Este archivo parece contener datos de planilla (deducciones, netos, etc.). Para importar planillas históricas, usa Configuración → Histórico → Importar.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Build helpful suggestions for missing columns
+        const suggestions = missingColumns.map(col => {
+          const examples = ALIAS_EXAMPLES[col];
+          return examples ? `• ${col}: ${examples.join(', ')}` : `• ${col}`;
+        }).join('\n');
+
+        const foundColsPreview = originalColumns.slice(0, 5).join(', ') + 
+          (originalColumns.length > 5 ? ` (+${originalColumns.length - 5} más)` : '');
+
         toast({
           title: "Columnas faltantes",
-          description: `El archivo debe contener: ${missingColumns.join(', ')}. Columnas encontradas: ${originalColumns.join(', ')}`,
+          description: `No se encontraron: ${missingColumns.join(', ')}.\n\nNombres aceptados:\n${suggestions}\n\nColumnas en tu archivo: ${foundColsPreview}`,
           variant: "destructive",
         });
         return;
