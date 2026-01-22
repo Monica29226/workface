@@ -567,14 +567,216 @@ export function PayrollBreakdownReport() {
         @media print {
           @page {
             size: landscape;
-            margin: 0.5in;
+            margin: 0.4in;
           }
+          
           body {
-            print-color-adjust: exact;
+            font-family: Arial, Helvetica, sans-serif !important;
+            font-size: 10pt !important;
+            color: #000 !important;
+            background: #fff !important;
             -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
+          
           .print\\:hidden {
             display: none !important;
+          }
+          
+          /* Reset card styles for print */
+          [class*="Card"], [class*="card"] {
+            border: none !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+            margin-bottom: 8pt !important;
+          }
+          
+          /* Summary cards grid */
+          .grid.grid-cols-2 {
+            display: flex !important;
+            justify-content: space-between !important;
+            border: 1pt solid #333 !important;
+            border-radius: 0 !important;
+            margin-bottom: 12pt !important;
+          }
+          
+          .grid.grid-cols-2 > div {
+            flex: 1 !important;
+            text-align: center !important;
+            padding: 8pt 4pt !important;
+            border-right: 1pt solid #ccc !important;
+          }
+          
+          .grid.grid-cols-2 > div:last-child {
+            border-right: none !important;
+          }
+          
+          /* Summary card values */
+          .text-lg.font-bold {
+            font-size: 12pt !important;
+            font-weight: bold !important;
+          }
+          
+          .text-lg.font-bold.text-primary {
+            color: #1a365d !important;
+          }
+          
+          .text-lg.font-bold.text-orange-600 {
+            color: #c53030 !important;
+          }
+          
+          .text-lg.font-bold.text-green-600 {
+            color: #276749 !important;
+          }
+          
+          /* Table styles */
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            font-size: 9pt !important;
+            margin-top: 8pt !important;
+          }
+          
+          thead {
+            background-color: #1a365d !important;
+          }
+          
+          thead th {
+            color: #fff !important;
+            font-weight: 600 !important;
+            padding: 6pt 4pt !important;
+            text-align: right !important;
+            border: 1pt solid #1a365d !important;
+            font-size: 8pt !important;
+          }
+          
+          thead th:first-child {
+            text-align: left !important;
+          }
+          
+          tbody td {
+            padding: 4pt 4pt !important;
+            border: 0.5pt solid #ddd !important;
+            text-align: right !important;
+          }
+          
+          tbody td:first-child {
+            text-align: left !important;
+          }
+          
+          tbody tr:nth-child(even) {
+            background-color: #f7f7f7 !important;
+          }
+          
+          /* Totals row */
+          tbody tr:last-child {
+            background-color: #e2e8f0 !important;
+            font-weight: bold !important;
+          }
+          
+          tbody tr:last-child td {
+            border-top: 2pt solid #1a365d !important;
+            padding: 6pt 4pt !important;
+          }
+          
+          /* Deduction colors in print */
+          .text-orange-600 {
+            color: #c53030 !important;
+          }
+          
+          .text-orange-700 {
+            color: #9b2c2c !important;
+          }
+          
+          .text-green-600 {
+            color: #276749 !important;
+          }
+          
+          /* Exchange rate banner */
+          .border-blue-200 {
+            border: 1pt solid #2b6cb0 !important;
+            background: #ebf8ff !important;
+            padding: 6pt 8pt !important;
+            margin-bottom: 8pt !important;
+          }
+          
+          .text-blue-800 {
+            color: #2c5282 !important;
+          }
+          
+          /* Deductions summary */
+          .grid.grid-cols-2.md\\:grid-cols-6 {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            border: 1pt solid #ccc !important;
+            padding: 8pt !important;
+            margin-bottom: 8pt !important;
+          }
+          
+          .grid.grid-cols-2.md\\:grid-cols-6 > div {
+            width: 16.66% !important;
+            padding: 4pt !important;
+          }
+          
+          /* Section titles */
+          .text-base.font-semibold,
+          [class*="CardTitle"] {
+            font-size: 11pt !important;
+            font-weight: bold !important;
+            color: #1a365d !important;
+            margin-bottom: 4pt !important;
+            border-bottom: 1pt solid #1a365d !important;
+            padding-bottom: 2pt !important;
+          }
+          
+          /* Hide sticky positioning in print */
+          .sticky {
+            position: static !important;
+          }
+          
+          /* Muted text */
+          .text-muted-foreground {
+            color: #666 !important;
+          }
+          
+          /* Mono font for numbers */
+          .font-mono {
+            font-family: 'Courier New', monospace !important;
+          }
+          
+          /* Print header */
+          .print\\:block {
+            display: block !important;
+            text-align: center !important;
+            margin-bottom: 16pt !important;
+            border-bottom: 2pt solid #1a365d !important;
+            padding-bottom: 8pt !important;
+          }
+          
+          .print\\:block h1 {
+            font-size: 16pt !important;
+            font-weight: bold !important;
+            color: #1a365d !important;
+            margin: 0 !important;
+          }
+          
+          .print\\:block h2 {
+            font-size: 12pt !important;
+            font-weight: normal !important;
+            color: #333 !important;
+            margin: 4pt 0 !important;
+          }
+          
+          .print\\:block p {
+            font-size: 10pt !important;
+            color: #666 !important;
+            margin: 0 !important;
+          }
+          
+          /* Page break control */
+          .print\\:break-inside-avoid {
+            break-inside: avoid !important;
           }
         }
       `}</style>
