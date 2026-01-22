@@ -91,6 +91,21 @@ export function Historico() {
       // Transform to historical payroll format
       const historicalData: HistoricalPayroll[] = (payrollLines || []).map((line: any) => {
         const periodo = line.batch.period_start.substring(0, 7); // YYYY-MM format
+        const exchangeRate = line.exchange_rate_to_base || 505.10;
+        
+        // net_pay is stored in the line's currency
+        // If currency is USD: net_pay is in USD, calculate CRC equivalent
+        // If currency is CRC: net_pay is in CRC, calculate USD equivalent
+        let total_crc: number;
+        let total_usd: number;
+        
+        if (line.currency === 'USD') {
+          total_usd = line.net_pay;
+          total_crc = line.net_pay * exchangeRate;
+        } else {
+          total_crc = line.net_pay;
+          total_usd = line.net_pay / exchangeRate;
+        }
         
         return {
           id: line.id,
@@ -102,9 +117,9 @@ export function Historico() {
           centro_costo: '', // TODO: Add cost center if available
           proyecto: '', // TODO: Add project if available
           periodo: periodo,
-          total_crc: line.currency === 'CRC' ? line.net_pay : (line.net_pay * (line.exchange_rate_to_base || 1)),
-          total_usd: line.currency === 'USD' ? line.net_pay : (line.net_pay / (line.exchange_rate_to_base || 1)),
-          tc: line.exchange_rate_to_base || 1,
+          total_crc,
+          total_usd,
+          tc: exchangeRate,
           fuente: 'payroll_lines'
         };
       });
