@@ -77,7 +77,6 @@ export function SalaryDetailModal({
 }: SalaryDetailModalProps) {
   if (!payrollLine) return null;
 
-  const currency = payrollLine.currency || 'CRC';
   const deductionsDetail = payrollLine.deductions_detail as DeductionsDetail | undefined;
   const deductionItems = deductionsDetail?.items || [];
   const totalDeductions = deductionsDetail?.total_deductions || payrollLine.deductions || 0;
@@ -85,10 +84,25 @@ export function SalaryDetailModal({
 
   // Exchange rate information for USD salaries
   const manualAdjustments = payrollLine.manual_adjustments as ManualAdjustments | undefined;
-  const exchangeRate = payrollLine.exchange_rate_to_base || manualAdjustments?.exchange_rate_applied;
+  const exchangeRate = payrollLine.exchange_rate_to_base || manualAdjustments?.exchange_rate_applied || 1;
   const originalCurrency = manualAdjustments?.original_currency;
   const originalSalary = manualAdjustments?.original_salary;
-  const showExchangeRate = originalCurrency === 'USD' && exchangeRate && exchangeRate > 1;
+  const isUsdSalary = originalCurrency === 'USD' && exchangeRate > 1;
+
+  // Format USD without decimals
+  const formatUSD = (amount: number) => {
+    return `$${Math.round(amount).toLocaleString('en-US')}`;
+  };
+
+  // Format CRC without decimals
+  const formatCRC = (amount: number) => {
+    return `₡${Math.round(amount).toLocaleString('es-CR')}`;
+  };
+
+  // Get amounts in USD (convert from CRC if needed)
+  const grossUSD = isUsdSalary && originalSalary ? originalSalary : payrollLine.gross_salary;
+  const deductionsUSD = isUsdSalary ? totalDeductions / exchangeRate : totalDeductions;
+  const netUSD = isUsdSalary ? totalToPay / exchangeRate : totalToPay;
 
   // Format percentage for display
   const formatPercentage = (rate?: number) => {
@@ -133,48 +147,17 @@ export function SalaryDetailModal({
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
-          {/* Exchange Rate Banner for USD Salaries */}
-          {showExchangeRate && (
-            <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
-              <CardContent className="p-3">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <span className="text-blue-700 dark:text-blue-300">Salario Original:</span>
-                    <span className="font-semibold text-blue-800 dark:text-blue-200">
-                      ${originalSalary?.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
-                    </span>
-                  </div>
-                  <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
-                    TC: ₡{exchangeRate?.toFixed(2)}
-                  </Badge>
-                </div>
-                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                  Tipo de cambio BCCR (venta) aplicado a la fecha del período
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Summary Cards */}
+          {/* Summary Cards - All in USD */}
           <div className="grid grid-cols-2 gap-3">
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                   <Plus className="h-4 w-4 text-primary" />
-                  <span>Salario Bruto {showExchangeRate ? '(USD)' : ''}</span>
+                  <span>Salario Bruto</span>
                 </div>
                 <p className="text-xl font-bold text-primary">
-                  {showExchangeRate 
-                    ? `$${originalSalary?.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`
-                    : formatCurrency(payrollLine.gross_salary, 'CRC')
-                  }
+                  {formatUSD(grossUSD)}
                 </p>
-                {showExchangeRate && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Base CRC: {formatCurrency(payrollLine.gross_salary * exchangeRate!, 'CRC')}
-                  </p>
-                )}
               </CardContent>
             </Card>
             
@@ -185,18 +168,13 @@ export function SalaryDetailModal({
                   <span>Total Deducciones</span>
                 </div>
                 <p className="text-xl font-bold text-destructive">
-                  {formatCurrency(totalDeductions, 'CRC')}
+                  {formatUSD(deductionsUSD)}
                 </p>
-                {showExchangeRate && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    ~${(totalDeductions / exchangeRate!).toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
-                  </p>
-                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Net Pay Highlight */}
+          {/* Net Pay Highlight - USD as primary */}
           <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/30">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -204,25 +182,32 @@ export function SalaryDetailModal({
                   <DollarSign className="h-5 w-5 text-primary" />
                   <span className="font-medium">Total a Recibir</span>
                 </div>
-                <div className="text-right">
-                  {showExchangeRate ? (
-                    <>
-                      <p className="text-2xl font-bold text-primary">
-                        ${(totalToPay / exchangeRate!).toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatCurrency(totalToPay, 'CRC')}
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-2xl font-bold text-primary">
-                      {formatCurrency(totalToPay, currency)}
-                    </p>
-                  )}
-                </div>
+                <p className="text-2xl font-bold text-primary">
+                  {formatUSD(netUSD)}
+                </p>
               </div>
             </CardContent>
           </Card>
+
+          {/* Exchange Rate Info - shown below */}
+          {isUsdSalary && (
+            <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-blue-700 dark:text-blue-300">Tipo de cambio BCCR:</span>
+                  </div>
+                  <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
+                    {formatCRC(exchangeRate)} / $1 USD
+                  </Badge>
+                </div>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  Deducciones calculadas en colones: {formatCRC(totalDeductions)}
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           <Separator />
 
@@ -239,41 +224,44 @@ export function SalaryDetailModal({
                   <TableRow className="bg-muted/50">
                     <TableHead>Concepto</TableHead>
                     <TableHead className="text-center">Porcentaje</TableHead>
-                    <TableHead className="text-right">Monto</TableHead>
+                    <TableHead className="text-right">Monto USD</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {deductionItems.map((item, index) => (
-                    <TableRow key={`${item.code}-${index}`}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            variant="outline" 
-                            className="text-xs font-mono"
-                          >
-                            {item.code}
-                          </Badge>
-                          <span className="text-sm">{item.label}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center text-muted-foreground">
-                        {item.type === 'percentage' && item.rate 
-                          ? formatPercentage(item.rate) 
-                          : item.type === 'fixed' 
-                            ? 'Fijo' 
-                            : '—'}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-destructive">
-                        -{formatCurrency(item.amount, currency)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {deductionItems.map((item, index) => {
+                    const amountUSD = isUsdSalary ? item.amount / exchangeRate : item.amount;
+                    return (
+                      <TableRow key={`${item.code}-${index}`}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant="outline" 
+                              className="text-xs font-mono"
+                            >
+                              {item.code}
+                            </Badge>
+                            <span className="text-sm">{item.label}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center text-muted-foreground">
+                          {item.type === 'percentage' && item.rate 
+                            ? formatPercentage(item.rate) 
+                            : item.type === 'fixed' 
+                              ? 'Fijo' 
+                              : '—'}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-destructive">
+                          -{formatUSD(amountUSD)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                   
                   {/* Total Row */}
                   <TableRow className="bg-muted/30 font-semibold">
                     <TableCell colSpan={2}>Total Deducciones</TableCell>
                     <TableCell className="text-right font-mono text-destructive">
-                      -{formatCurrency(totalDeductions, currency)}
+                      -{formatUSD(deductionsUSD)}
                     </TableCell>
                   </TableRow>
                 </TableBody>
@@ -300,7 +288,7 @@ export function SalaryDetailModal({
                       <TableRow>
                         <TableCell>Bonificaciones</TableCell>
                         <TableCell className="text-right font-mono text-primary">
-                          +{formatCurrency(payrollLine.additional_bonuses, currency)}
+                          +{formatUSD(isUsdSalary ? payrollLine.additional_bonuses / exchangeRate : payrollLine.additional_bonuses)}
                         </TableCell>
                       </TableRow>
                     )}
@@ -308,7 +296,7 @@ export function SalaryDetailModal({
                       <TableRow>
                         <TableCell>Horas de Proyecto</TableCell>
                         <TableCell className="text-right font-mono text-primary">
-                          +{formatCurrency(payrollLine.project_hours_amount, currency)}
+                          +{formatUSD(isUsdSalary ? payrollLine.project_hours_amount / exchangeRate : payrollLine.project_hours_amount)}
                         </TableCell>
                       </TableRow>
                     )}
