@@ -23,6 +23,7 @@ const Liquidations = lazy(() => import("@/pages/Liquidations").then(m => ({ defa
 const HorasProyecto = lazy(() => import("@/pages/HorasProyecto").then(m => ({ default: m.HorasProyecto })));
 const Historico = lazy(() => import("@/pages/settings/Historico").then(m => ({ default: m.Historico })));
 const Parameters = lazy(() => import("@/pages/settings/Parameters").then(m => ({ default: m.Parameters })));
+const PayslipSettings = lazy(() => import("@/pages/settings/PayslipSettings").then(m => ({ default: m.PayslipSettings })));
 const CostCenters = lazy(() => import("@/pages/CostCenters").then(m => ({ default: m.CostCenters })));
 const VacationReport = lazy(() => import("@/pages/reports/VacationReport").then(m => ({ default: m.VacationReport })));
 const PreNomina = lazy(() => import("@/pages/reports/PreNomina").then(m => ({ default: m.PreNomina })));
@@ -101,6 +102,7 @@ const App = () => (
                     <Route path="/create-company" element={<CreateCompany />} />
                     <Route path="/email-center" element={<EmailCenter />} />
                     <Route path="/settings/parameters" element={<Parameters />} />
+                    <Route path="/settings/payslip" element={<PayslipSettings />} />
                     <Route path="/settings/admin" element={<div className="p-6 text-center text-muted-foreground">Administración - En desarrollo</div>} />
                     <Route path="/company-selector" element={<CompanySelector />} />
                   </Route>

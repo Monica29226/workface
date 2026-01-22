@@ -160,6 +160,13 @@ const hrNavigationItems: NavigationItem[] = [
     roles: ['admin', 'company_manager']
   },
   { 
+    title: 'Configurar Colillas', 
+    url: '/settings/payslip', 
+    icon: Receipt,
+    group: 'admin',
+    roles: ['admin', 'company_manager']
+  },
+  { 
     title: 'nav.create_company', 
     url: '/create-company', 
     icon: Plus,
