@@ -1,5 +1,6 @@
 // AUREON Payroll Processing - Multi-company with per-company deduction rules
 // IMPORTANT: All deductions are calculated from company_parameters using company_id
+// USD salaries are converted to CRC using BCCR exchange rate
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
 
@@ -51,6 +52,46 @@ interface DeductionItem {
 interface DeductionsDetail {
   items: DeductionItem[];
   total_deductions: number;
+}
+
+// Function to fetch BCCR exchange rate
+async function fetchBCCRExchangeRate(date: string): Promise<{ venta: number; fecha: string } | null> {
+  try {
+    const token = Deno.env.get('BCCR_TOKEN');
+    const email = Deno.env.get('BCCR_EMAIL');
+    const nombre = Deno.env.get('BCCR_NOMBRE') || 'Sistema Planillas';
+
+    if (!token || !email) {
+      console.warn('BCCR credentials not configured, cannot fetch exchange rate');
+      return null;
+    }
+
+    // Convert YYYY-MM-DD to DD/MM/YYYY format required by BCCR
+    const [year, month, day] = date.split('-');
+    const formattedDate = `${day}/${month}/${year}`;
+
+    console.log(`Fetching BCCR exchange rate for date: ${date} (${formattedDate})`);
+
+    const url = `https://gee.bccr.fi.cr/Indicadores/Suscripciones/WS/wsindicadoreseconomicos.asmx/ObtenerIndicadoresEconomicosXML?Indicador=318&FechaInicio=${formattedDate}&FechaFinal=${formattedDate}&Nombre=${encodeURIComponent(nombre)}&SubNiveles=N&CorreoElectronico=${encodeURIComponent(email)}&Token=${token}`;
+
+    const response = await fetch(url);
+    const xmlText = await response.text();
+
+    const valueMatch = xmlText.match(/<NUM_VALOR>([\d.]+)<\/NUM_VALOR>/);
+    
+    if (!valueMatch) {
+      console.error('Could not extract NUM_VALOR from BCCR response');
+      return null;
+    }
+
+    const venta = parseFloat(valueMatch[1]);
+    console.log(`BCCR exchange rate retrieved: ${venta} CRC/USD for ${date}`);
+    
+    return { venta, fecha: date };
+  } catch (error) {
+    console.error('Error fetching BCCR exchange rate:', error);
+    return null;
+  }
 }
 
 serve(async (req) => {
@@ -191,6 +232,31 @@ serve(async (req) => {
     console.log("Payroll batch created:", batch.id);
 
     // ========================================
+    // FETCH BCCR EXCHANGE RATE FOR USD EMPLOYEES
+    // ========================================
+    const hasUSDEmployees = employees.some(e => e.currency === 'USD');
+    let bccrExchangeRate: number | null = null;
+    
+    if (hasUSDEmployees) {
+      console.log('USD employees detected, fetching BCCR exchange rate...');
+      
+      // Use provided exchange rate or fetch from BCCR
+      if (exchangeRate && exchangeRate !== 1.0) {
+        bccrExchangeRate = exchangeRate;
+        console.log(`Using provided exchange rate: ${bccrExchangeRate}`);
+      } else {
+        // Fetch BCCR rate using period_end date (most recent date in period)
+        const bccrResult = await fetchBCCRExchangeRate(periodEnd);
+        if (bccrResult) {
+          bccrExchangeRate = bccrResult.venta;
+          console.log(`Using BCCR exchange rate: ${bccrExchangeRate} for date ${periodEnd}`);
+        } else {
+          console.warn('Could not fetch BCCR rate, USD salaries will not be converted');
+        }
+      }
+    }
+
+    // ========================================
     // DEDUCTION CALCULATION FUNCTIONS
     // All read from company_parameters
     // ========================================
@@ -319,7 +385,7 @@ serve(async (req) => {
     // Create payroll lines for each employee
     const payrollLines = employees.map(employee => {
       const prevLine = previousLineMap[employee.id];
-      const baseSalary = Number(employee.base_salary);
+      const baseSalaryOriginal = Number(employee.base_salary);
       const hourlyRate = Number(employee.hourly_rate || 0);
       const projectHours = timeByEmployee[employee.id] || 0;
       const projectHoursAmount = hourlyRate > 0 ? projectHours * hourlyRate : 0;
@@ -333,7 +399,23 @@ serve(async (req) => {
       const sickLeaveDays = 0;
       
       // ========================================
-      // GROSS SALARY CALCULATION
+      // CURRENCY CONVERSION FOR USD EMPLOYEES
+      // ========================================
+      const isUSD = employee.currency === 'USD';
+      const employeeExchangeRate = isUSD && bccrExchangeRate ? bccrExchangeRate : 1.0;
+      
+      // Convert base salary to CRC for deduction calculations if employee is in USD
+      // All Costa Rican deductions (CCSS, Renta, etc.) are calculated on CRC amounts
+      const baseSalary = isUSD && bccrExchangeRate 
+        ? baseSalaryOriginal * bccrExchangeRate 
+        : baseSalaryOriginal;
+      
+      if (isUSD) {
+        console.log(`Employee ${employee.employee_id}: USD ${baseSalaryOriginal} → CRC ${baseSalary} (rate: ${employeeExchangeRate})`);
+      }
+      
+      // ========================================
+      // GROSS SALARY CALCULATION (in CRC for deductions)
       // ========================================
       const grossSalary = baseSalary + projectHoursAmount + additionalBonuses;
       
@@ -466,7 +548,7 @@ serve(async (req) => {
         aguinaldo_accrued: aguinaldoAccrued,
         vacation_accrued_days: vacationDays,
         currency: employee.currency,
-        exchange_rate_to_base: employee.currency === company.base_currency ? 1.0 : exchangeRate,
+        exchange_rate_to_base: employeeExchangeRate,
         notes: deductionSummary || null,
         regular_hours: regularHours,
         overtime_hours: overtimeHours,
@@ -481,7 +563,10 @@ serve(async (req) => {
           poliza_vida: polizaVida,
           ccss: ccssResult.amount,
           income_tax: incomeTax,
-          loan_deduction: loanDeduction
+          loan_deduction: loanDeduction,
+          original_currency: employee.currency,
+          original_salary: baseSalaryOriginal,
+          exchange_rate_applied: employeeExchangeRate
         }
       };
     });

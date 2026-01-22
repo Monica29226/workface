@@ -27,6 +27,13 @@ interface DeductionsDetail {
   total_deductions: number;
 }
 
+interface ManualAdjustments {
+  original_currency?: string;
+  original_salary?: number;
+  exchange_rate_applied?: number;
+  [key: string]: any;
+}
+
 interface PayrollLineData {
   id: string;
   gross_salary: number;
@@ -38,6 +45,8 @@ interface PayrollLineData {
   period_label?: string;
   additional_bonuses?: number;
   project_hours_amount?: number;
+  exchange_rate_to_base?: number;
+  manual_adjustments?: ManualAdjustments;
 }
 
 interface CompanyData {
@@ -73,6 +82,13 @@ export function SalaryDetailModal({
   const deductionItems = deductionsDetail?.items || [];
   const totalDeductions = deductionsDetail?.total_deductions || payrollLine.deductions || 0;
   const totalToPay = payrollLine.total_to_pay || payrollLine.net_pay;
+
+  // Exchange rate information for USD salaries
+  const manualAdjustments = payrollLine.manual_adjustments as ManualAdjustments | undefined;
+  const exchangeRate = payrollLine.exchange_rate_to_base || manualAdjustments?.exchange_rate_applied;
+  const originalCurrency = manualAdjustments?.original_currency;
+  const originalSalary = manualAdjustments?.original_salary;
+  const showExchangeRate = originalCurrency === 'USD' && exchangeRate && exchangeRate > 1;
 
   // Format percentage for display
   const formatPercentage = (rate?: number) => {
@@ -117,16 +133,39 @@ export function SalaryDetailModal({
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
+          {/* Exchange Rate Banner for USD Salaries */}
+          {showExchangeRate && (
+            <Card className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800">
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <span className="text-blue-700 dark:text-blue-300">Salario Original:</span>
+                    <span className="font-semibold text-blue-800 dark:text-blue-200">
+                      ${originalSalary?.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
+                    </span>
+                  </div>
+                  <Badge variant="outline" className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700">
+                    TC: ₡{exchangeRate?.toFixed(2)}
+                  </Badge>
+                </div>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  Tipo de cambio BCCR (venta) aplicado a la fecha del período
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Summary Cards */}
           <div className="grid grid-cols-2 gap-3">
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                   <Plus className="h-4 w-4 text-primary" />
-                  <span>Salario Bruto</span>
+                  <span>Salario Bruto {showExchangeRate ? '(CRC)' : ''}</span>
                 </div>
                 <p className="text-xl font-bold text-primary">
-                  {formatCurrency(payrollLine.gross_salary, currency)}
+                  {formatCurrency(payrollLine.gross_salary, 'CRC')}
                 </p>
               </CardContent>
             </Card>
@@ -138,7 +177,7 @@ export function SalaryDetailModal({
                   <span>Total Deducciones</span>
                 </div>
                 <p className="text-xl font-bold text-destructive">
-                  {formatCurrency(totalDeductions, currency)}
+                  {formatCurrency(totalDeductions, 'CRC')}
                 </p>
               </CardContent>
             </Card>
