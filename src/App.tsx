@@ -29,6 +29,7 @@ const PayrollBreakdownReport = lazy(() => import("@/pages/reports/PayrollBreakdo
 const EditablePayrollReport = lazy(() => import("@/pages/reports/EditablePayrollReport").then(m => ({ default: m.EditablePayrollReport })));
 const VacationApproval = lazy(() => import("@/pages/VacationApproval").then(m => ({ default: m.VacationApproval })));
 const EmployeeProfile = lazy(() => import("@/pages/EmployeeProfile").then(m => ({ default: m.EmployeeProfile })));
+const EmployeeVacations = lazy(() => import("@/pages/EmployeeVacations").then(m => ({ default: m.EmployeeVacations })));
 const UsersPage = lazy(() => import("@/pages/Users").then(m => ({ default: m.Users })));
 const EmailCenter = lazy(() => import("@/pages/EmailCenter").then(m => ({ default: m.EmailCenter })));
 const CompanySelector = lazy(() => import("./pages/CompanySelector"));
@@ -96,6 +97,7 @@ const App = () => (
                     <Route path="/historico" element={<Historico />} />
                     <Route path="/users" element={<UsersPage />} />
                     <Route path="/employee-profile" element={<EmployeeProfile />} />
+                    <Route path="/employee-vacations" element={<EmployeeVacations />} />
                     <Route path="/create-company" element={<CreateCompany />} />
                     <Route path="/email-center" element={<EmailCenter />} />
                     <Route path="/settings/parameters" element={<Parameters />} />
