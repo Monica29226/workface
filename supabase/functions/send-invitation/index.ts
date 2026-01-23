@@ -125,12 +125,9 @@ const handler = async (req: Request): Promise<Response> => {
     // Send the invitation email
     const inviterName = inviterProfile?.full_name || inviterProfile?.email || "El administrador del sistema";
     
-    // Parse RESEND_FROM_EMAIL correctly
-    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev").trim();
-    const cleanedFrom = rawFromEmail.replace(/^\"+|"+$/g, "").trim();
-    const from = cleanedFrom.includes("<") && cleanedFrom.includes(">")
-      ? cleanedFrom
-      : `Sistema de Planillas <${cleanedFrom}>`;
+    // Use onboarding@resend.dev temporarily until aureoncr.com domain is verified in Resend
+    // Once verified, change back to RESEND_FROM_EMAIL
+    const from = `ACL Workforce HUB <onboarding@resend.dev>`;
 
     console.log("Using FROM:", from);
 
@@ -151,15 +148,16 @@ const handler = async (req: Request): Promise<Response> => {
             <tr>
               <td>
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                  <!-- Header -->
+                  <!-- Header with Logo -->
                   <tr>
-                    <td style="background: linear-gradient(135deg, #0f172a, #1e3a8a); padding: 32px; text-align: center;">
-                      <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">
+                    <td style="background: linear-gradient(135deg, #0F2A44, #1e3a8a); padding: 32px; text-align: center;">
+                      <img src="https://workface.lovable.app/lovable-uploads/logotipo_acl.png" alt="ACL Workforce HUB" style="max-width: 180px; height: auto; margin-bottom: 16px;" />
+                      <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 600;">
                         ${systemName}
                       </h1>
-                        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">
-                          Sistema de Gestión de Nómina y Planillas
-                        </p>
+                      <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 13px;">
+                        Sistema de Gestión de Nómina y Recursos Humanos
+                      </p>
                     </td>
                   </tr>
                   
@@ -174,9 +172,16 @@ const handler = async (req: Request): Promise<Response> => {
                         <strong>${inviterName}</strong> lo ha invitado a unirse al <strong>${systemName}</strong>${company_name ? ` para gestionar la nómina de <strong>${company_name}</strong>` : ""}.
                       </p>
                       
-                        <p style="color: #475569; line-height: 1.7; margin: 0 0 24px 0; font-size: 15px;">
-                          Este sistema de planillas le permitirá gestionar su información de nómina, consultar recibos de pago, reportes y mucho más.
-                        </p>
+                      <p style="color: #475569; line-height: 1.7; margin: 0 0 24px 0; font-size: 15px;">
+                        <strong>ACL Workforce HUB</strong> es una plataforma integral para la gestión de recursos humanos y nómina que le permite:
+                      </p>
+                      
+                      <ul style="color: #475569; line-height: 1.8; margin: 0 0 24px 0; padding-left: 20px; font-size: 14px;">
+                        <li>📋 Consultar sus recibos de pago digitales</li>
+                        <li>📅 Gestionar solicitudes de vacaciones</li>
+                        <li>📊 Acceder a reportes e historial de pagos</li>
+                        <li>👤 Actualizar su información personal</li>
+                      </ul>
                       
                       <!-- Details Box -->
                       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin: 0 0 24px 0;">

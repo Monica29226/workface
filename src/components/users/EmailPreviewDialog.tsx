@@ -44,13 +44,14 @@ export function EmailPreviewDialog({
     <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", margin: 0, padding: 0, backgroundColor: "#f4f6f9" }}>
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "20px" }}>
         <div style={{ background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-          {/* Header */}
-          <div style={{ background: "linear-gradient(135deg, #0f172a, #1e3a8a)", padding: 32, textAlign: "center" as const }}>
-            <h1 style={{ color: "white", margin: 0, fontSize: 24, fontWeight: 600 }}>
+          {/* Header with Logo */}
+          <div style={{ background: "linear-gradient(135deg, #0F2A44, #1e3a8a)", padding: 32, textAlign: "center" as const }}>
+            <img src="/lovable-uploads/logotipo_acl.png" alt="ACL Workforce HUB" style={{ maxWidth: 180, height: "auto", marginBottom: 16 }} />
+            <h1 style={{ color: "white", margin: 0, fontSize: 22, fontWeight: 600 }}>
               {systemName}
             </h1>
-            <p style={{ color: "rgba(255,255,255,0.85)", margin: "8px 0 0 0", fontSize: 14 }}>
-              Gestión de Nómina y Recursos Humanos
+            <p style={{ color: "rgba(255,255,255,0.85)", margin: "8px 0 0 0", fontSize: 13 }}>
+              Sistema de Gestión de Nómina y Recursos Humanos
             </p>
           </div>
           
@@ -66,8 +67,15 @@ export function EmailPreviewDialog({
             </p>
             
             <p style={{ color: "#475569", lineHeight: 1.7, margin: "0 0 24px 0", fontSize: 15 }}>
-              Este sistema le permitirá gestionar información de nómina, generar reportes, administrar empleados y mucho más.
+              <strong>ACL Workforce HUB</strong> es una plataforma integral para la gestión de recursos humanos y nómina que le permite:
             </p>
+            
+            <ul style={{ color: "#475569", lineHeight: 1.8, margin: "0 0 24px 0", paddingLeft: 20, fontSize: 14 }}>
+              <li>📋 Consultar sus recibos de pago digitales</li>
+              <li>📅 Gestionar solicitudes de vacaciones</li>
+              <li>📊 Acceder a reportes e historial de pagos</li>
+              <li>👤 Actualizar su información personal</li>
+            </ul>
             
             {/* Details Box */}
             <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: 20, marginBottom: 24 }}>
