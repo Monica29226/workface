@@ -28,20 +28,23 @@ const handler = async (req: Request): Promise<Response> => {
     // Verify the user is authenticated and has admin/manager role
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "No authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "No authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
+
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: "Invalid token" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Get inviter profile
@@ -54,23 +57,19 @@ const handler = async (req: Request): Promise<Response> => {
     const { email, role, company_id, company_name }: InvitationRequest = await req.json();
 
     if (!email || !role) {
-      return new Response(
-        JSON.stringify({ error: "Email and role are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Email and role are required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Check if user already exists
-    const { data: existingProfile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
+    const { data: existingProfile } = await supabase.from("profiles").select("id").eq("email", email).maybeSingle();
 
     if (existingProfile) {
       return new Response(
         JSON.stringify({ error: "El usuario ya existe en el sistema. Use la función de editar permisos." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
@@ -83,10 +82,10 @@ const handler = async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     if (existingInvite) {
-      return new Response(
-        JSON.stringify({ error: "Ya existe una invitación pendiente para este correo" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Ya existe una invitación pendiente para este correo" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Create the invitation
@@ -104,10 +103,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (insertError) {
       console.error("Error inserting invitation:", insertError);
-      return new Response(
-        JSON.stringify({ error: "Error al crear la invitación" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Error al crear la invitación" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Build the invitation link
@@ -124,25 +123,25 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send the invitation email
     const inviterName = inviterProfile?.full_name || inviterProfile?.email || "El administrador del sistema";
-    
-    // Use onboarding@resend.dev temporarily until aureoncr.com domain is verified in Resend
+
+    // Use workforce@resend.dev temporarily until aureoncr.com domain is verified in Resend
     // Once verified, change back to RESEND_FROM_EMAIL
-    const from = `ACL Workforce HUB <onboarding@resend.dev>`;
+    const from = `ACL Workforce HUB <workforce@resend.dev>`;
 
     console.log("Using FROM:", from);
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-    
+
     // List-Unsubscribe headers improve email reputation with Gmail, Outlook, etc.
-    const unsubscribeEmail = 'unsubscribe@aureoncr.com';
-    
+    const unsubscribeEmail = "unsubscribe@aureoncr.com";
+
     const emailResponse = await resend.emails.send({
       from,
       to: [email],
       subject: `Bienvenido al ${systemName}${company_name ? ` - ${company_name}` : ""}`,
       headers: {
-        'List-Unsubscribe': `<mailto:${unsubscribeEmail}?subject=Unsubscribe>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        "List-Unsubscribe": `<mailto:${unsubscribeEmail}?subject=Unsubscribe>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
       html: `
         <!DOCTYPE html>
@@ -208,14 +207,18 @@ const handler = async (req: Request): Promise<Response> => {
                                   <p style="margin: 0; color: #0f172a; font-weight: 600; font-size: 15px;">${role}</p>
                                 </td>
                               </tr>
-                              ${company_name ? `
+                              ${
+                                company_name
+                                  ? `
                               <tr>
                                 <td style="padding: 12px 0 0 0; border-top: 1px solid #e2e8f0;">
                                   <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Empresa</p>
                                   <p style="margin: 0; color: #0f172a; font-weight: 600; font-size: 15px;">${company_name}</p>
                                 </td>
                               </tr>
-                              ` : ""}
+                              `
+                                  : ""
+                              }
                             </table>
                           </td>
                         </tr>
@@ -293,15 +296,14 @@ const handler = async (req: Request): Promise<Response> => {
         message: "Invitación enviada correctamente",
         invitation_id: invitation.id,
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
-
   } catch (error: any) {
     console.error("Error in send-invitation function:", error);
-    return new Response(
-      JSON.stringify({ error: error.message || "Error interno del servidor" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: error.message || "Error interno del servidor" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 };
 
