@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { CompanySwitcher } from "./CompanySwitcher";
 import { UserMenu } from "./UserMenu";
+import { RolePreviewSwitcher } from "./RolePreviewSwitcher";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "next-themes";
 
@@ -24,6 +25,7 @@ export function AppHeader() {
         </div>
 
         <div className="flex items-center gap-4">
+          <RolePreviewSwitcher />
           <CompanySwitcher />
           
           <div className="flex items-center gap-2">

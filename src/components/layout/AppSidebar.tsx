@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUserRole, AppRole } from "@/hooks/useUserRole";
+import { useRolePreview } from "@/contexts/RolePreviewContext";
 
 // Roles that have HR/Admin access (can see full sidebar)
 const HR_ROLES: AppRole[] = ['admin', 'company_manager', 'ACL_SuperAdmin', 'ACL_PayrollSpecialist', 'ACL_Auditor', 'Client_Admin', 'Client_HR', 'Client_Viewer'];
@@ -231,9 +232,13 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t } = useLanguage();
-  const { role, loading } = useUserRole();
+  const { role: actualRole, loading } = useUserRole();
+  const { previewRole, isPreviewMode } = useRolePreview();
   const currentPath = location.pathname;
   const collapsed = state === "collapsed";
+
+  // Use preview role if in preview mode, otherwise use actual role
+  const role = isPreviewMode ? previewRole : actualRole;
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -245,12 +250,12 @@ export function AppSidebar() {
       ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" 
       : "hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground";
 
-  // Determine which navigation items to show based on role
+  // Determine which navigation items to show based on role (or preview role)
   const isEmployeeOnly = role === 'employee' || role === 'Employee_Portal';
   const hasHRAccess = role !== null && HR_ROLES.includes(role as AppRole);
   
   // While loading, show HR navigation by default for a better UX (will filter once role loads)
-  const navigationItems = loading 
+  const navigationItems = loading && !isPreviewMode
     ? [...hrNavigationItems, logoutItem] // Show full menu while loading
     : isEmployeeOnly 
       ? [...employeeNavigationItems, logoutItem]
@@ -258,7 +263,7 @@ export function AppSidebar() {
         ? [...hrNavigationItems.filter(item => !item.roles || item.roles.includes(role as AppRole)), logoutItem]
         : [...employeeNavigationItems, logoutItem]; // Fallback to employee view
 
-  const groups = loading ? hrGroups : (isEmployeeOnly || !hasHRAccess ? employeeGroups : hrGroups);
+  const groups = (loading && !isPreviewMode) ? hrGroups : (isEmployeeOnly || !hasHRAccess ? employeeGroups : hrGroups);
 
   const groupedItems = navigationItems.reduce((acc, item) => {
     if (!acc[item.group]) {
