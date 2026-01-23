@@ -77,11 +77,17 @@ serve(async (req) => {
           ? cleanedFrom
           : `Sistema de Planillas <${cleanedFrom}>`;
         
+        // List-Unsubscribe headers improve email reputation with Gmail, Outlook, etc.
+        const unsubscribeEmail = 'unsubscribe@aureoncr.com';
         const emailData: any = {
           from: from || defaultFrom,
           to: [recipient],
           subject,
           html,
+          headers: {
+            'List-Unsubscribe': `<mailto:${unsubscribeEmail}?subject=Unsubscribe>`,
+            'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+          },
         };
 
         if (attachments && attachments.length > 0) {
