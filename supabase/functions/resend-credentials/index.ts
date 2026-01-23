@@ -23,13 +23,13 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-      { auth: { autoRefreshToken: false, persistSession: false } }
+      { auth: { autoRefreshToken: false, persistSession: false } },
     );
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-    // Use onboarding@resend.dev temporarily until aureoncr.com domain is verified in Resend
-    const from = `ACL Workforce HUB <onboarding@resend.dev>`;
+    // Use workforce@aureoncr.com temporarily until aureoncr.com domain is verified in Resend
+    const from = `ACL Workforce HUB <workforce@aureoncr.com>`;
 
     const systemName = "ACL Workforce HUB";
     const supportEmail = "soporte@aureoncr.com";
@@ -39,47 +39,45 @@ const handler = async (req: Request): Promise<Response> => {
     // Verify authorization
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: "No authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "No authorization header" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: { user: callerUser }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    const {
+      data: { user: callerUser },
+      error: authError,
+    } = await supabaseAdmin.auth.getUser(token);
 
     if (authError || !callerUser) {
       console.error("Auth error:", authError);
-      return new Response(
-        JSON.stringify({ error: "Invalid token" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Invalid token" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Check if caller has admin role
-    const { data: callerRoles } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", callerUser.id);
+    const { data: callerRoles } = await supabaseAdmin.from("user_roles").select("role").eq("user_id", callerUser.id);
 
-    const isAdmin = callerRoles?.some(r => 
-      ["admin", "ACL_SuperAdmin", "ACL_PayrollSpecialist"].includes(r.role)
-    );
+    const isAdmin = callerRoles?.some((r) => ["admin", "ACL_SuperAdmin", "ACL_PayrollSpecialist"].includes(r.role));
 
     if (!isAdmin) {
-      return new Response(
-        JSON.stringify({ error: "No tiene permisos para realizar esta acción" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "No tiene permisos para realizar esta acción" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const { user_id, email, full_name }: ResendCredentialsRequest = await req.json();
 
     if (!user_id || !email) {
-      return new Response(
-        JSON.stringify({ error: "user_id y email son requeridos" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "user_id y email son requeridos" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     console.log(`Resending credentials to user: ${email}`);
@@ -88,17 +86,14 @@ const handler = async (req: Request): Promise<Response> => {
     const tempPassword = `Temp${Math.random().toString(36).slice(-8)}${Math.floor(Math.random() * 100)}!`;
 
     // Update user's password
-    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      user_id,
-      { password: tempPassword }
-    );
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user_id, { password: tempPassword });
 
     if (updateError) {
       console.error("Error updating password:", updateError);
-      return new Response(
-        JSON.stringify({ error: `Error al actualizar contraseña: ${updateError.message}` }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: `Error al actualizar contraseña: ${updateError.message}` }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Get platform URL
@@ -112,7 +107,7 @@ const handler = async (req: Request): Promise<Response> => {
     const platformUrl = `${appOrigin}/auth`;
 
     // List-Unsubscribe headers improve email reputation with Gmail, Outlook, etc.
-    const unsubscribeEmail = 'unsubscribe@aureoncr.com';
+    const unsubscribeEmail = "unsubscribe@aureoncr.com";
 
     // Send email with new credentials
     const emailResponse = await resend.emails.send({
@@ -120,8 +115,8 @@ const handler = async (req: Request): Promise<Response> => {
       to: [email],
       subject: `Nuevas credenciales de acceso - ${systemName}`,
       headers: {
-        'List-Unsubscribe': `<mailto:${unsubscribeEmail}?subject=Unsubscribe>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        "List-Unsubscribe": `<mailto:${unsubscribeEmail}?subject=Unsubscribe>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
       html: `
         <!DOCTYPE html>
@@ -254,19 +249,18 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: "Credenciales reenviadas exitosamente" 
+      JSON.stringify({
+        success: true,
+        message: "Credenciales reenviadas exitosamente",
       }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
-
   } catch (error: any) {
     console.error("Error in resend-credentials:", error);
-    return new Response(
-      JSON.stringify({ error: error.message || "Error interno del servidor" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: error.message || "Error interno del servidor" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 };
 
