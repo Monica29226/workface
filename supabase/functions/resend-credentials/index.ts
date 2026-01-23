@@ -28,11 +28,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "onboarding@resend.dev").trim();
-    const cleanedFrom = rawFromEmail.replace(/^\"+|\"+$/g, "").trim();
-    const from = cleanedFrom.includes("<") && cleanedFrom.includes(">")
-      ? cleanedFrom
-      : `ACL Workforce HUB <${cleanedFrom}>`;
+    // Use onboarding@resend.dev temporarily until aureoncr.com domain is verified in Resend
+    const from = `ACL Workforce HUB <onboarding@resend.dev>`;
 
     const systemName = "ACL Workforce HUB";
     const supportEmail = "soporte@aureoncr.com";
@@ -131,14 +128,15 @@ const handler = async (req: Request): Promise<Response> => {
               <tr>
                 <td>
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                    <!-- Header -->
+                    <!-- Header with Logo -->
                     <tr>
-                      <td style="background: linear-gradient(135deg, #0f172a, #1e3a8a); padding: 32px; text-align: center;">
-                        <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">
+                      <td style="background: linear-gradient(135deg, #0F2A44, #1e3a8a); padding: 32px; text-align: center;">
+                        <img src="https://workface.lovable.app/lovable-uploads/logotipo_acl.png" alt="ACL Workforce HUB" style="max-width: 180px; height: auto; margin-bottom: 16px;" />
+                        <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 600;">
                           ${systemName}
                         </h1>
-                        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">
-                          Sistema de Gestión de Nómina y Planillas
+                        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 13px;">
+                          Sistema de Gestión de Nómina y Recursos Humanos
                         </p>
                       </td>
                     </tr>
