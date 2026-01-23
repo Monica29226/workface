@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { CompanyProvider } from "@/contexts/CompanyContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
+import { RolePreviewProvider } from "@/contexts/RolePreviewContext";
 import { ThemeProvider } from "next-themes";
 import { Loader2 } from "lucide-react";
 
@@ -65,7 +66,8 @@ const App = () => (
     <TooltipProvider>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
         <LanguageProvider>
-          <CompanyProvider>
+          <RolePreviewProvider>
+            <CompanyProvider>
             <Toaster />
             <Sonner />
             <BrowserRouter>
@@ -113,7 +115,8 @@ const App = () => (
                 </Routes>
               </Suspense>
             </BrowserRouter>
-          </CompanyProvider>
+            </CompanyProvider>
+          </RolePreviewProvider>
         </LanguageProvider>
       </ThemeProvider>
     </TooltipProvider>
