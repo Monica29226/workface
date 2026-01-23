@@ -320,6 +320,9 @@ serve(async (req) => {
 </html>
     `;
 
+    // List-Unsubscribe headers improve email reputation with Gmail, Outlook, etc.
+    const unsubscribeEmail = 'unsubscribe@aureoncr.com';
+
     // Send email via Resend
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
     const emailResponse = await resend.emails.send({
@@ -327,6 +330,10 @@ serve(async (req) => {
       to: [employee.work_email],
       subject: `📄 Boleta de Pago - ${periodLabel} | ${companyName}`,
       html: emailHtml,
+      headers: {
+        'List-Unsubscribe': `<mailto:${unsubscribeEmail}?subject=Unsubscribe>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
     });
 
     console.log("Payslip email sent:", emailResponse);

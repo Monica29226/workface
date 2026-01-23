@@ -111,11 +111,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     const platformUrl = `${appOrigin}/auth`;
 
+    // List-Unsubscribe headers improve email reputation with Gmail, Outlook, etc.
+    const unsubscribeEmail = 'unsubscribe@aureoncr.com';
+
     // Send email with new credentials
     const emailResponse = await resend.emails.send({
       from,
       to: [email],
       subject: `Nuevas credenciales de acceso - ${systemName}`,
+      headers: {
+        'List-Unsubscribe': `<mailto:${unsubscribeEmail}?subject=Unsubscribe>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
       html: `
         <!DOCTYPE html>
         <html>

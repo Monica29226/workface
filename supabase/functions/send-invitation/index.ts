@@ -132,10 +132,18 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Using FROM:", from);
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+    
+    // List-Unsubscribe headers improve email reputation with Gmail, Outlook, etc.
+    const unsubscribeEmail = 'unsubscribe@aureoncr.com';
+    
     const emailResponse = await resend.emails.send({
       from,
       to: [email],
       subject: `Bienvenido al ${systemName}${company_name ? ` - ${company_name}` : ""}`,
+      headers: {
+        'List-Unsubscribe': `<mailto:${unsubscribeEmail}?subject=Unsubscribe>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+      },
       html: `
         <!DOCTYPE html>
         <html>
