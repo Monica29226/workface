@@ -26,12 +26,13 @@ export function EmailPreviewDialog({
   recipientName,
   role,
   companyName,
-  portalUrl = window.location.origin,
+  portalUrl = "https://workforcehub.calderon.cr",
 }: EmailPreviewDialogProps) {
-  const systemName = "Sistema de Planillas Aureon";
+  const systemName = "ACL Workforce HUB";
   const supportEmail = "soporte@aureoncr.com";
   const loginLink = `${portalUrl}/auth`;
   const currentYear = new Date().getFullYear();
+  const logoUrl = "https://aureoncr.com/wp-content/uploads/2024/01/logo-aureon-blanco.png";
 
   const getSubject = () => {
     if (emailType === 'invitation') {
@@ -46,7 +47,7 @@ export function EmailPreviewDialog({
         <div style={{ background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
           {/* Header with Logo */}
           <div style={{ background: "linear-gradient(135deg, #0F2A44, #1e3a8a)", padding: 32, textAlign: "center" as const }}>
-            <img src="/lovable-uploads/logotipo_acl.png" alt="ACL Workforce HUB" style={{ maxWidth: 180, height: "auto", marginBottom: 16 }} />
+            <img src={logoUrl} alt="Aureon" style={{ maxWidth: 180, height: "auto", marginBottom: 16 }} />
             <h1 style={{ color: "white", margin: 0, fontSize: 22, fontWeight: 600 }}>
               {systemName}
             </h1>
@@ -121,7 +122,7 @@ export function EmailPreviewDialog({
               <a href={`mailto:${supportEmail}`} style={{ color: "#1e40af", fontSize: 14, textDecoration: "underline" }}>{supportEmail}</a>
             </p>
             <p style={{ margin: 0, color: "#94a3b8", fontSize: 12 }}>
-              © {currentYear} Aureon. Todos los derechos reservados.
+              © {currentYear} ACL Workforce HUB. Todos los derechos reservados.
             </p>
           </div>
         </div>
@@ -133,13 +134,14 @@ export function EmailPreviewDialog({
     <div style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", margin: 0, padding: 0, backgroundColor: "#f4f6f9" }}>
       <div style={{ maxWidth: 640, margin: "0 auto", padding: "20px" }}>
         <div style={{ background: "white", borderRadius: 12, overflow: "hidden", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-          {/* Header */}
+          {/* Header with Logo */}
           <div style={{ background: "linear-gradient(135deg, #0f172a, #1e3a8a)", padding: 32, textAlign: "center" as const }}>
+            <img src={logoUrl} alt="Aureon" style={{ maxWidth: 180, height: "auto", marginBottom: 16 }} />
             <h1 style={{ color: "white", margin: 0, fontSize: 24, fontWeight: 600 }}>
               {systemName}
             </h1>
             <p style={{ color: "rgba(255,255,255,0.85)", margin: "8px 0 0 0", fontSize: 14 }}>
-              Gestión de Nómina y Recursos Humanos
+              Sistema de Gestión de Nómina y Recursos Humanos
             </p>
           </div>
           
@@ -197,7 +199,7 @@ export function EmailPreviewDialog({
               <a href={`mailto:${supportEmail}`} style={{ color: "#1e40af", fontSize: 14, textDecoration: "underline" }}>{supportEmail}</a>
             </p>
             <p style={{ margin: 0, color: "#94a3b8", fontSize: 12 }}>
-              © {currentYear} Aureon. Todos los derechos reservados.
+              © {currentYear} ACL Workforce HUB. Todos los derechos reservados.
             </p>
             <p style={{ margin: "8px 0 0 0", color: "#cbd5e1", fontSize: 11 }}>
               Este correo fue enviado porque su empresa lo registró en nuestro sistema. Si cree que recibió este mensaje por error, por favor contáctenos.

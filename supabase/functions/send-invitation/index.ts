@@ -109,13 +109,8 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Build the invitation link
-    const appOrigin = (
-      req.headers.get("origin") ||
-      Deno.env.get("APP_URL") ||
-      Deno.env.get("PLATFORM_URL") ||
-      "https://aureoncr.com"
-    ).replace(/\/$/, "");
+    // Build the invitation link - always use the production portal URL
+    const appOrigin = "https://workforcehub.calderon.cr";
 
     const inviteLink = `${appOrigin}/auth?invite=${invitation.token}`;
     const systemName = "ACL Workforce HUB";
@@ -158,7 +153,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <!-- Header with Logo -->
                   <tr>
                     <td style="background: linear-gradient(135deg, #0F2A44, #1e3a8a); padding: 32px; text-align: center;">
-                      <img src="https://workface.lovable.app/lovable-uploads/logotipo_acl.png" alt="ACL Workforce HUB" style="max-width: 180px; height: auto; margin-bottom: 16px;" />
+                      <img src="https://aureoncr.com/wp-content/uploads/2024/01/logo-aureon-blanco.png" alt="Aureon" style="max-width: 180px; height: auto; margin-bottom: 16px;" />
                       <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 600;">
                         ${systemName}
                       </h1>

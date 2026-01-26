@@ -51,12 +51,12 @@ serve(async (req) => {
       // Use default if no body
     }
 
-    // Using monica@calderon.cr as default - domain calderon.cr must be verified in Resend
-    const rawFrom = (fromEmail || 'monica@calderon.cr').trim();
+    // Using noreply@aureoncr.com - domain aureoncr.com must be verified in Resend
+    const rawFrom = (fromEmail || 'noreply@aureoncr.com').trim();
     const cleanedFrom = rawFrom.replace(/^"+|"+$/g, '').trim();
     const from = cleanedFrom.includes('<') && cleanedFrom.includes('>')
       ? cleanedFrom
-      : `Sistema de Planillas <${cleanedFrom}>`;
+      : `ACL Workforce HUB <${cleanedFrom}>`;
 
     console.log('Attempting to send test email to:', testEmail);
     console.log('Using FROM:', from);
@@ -65,15 +65,16 @@ serve(async (req) => {
     const { data, error } = await resend.emails.send({
       from,
       to: [testEmail],
-      subject: 'Test Email - Sistema de Planillas ACL',
+      subject: 'Test Email - ACL Workforce HUB',
       html: `
-        <h1>Email de Prueba</h1>
-        <p>Este es un email de prueba del Sistema de Planillas ACL.</p>
+        <h1>Email de Prueba - ACL Workforce HUB</h1>
+        <p>Este es un email de prueba del sistema ACL Workforce HUB.</p>
         <p>Si recibes este email, la configuración de Resend está funcionando correctamente.</p>
+        <p><strong>Portal:</strong> <a href="https://workforcehub.calderon.cr">https://workforcehub.calderon.cr</a></p>
         <hr>
         <p><strong>Configuración:</strong></p>
         <ul>
-          <li>From: ${fromEmail || 'onboarding@resend.dev'}</li>
+          <li>From: ${fromEmail || 'noreply@aureoncr.com'}</li>
           <li>Timestamp: ${new Date().toISOString()}</li>
         </ul>
       `,
