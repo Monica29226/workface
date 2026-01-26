@@ -13,6 +13,9 @@ export interface PayrollBatch {
   status: string;
   created_at: string;
   base_currency: string;
+  payroll_type?: string;
+  payment_location?: string;
+  payment_date?: string;
 }
 
 export function usePayrollBatches() {
