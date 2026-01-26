@@ -46,12 +46,19 @@ interface PayrollLine {
   vacation_days_taken: number;
   sick_leave_days: number;
   deductions_detail: DeductionsDetail | null;
+  // New HP fields
+  lpt_banco_popular?: number;
+  mixed_overtime_hours?: number;
+  mixed_overtime_amount?: number;
+  ccss_disability_hours?: number;
+  ins_disability_hours?: number;
   employee: {
     id: string;
     full_name: string;
     employee_id: string;
     base_salary: number;
     currency: string;
+    job_title?: string;
   };
 }
 

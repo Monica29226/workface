@@ -39,7 +39,7 @@ serve(async (req) => {
 
     console.log("Generating PDF for payslip:", payslipId);
 
-    // Get payslip with all related data
+    // Get payslip with all related data including new fields
     const { data: payslip, error: payslipError } = await supabaseClient
       .from('payslips')
       .select(`
@@ -51,7 +51,10 @@ serve(async (req) => {
           period_end,
           frequency,
           base_currency,
-          status
+          status,
+          payroll_type,
+          payment_location,
+          payment_date
         ),
         employee:employees!inner(
           id,
@@ -60,7 +63,8 @@ serve(async (req) => {
           work_email,
           base_salary,
           contract_type,
-          currency
+          currency,
+          job_title
         ),
         company:companies!inner(
           id,
@@ -82,10 +86,10 @@ serve(async (req) => {
       );
     }
 
-    // Get payroll line data
+    // Get payroll line data including new HP fields
     const { data: payrollLine, error: lineError } = await supabaseClient
       .from('payroll_lines')
-      .select('*')
+      .select('*, lpt_banco_popular, mixed_overtime_hours, mixed_overtime_amount, ccss_disability_hours, ins_disability_hours')
       .eq('batch_id', payslip.batch.id)
       .eq('employee_id', payslip.employee_id)
       .single();
@@ -98,8 +102,14 @@ serve(async (req) => {
       );
     }
 
-    // Generate HTML for PDF
-    const html = generatePayslipHTML(payslip, payrollLine);
+    // Check if this is Horizonte Positivo - use company-specific template
+    const isHorizontePositivo = payslip.company.id === '550e8400-e29b-41d4-a716-446655440000' || 
+                                payslip.company.display_name?.toLowerCase().includes('horizonte positivo');
+
+    // Generate HTML for PDF - use company-specific template for Horizonte Positivo
+    const html = isHorizontePositivo 
+      ? generateHorizontePositivoPayslipHTML(payslip, payrollLine)
+      : generatePayslipHTML(payslip, payrollLine);
 
     // For now, return HTML (in production, use a PDF library like puppeteer or jsPDF)
     // This is a placeholder - you'll need to integrate actual PDF generation
@@ -754,6 +764,530 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
       <p><strong>Colilla generada el ${new Date().toLocaleDateString('es-CR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong></p>
       <p>Este documento es una representación electrónica de su recibo de pago</p>
       <p>ID Colilla: ${payslip.payslip_id} | ID Lote: ${payslip.batch.batch_id}${isUSDSalary ? ` | TC: ₡${exchangeRate.toFixed(2)}` : ''}</p>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+}
+
+// =============================================================================
+// HORIZONTE POSITIVO - CUSTOM PAYSLIP TEMPLATE (USD BIWEEKLY FORMAT)
+// =============================================================================
+function generateHorizontePositivoPayslipHTML(payslip: any, payrollLine: any): string {
+  const periodStart = new Date(payslip.batch.period_start);
+  const periodEnd = new Date(payslip.batch.period_end);
+  const paymentDate = payslip.batch.payment_date 
+    ? new Date(payslip.batch.payment_date).toLocaleDateString('es-CR', { day: '2-digit', month: 'long', year: 'numeric' })
+    : new Date().toLocaleDateString('es-CR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const periodLabel = `${periodStart.toLocaleDateString('es-CR', { day: '2-digit', month: 'long' })} - ${periodEnd.toLocaleDateString('es-CR', { day: '2-digit', month: 'long', year: 'numeric' })}`;
+  const location = payslip.batch.payment_location || 'San José, WeWork Escazú';
+  
+  // Format USD currency
+  const formatUSD = (amount: number): string => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount || 0);
+  };
+
+  // Employee data
+  const employeeName = payslip.employee.full_name;
+  const employeeId = payslip.employee.employee_id;
+  const jobTitle = payslip.employee.job_title || 'Colaborador';
+  const grossMonthlySalary = payslip.employee.base_salary || 0;
+  
+  // Biweekly salary (50% of monthly)
+  const biweeklySalary = grossMonthlySalary / 2;
+  
+  // Overtime and mixed hours (editable fields, default to 0)
+  const overtimeHours = payrollLine.overtime_hours || 0;
+  const overtimeAmount = payrollLine.overtime || 0;
+  const mixedOvertimeHours = payrollLine.mixed_overtime_hours || 0;
+  const mixedOvertimeAmount = payrollLine.mixed_overtime_amount || 0;
+  
+  // Total benefits
+  const totalBenefits = biweeklySalary + overtimeAmount + mixedOvertimeAmount + (payrollLine.additional_bonuses || 0);
+  
+  // Deductions - HP specific rates
+  // LPT Banco Popular - fixed amount per employee
+  const lptBancoPopular = payrollLine.lpt_banco_popular || 0;
+  
+  // SEM Trabajador CCSS - 5.5% of biweekly salary
+  const semCCSS = biweeklySalary * 0.055;
+  
+  // IVM Trabajador CCSS - 4.17% of biweekly salary  
+  const ivmCCSS = biweeklySalary * 0.0417;
+  
+  // Impuesto de Renta - only for monthly gross > $4,000
+  // Using CR progressive tax brackets converted to USD
+  let incomeTax = 0;
+  if (grossMonthlySalary > 4000) {
+    // Simplified calculation for HP - would need proper bracket calculation
+    // This is a placeholder - real implementation would use company_parameters
+    const taxableBase = grossMonthlySalary - 4000;
+    incomeTax = (taxableBase * 0.10) / 2; // 10% on excess, divided by 2 for biweekly
+  }
+  
+  // Total deductions
+  const totalDeductions = lptBancoPopular + semCCSS + ivmCCSS + incomeTax + (payrollLine.additional_deductions || 0);
+  
+  // Control fields (editable)
+  const ccssDisabilityHours = payrollLine.ccss_disability_hours || 0;
+  const insDisabilityHours = payrollLine.ins_disability_hours || 0;
+  const absenceHours = payrollLine.absence_days ? payrollLine.absence_days * 8 : 0;
+  
+  // Total to pay
+  const totalToPay = totalBenefits - totalDeductions;
+  
+  const logoUrl = payslip.company.logo_url;
+
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Comprobante de Pago - ${employeeName}</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #fff;
+      color: #1a1a2e;
+      font-size: 13px;
+      padding: 25px;
+    }
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+      border: 2px solid #0B2B4C;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, #0B2B4C 0%, #1a4a6e 100%);
+      color: white;
+      padding: 20px 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .logo-box {
+      background: white;
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 80px;
+      height: 50px;
+    }
+    .logo-box img {
+      max-width: 70px;
+      max-height: 40px;
+      object-fit: contain;
+    }
+    .company-details h1 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+    .company-details p {
+      font-size: 11px;
+      opacity: 0.9;
+    }
+    .header-right {
+      text-align: right;
+    }
+    .payslip-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #C9A24D;
+      margin-bottom: 5px;
+    }
+    .payslip-subtitle {
+      font-size: 11px;
+      opacity: 0.8;
+    }
+    
+    /* Content */
+    .content {
+      padding: 20px 25px;
+    }
+    
+    /* Employee Info Section */
+    .employee-section {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 15px 20px;
+      margin-bottom: 20px;
+      border-left: 4px solid #2A9D8F;
+    }
+    .employee-section h2 {
+      font-size: 14px;
+      color: #0B2B4C;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .employee-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .employee-field {
+      display: flex;
+      flex-direction: column;
+    }
+    .employee-field label {
+      font-size: 10px;
+      color: #666;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .employee-field span {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+    .salary-highlight {
+      background: #e8f5e9;
+      border-radius: 6px;
+      padding: 8px 12px;
+      text-align: center;
+      grid-column: span 2;
+      margin-top: 5px;
+    }
+    .salary-highlight label {
+      display: block;
+      font-size: 10px;
+      color: #2e7d32;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .salary-highlight span {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1b5e20;
+    }
+    
+    /* Table Sections */
+    .section {
+      margin-bottom: 15px;
+    }
+    .section-header {
+      background: #0B2B4C;
+      color: white;
+      padding: 8px 15px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      border-radius: 6px 6px 0 0;
+    }
+    .section-body {
+      border: 1px solid #e0e0e0;
+      border-top: none;
+      border-radius: 0 0 6px 6px;
+    }
+    .row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 15px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .row:last-child {
+      border-bottom: none;
+    }
+    .row-label {
+      color: #444;
+    }
+    .row-value {
+      font-weight: 600;
+    }
+    .row-value.income {
+      color: #2e7d32;
+    }
+    .row-value.deduction {
+      color: #c62828;
+    }
+    .row-total {
+      background: #f5f5f5;
+      font-weight: 700;
+    }
+    .row-total .row-value {
+      font-size: 15px;
+    }
+    
+    /* Control Fields */
+    .control-section {
+      background: #fff3e0;
+      border: 1px solid #ffcc80;
+      border-radius: 8px;
+      padding: 12px 15px;
+      margin-bottom: 15px;
+    }
+    .control-section h3 {
+      font-size: 11px;
+      color: #e65100;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .control-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .control-field {
+      text-align: center;
+    }
+    .control-field label {
+      display: block;
+      font-size: 9px;
+      color: #666;
+      margin-bottom: 3px;
+    }
+    .control-field span {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+    
+    /* Period Info */
+    .period-info {
+      background: #e3f2fd;
+      border: 1px solid #90caf9;
+      border-radius: 8px;
+      padding: 12px 15px;
+      margin-bottom: 15px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+    .period-field {
+      text-align: center;
+    }
+    .period-field label {
+      display: block;
+      font-size: 9px;
+      color: #1565c0;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .period-field span {
+      font-size: 12px;
+      font-weight: 600;
+      color: #0d47a1;
+    }
+    
+    /* Total to Pay */
+    .total-section {
+      background: linear-gradient(135deg, #2A9D8F 0%, #1a7a6e 100%);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      margin-top: 20px;
+    }
+    .total-label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.9);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 5px;
+    }
+    .total-amount {
+      font-size: 32px;
+      font-weight: 700;
+      color: white;
+    }
+    .total-calc {
+      font-size: 11px;
+      color: rgba(255,255,255,0.8);
+      margin-top: 8px;
+    }
+    
+    /* Footer */
+    .footer {
+      background: #f8f9fa;
+      padding: 15px 25px;
+      text-align: center;
+      border-top: 1px solid #e0e0e0;
+      font-size: 10px;
+      color: #666;
+    }
+    .footer p {
+      margin: 3px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-left">
+        <div class="logo-box">
+          ${logoUrl 
+            ? `<img src="${logoUrl}" alt="${payslip.company.display_name}" />`
+            : `<span style="font-weight:bold;color:#0B2B4C;font-size:14px;">HP</span>`
+          }
+        </div>
+        <div class="company-details">
+          <h1>${payslip.company.display_name}</h1>
+          <p>Cédula: ${payslip.company.tax_id || '3-002-674691'}</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <p class="payslip-title">COMPROBANTE DE PAGO</p>
+        <p class="payslip-subtitle">Frecuencia: Quincenal</p>
+      </div>
+    </div>
+    
+    <div class="content">
+      <!-- 1. Employee Data Section -->
+      <div class="employee-section">
+        <h2>📋 Datos del Colaborador</h2>
+        <div class="employee-grid">
+          <div class="employee-field">
+            <label>Nombre Completo</label>
+            <span>${employeeName}</span>
+          </div>
+          <div class="employee-field">
+            <label>Número de Identificación</label>
+            <span>${employeeId}</span>
+          </div>
+          <div class="employee-field">
+            <label>Puesto</label>
+            <span>${jobTitle}</span>
+          </div>
+          <div class="employee-field">
+            <label>Salario Bruto Mensual</label>
+            <span>${formatUSD(grossMonthlySalary)}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 2. Benefits Section -->
+      <div class="section">
+        <div class="section-header">💰 Beneficios</div>
+        <div class="section-body">
+          <div class="row">
+            <span class="row-label">Salario Quincenal (Bruto / 2)</span>
+            <span class="row-value income">${formatUSD(biweeklySalary)}</span>
+          </div>
+          <div class="row">
+            <span class="row-label">Horas Extras${overtimeHours > 0 ? ` (${overtimeHours} hrs)` : ''}</span>
+            <span class="row-value income">${formatUSD(overtimeAmount)}</span>
+          </div>
+          <div class="row">
+            <span class="row-label">Horas Mixtas${mixedOvertimeHours > 0 ? ` (${mixedOvertimeHours} hrs)` : ''}</span>
+            <span class="row-value income">${formatUSD(mixedOvertimeAmount)}</span>
+          </div>
+          ${payrollLine.additional_bonuses > 0 ? `
+          <div class="row">
+            <span class="row-label">Bonificaciones Adicionales</span>
+            <span class="row-value income">+${formatUSD(payrollLine.additional_bonuses)}</span>
+          </div>
+          ` : ''}
+          <div class="row row-total">
+            <span class="row-label">TOTAL BENEFICIOS</span>
+            <span class="row-value income">${formatUSD(totalBenefits)}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 3. Deductions Section -->
+      <div class="section">
+        <div class="section-header">📋 Deducciones</div>
+        <div class="section-body">
+          <div class="row">
+            <span class="row-label">LPT Banco Popular</span>
+            <span class="row-value deduction">-${formatUSD(lptBancoPopular)}</span>
+          </div>
+          <div class="row">
+            <span class="row-label">SEM Trabajador CCSS (5.5%)</span>
+            <span class="row-value deduction">-${formatUSD(semCCSS)}</span>
+          </div>
+          <div class="row">
+            <span class="row-label">IVM Trabajador CCSS (4.17%)</span>
+            <span class="row-value deduction">-${formatUSD(ivmCCSS)}</span>
+          </div>
+          ${incomeTax > 0 ? `
+          <div class="row">
+            <span class="row-label">Impuesto de Renta</span>
+            <span class="row-value deduction">-${formatUSD(incomeTax)}</span>
+          </div>
+          ` : ''}
+          ${payrollLine.additional_deductions > 0 ? `
+          <div class="row">
+            <span class="row-label">Otras Deducciones</span>
+            <span class="row-value deduction">-${formatUSD(payrollLine.additional_deductions)}</span>
+          </div>
+          ` : ''}
+          <div class="row row-total">
+            <span class="row-label">TOTAL DEDUCCIONES</span>
+            <span class="row-value deduction">-${formatUSD(totalDeductions)}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 4. Control Fields -->
+      <div class="control-section">
+        <h3>⚙️ Campos de Control</h3>
+        <div class="control-grid">
+          <div class="control-field">
+            <label>Horas Incapacidad CCSS</label>
+            <span>${ccssDisabilityHours.toFixed(2)}</span>
+          </div>
+          <div class="control-field">
+            <label>Horas Incapacidad INS</label>
+            <span>${insDisabilityHours.toFixed(2)}</span>
+          </div>
+          <div class="control-field">
+            <label>Horas de Ausencia</label>
+            <span>${absenceHours.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 5. Period Information -->
+      <div class="period-info">
+        <div class="period-field">
+          <label>Fecha de Pago</label>
+          <span>${paymentDate}</span>
+        </div>
+        <div class="period-field">
+          <label>Período</label>
+          <span>${periodLabel}</span>
+        </div>
+        <div class="period-field">
+          <label>Ubicación</label>
+          <span>${location}</span>
+        </div>
+      </div>
+      
+      <!-- 6. Total to Pay -->
+      <div class="total-section">
+        <p class="total-label">Total a Pagar</p>
+        <p class="total-amount">${formatUSD(totalToPay)}</p>
+        <p class="total-calc">Beneficios (${formatUSD(totalBenefits)}) - Deducciones (${formatUSD(totalDeductions)})</p>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p><strong>Comprobante generado el ${new Date().toLocaleDateString('es-CR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</strong></p>
+      <p>Este documento es una representación electrónica de su recibo de pago | Moneda: USD</p>
+      <p>ID: ${payslip.payslip_id} | Lote: ${payslip.batch.batch_id}</p>
     </div>
   </div>
 </body>

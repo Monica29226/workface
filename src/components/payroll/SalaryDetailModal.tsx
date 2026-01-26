@@ -47,6 +47,15 @@ interface PayrollLineData {
   project_hours_amount?: number;
   exchange_rate_to_base?: number;
   manual_adjustments?: ManualAdjustments;
+  // New HP fields
+  lpt_banco_popular?: number;
+  mixed_overtime_hours?: number;
+  mixed_overtime_amount?: number;
+  ccss_disability_hours?: number;
+  ins_disability_hours?: number;
+  overtime_hours?: number;
+  overtime?: number;
+  absence_days?: number;
 }
 
 interface CompanyData {

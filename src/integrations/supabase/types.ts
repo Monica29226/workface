@@ -572,6 +572,7 @@ export type Database = {
           hire_date: string | null
           hourly_rate: number | null
           id: string
+          job_title: string | null
           loan_amount: number | null
           loan_monthly_deduction: number | null
           status: Database["public"]["Enums"]["employee_status"]
@@ -593,6 +594,7 @@ export type Database = {
           hire_date?: string | null
           hourly_rate?: number | null
           id?: string
+          job_title?: string | null
           loan_amount?: number | null
           loan_monthly_deduction?: number | null
           status?: Database["public"]["Enums"]["employee_status"]
@@ -614,6 +616,7 @@ export type Database = {
           hire_date?: string | null
           hourly_rate?: number | null
           id?: string
+          job_title?: string | null
           loan_amount?: number | null
           loan_monthly_deduction?: number | null
           status?: Database["public"]["Enums"]["employee_status"]
@@ -655,6 +658,8 @@ export type Database = {
           created_by: string | null
           frequency: Database["public"]["Enums"]["payroll_frequency"]
           id: string
+          payment_date: string | null
+          payment_location: string | null
           payroll_type: Database["public"]["Enums"]["payroll_type"] | null
           period_end: string
           period_start: string
@@ -669,6 +674,8 @@ export type Database = {
           created_by?: string | null
           frequency: Database["public"]["Enums"]["payroll_frequency"]
           id?: string
+          payment_date?: string | null
+          payment_location?: string | null
           payroll_type?: Database["public"]["Enums"]["payroll_type"] | null
           period_end: string
           period_start: string
@@ -683,6 +690,8 @@ export type Database = {
           created_by?: string | null
           frequency?: Database["public"]["Enums"]["payroll_frequency"]
           id?: string
+          payment_date?: string | null
+          payment_location?: string | null
           payroll_type?: Database["public"]["Enums"]["payroll_type"] | null
           period_end?: string
           period_start?: string
@@ -764,6 +773,7 @@ export type Database = {
           additional_deductions: number | null
           aguinaldo_accrued: number | null
           batch_id: string
+          ccss_disability_hours: number | null
           company_id: string
           cost_center_id: string | null
           created_at: string
@@ -775,8 +785,12 @@ export type Database = {
           exchange_rate_to_base: number | null
           gross_salary: number
           id: string
+          ins_disability_hours: number | null
           line_id: string
+          lpt_banco_popular: number | null
           manual_adjustments: Json | null
+          mixed_overtime_amount: number | null
+          mixed_overtime_hours: number | null
           net_pay: number
           notes: string | null
           overtime: number | null
@@ -795,6 +809,7 @@ export type Database = {
           additional_deductions?: number | null
           aguinaldo_accrued?: number | null
           batch_id: string
+          ccss_disability_hours?: number | null
           company_id: string
           cost_center_id?: string | null
           created_at?: string
@@ -806,8 +821,12 @@ export type Database = {
           exchange_rate_to_base?: number | null
           gross_salary: number
           id?: string
+          ins_disability_hours?: number | null
           line_id: string
+          lpt_banco_popular?: number | null
           manual_adjustments?: Json | null
+          mixed_overtime_amount?: number | null
+          mixed_overtime_hours?: number | null
           net_pay: number
           notes?: string | null
           overtime?: number | null
@@ -826,6 +845,7 @@ export type Database = {
           additional_deductions?: number | null
           aguinaldo_accrued?: number | null
           batch_id?: string
+          ccss_disability_hours?: number | null
           company_id?: string
           cost_center_id?: string | null
           created_at?: string
@@ -837,8 +857,12 @@ export type Database = {
           exchange_rate_to_base?: number | null
           gross_salary?: number
           id?: string
+          ins_disability_hours?: number | null
           line_id?: string
+          lpt_banco_popular?: number | null
           manual_adjustments?: Json | null
+          mixed_overtime_amount?: number | null
+          mixed_overtime_hours?: number | null
           net_pay?: number
           notes?: string | null
           overtime?: number | null
