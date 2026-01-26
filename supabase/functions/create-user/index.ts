@@ -86,20 +86,17 @@ const handler = async (req: Request): Promise<Response> => {
     // Using noreply@aureoncr.com - domain aureoncr.com is verified in Resend
     const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@aureoncr.com").trim();
     const cleanedFrom = rawFromEmail.replace(/^\"+|\"+$/g, "").trim();
-    const from = cleanedFrom.includes("<") && cleanedFrom.includes(">")
-      ? cleanedFrom
-      : `Sistema de Planillas <${cleanedFrom}>`;
+    // Extract just the email if it has Name <email> format
+    const emailMatch = cleanedFrom.match(/<([^>]+)>/);
+    const pureEmail = emailMatch ? emailMatch[1] : cleanedFrom;
+    const from = `ACL Workforce HUB <${pureEmail}>`;
 
-    const appOrigin = (
-      req.headers.get("origin") ||
-      Deno.env.get("APP_URL") ||
-      Deno.env.get("PLATFORM_URL") ||
-      "https://aureoncr.com"
-    ).replace(/\/$/, "");
-
-    const loginLink = `${appOrigin}/auth`;
+    // Fixed portal URL - always use the production portal
+    const portalUrl = "https://workforcehub.calderon.cr";
+    const loginLink = `${portalUrl}/auth`;
     const systemName = "ACL Workforce HUB";
     const supportEmail = "soporte@aureoncr.com";
+    const logoUrl = "https://aureoncr.com/wp-content/uploads/2024/01/logo-aureon-blanco.png";
 
     const resend = new Resend(resendApiKey);
     const { error: emailError } = await resend.emails.send({
@@ -118,14 +115,15 @@ const handler = async (req: Request): Promise<Response> => {
               <tr>
                 <td>
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                    <!-- Header -->
+                    <!-- Header with Logo -->
                     <tr>
-                      <td style="background: linear-gradient(135deg, #0f172a, #1e3a8a); padding: 32px; text-align: center;">
-                        <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">
+                      <td style="background: linear-gradient(135deg, #0F2A44, #1e3a8a); padding: 32px; text-align: center;">
+                        <img src="${logoUrl}" alt="Aureon" style="max-width: 180px; height: auto; margin-bottom: 16px;" />
+                        <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 600;">
                           ${systemName}
                         </h1>
-                        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 14px;">
-                          Sistema de Gestión de Nómina y Planillas
+                        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 13px;">
+                          Sistema de Gestión de Nómina y Recursos Humanos
                         </p>
                       </td>
                     </tr>
