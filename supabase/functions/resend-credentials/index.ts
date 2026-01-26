@@ -28,8 +28,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-    // Using noreply@aureoncr.com - domain aureoncr.com is verified in Resend
-    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "noreply@aureoncr.com";
+    // Using info@calderon.cr - domain calderon.cr is verified in Resend
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "info@calderon.cr";
     const from = `ACL Workforce HUB <${fromEmail}>`;
 
     const systemName = "ACL Workforce HUB";
