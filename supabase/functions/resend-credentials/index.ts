@@ -28,8 +28,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-    // Use workforce@aureoncr.com temporarily until aureoncr.com domain is verified in Resend
-    const from = `ACL Workforce HUB <workforce@aureoncr.com>`;
+    // Using monica@calderon.cr - domain calderon.cr must be verified in Resend
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "monica@calderon.cr";
+    const from = `ACL Workforce HUB <${fromEmail}>`;
 
     const systemName = "ACL Workforce HUB";
     const supportEmail = "soporte@aureoncr.com";
