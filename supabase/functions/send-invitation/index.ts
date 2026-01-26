@@ -119,8 +119,8 @@ const handler = async (req: Request): Promise<Response> => {
     // Send the invitation email
     const inviterName = inviterProfile?.full_name || inviterProfile?.email || "El administrador del sistema";
 
-    // Using info@calderon.cr - domain calderon.cr must be verified in Resend
-    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "info@calderon.cr";
+    // Using noreply@aureoncr.com - domain aureoncr.com is verified in Resend
+    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "noreply@aureoncr.com";
     const from = `ACL Workforce HUB <${fromEmail}>`;
 
     console.log("Using FROM:", from);
