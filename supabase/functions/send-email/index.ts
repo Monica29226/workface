@@ -72,8 +72,8 @@ serve(async (req) => {
         }
 
         // Send email via Resend - parse FROM correctly
-        // Using monica@calderon.cr - domain calderon.cr must be verified in Resend
-        const rawFromEmail = (Deno.env.get('RESEND_FROM_EMAIL') || 'monica@calderon.cr').trim();
+        // Using info@calderon.cr - domain calderon.cr must be verified in Resend
+        const rawFromEmail = (Deno.env.get('RESEND_FROM_EMAIL') || 'info@calderon.cr').trim();
         const cleanedFrom = rawFromEmail.replace(/^"+|"+$/g, '').trim();
         const defaultFrom = cleanedFrom.includes('<') && cleanedFrom.includes('>')
           ? cleanedFrom

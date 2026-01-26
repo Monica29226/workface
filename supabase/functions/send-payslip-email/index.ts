@@ -110,8 +110,8 @@ serve(async (req) => {
     // Build professional HTML email following MTSS Costa Rica format
     const companyName = company.display_name;
     
-    // Using monica@calderon.cr as default - domain calderon.cr must be verified in Resend
-    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "monica@calderon.cr").trim();
+    // Using info@calderon.cr as default - domain calderon.cr must be verified in Resend
+    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "info@calderon.cr").trim();
     const cleanedFrom = rawFromEmail.replace(/^"+|"+$/g, "").trim();
     // Extract just the email if it has Name <email> format
     const emailMatch = cleanedFrom.match(/<([^>]+)>/);

@@ -51,8 +51,8 @@ serve(async (req) => {
       // Use default if no body
     }
 
-    // Using noreply@aureoncr.com - domain aureoncr.com must be verified in Resend
-    const rawFrom = (fromEmail || 'noreply@aureoncr.com').trim();
+    // Using info@calderon.cr - domain calderon.cr must be verified in Resend
+    const rawFrom = (fromEmail || 'info@calderon.cr').trim();
     const cleanedFrom = rawFrom.replace(/^"+|"+$/g, '').trim();
     const from = cleanedFrom.includes('<') && cleanedFrom.includes('>')
       ? cleanedFrom
