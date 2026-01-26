@@ -83,8 +83,8 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("RESEND_API_KEY is not configured");
     }
 
-    // Using monica@calderon.cr - domain calderon.cr must be verified in Resend
-    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "monica@calderon.cr").trim();
+    // Using noreply@aureoncr.com - domain aureoncr.com is verified in Resend
+    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@aureoncr.com").trim();
     const cleanedFrom = rawFromEmail.replace(/^\"+|\"+$/g, "").trim();
     const from = cleanedFrom.includes("<") && cleanedFrom.includes(">")
       ? cleanedFrom
