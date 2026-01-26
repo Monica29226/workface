@@ -51,8 +51,8 @@ serve(async (req) => {
       // Use default if no body
     }
 
-    // Parse RESEND_FROM_EMAIL correctly
-    const rawFrom = (fromEmail || 'onboarding@resend.dev').trim();
+    // Using monica@calderon.cr as default - domain calderon.cr must be verified in Resend
+    const rawFrom = (fromEmail || 'monica@calderon.cr').trim();
     const cleanedFrom = rawFrom.replace(/^"+|"+$/g, '').trim();
     const from = cleanedFrom.includes('<') && cleanedFrom.includes('>')
       ? cleanedFrom
