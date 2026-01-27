@@ -227,12 +227,37 @@ serve(async (req) => {
       // Calculate gross salary based on contract type and manual adjustments
       let grossSalary = 0;
       
+      // Get hours data from payroll line
+      const regularHours = Number(line.regular_hours || 0);
+      const overtimeHours = Number(line.overtime_hours || 0);  // 1.5x rate
+      const mixedOvertimeHours = Number(line.mixed_overtime_hours || 0);  // 2x rate
+      
+      // Calculate hourly rate from employee data
+      const hourlyRate = employee.hourly_rate || (employee.base_salary / 240); // 240 = 30 days * 8 hours
+      
       if (employee.contract_type === 'mensual') {
+        // Start with base monthly salary
         grossSalary = employee.base_salary;
+        
+        // Add overtime pay for monthly employees (extra hours on top of base)
+        // Horas Extra (1.5x) - tiempo y medio
+        const overtimePay = overtimeHours * hourlyRate * 1.5;
+        // Horas Dobles (2x) - tiempo doble
+        const doubleTimePay = mixedOvertimeHours * hourlyRate * 2.0;
+        
+        grossSalary += overtimePay + doubleTimePay;
+        
+        console.log(`Monthly employee ${employee.full_name}: Base=${employee.base_salary}, OT Hours=${overtimeHours}, OT Pay=${overtimePay}, DT Hours=${mixedOvertimeHours}, DT Pay=${doubleTimePay}`);
+        
       } else if (employee.contract_type === 'por_horas') {
-        const regularHours = line.regular_hours || 0;
-        const overtimeHours = line.overtime_hours || 0;
-        grossSalary = (regularHours * employee.hourly_rate) + (overtimeHours * employee.hourly_rate * 1.5);
+        // Hourly workers: regular + overtime + double time
+        const regularPay = regularHours * hourlyRate;
+        const overtimePay = overtimeHours * hourlyRate * 1.5;
+        const doubleTimePay = mixedOvertimeHours * hourlyRate * 2.0;
+        
+        grossSalary = regularPay + overtimePay + doubleTimePay;
+        
+        console.log(`Hourly employee ${employee.full_name}: Regular=${regularPay}, OT=${overtimePay}, DT=${doubleTimePay}`);
       }
 
       // Add bonuses and project hours
@@ -243,6 +268,10 @@ serve(async (req) => {
       const absenceDays = line.absence_days || 0;
       const dailyRate = employee.base_salary / 30;
       grossSalary -= (absenceDays * dailyRate);
+      
+      // Store overtime amounts for reference
+      const overtimeAmount = overtimeHours * hourlyRate * 1.5;
+      const mixedOvertimeAmount = mixedOvertimeHours * hourlyRate * 2.0;
 
       // ========================================
       // DEDUCTIONS CALCULATION (per company rules)
@@ -348,6 +377,8 @@ serve(async (req) => {
       updatedLines.push({
         id: line.id,
         gross_salary: grossSalary,
+        overtime: overtimeAmount,
+        mixed_overtime_amount: mixedOvertimeAmount,
         deductions: totalDeductions,
         deductions_detail: deductionsDetail,
         net_pay: netPay,
@@ -362,7 +393,12 @@ serve(async (req) => {
           poliza_vida: polizaVida,
           ccss: ccssResult.amount,
           income_tax: incomeTax,
-          loan_deduction: loanDeduction
+          loan_deduction: loanDeduction,
+          overtime_hours: overtimeHours,
+          overtime_amount: overtimeAmount,
+          mixed_overtime_hours: mixedOvertimeHours,
+          mixed_overtime_amount: mixedOvertimeAmount,
+          hourly_rate_used: hourlyRate
         }
       });
     }
