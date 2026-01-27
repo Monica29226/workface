@@ -81,6 +81,7 @@ interface EditingState {
     additional_deductions?: number;
     regular_hours?: number;
     overtime_hours?: number;
+    mixed_overtime_hours?: number;
     absence_days?: number;
     vacation_days_taken?: number;
   };
@@ -302,6 +303,7 @@ export function PreNomina() {
         const detail = line.deductions_detail || {};
         const grossSalary = getValue(line, 'gross_salary');
         const overtimeHours = getValue(line, 'overtime_hours');
+        const mixedOvertimeHours = getValue(line, 'mixed_overtime_hours' as keyof PayrollLine);
         const baseImponible = detail.base_imponible_crc || (grossSalary * exchangeRate);
         const netUSD = Number(line.net_pay) / exchangeRate;
         
@@ -309,6 +311,7 @@ export function PreNomina() {
           grossSalaryUSD: acc.grossSalaryUSD + grossSalary,
           baseImponibleCRC: acc.baseImponibleCRC + baseImponible,
           overtimeHours: acc.overtimeHours + overtimeHours,
+          mixedOvertimeHours: acc.mixedOvertimeHours + mixedOvertimeHours,
           ccss: acc.ccss + Number(detail.ccss_obrero || 0),
           isr: acc.isr + Number(detail.isr_neto || 0),
           bancoPopular: acc.bancoPopular + Number(detail.banco_popular || line.lpt_banco_popular || 0),
@@ -324,6 +327,7 @@ export function PreNomina() {
         grossSalaryUSD: 0,
         baseImponibleCRC: 0,
         overtimeHours: 0,
+        mixedOvertimeHours: 0,
         ccss: 0,
         isr: 0,
         bancoPopular: 0,
@@ -591,7 +595,8 @@ export function PreNomina() {
                       <TableHead className="w-8 print:hidden"></TableHead>
                       <TableHead>Empleado</TableHead>
                       <TableHead className="text-right">Salario Bruto</TableHead>
-                      <TableHead className="text-right">Hrs Extra</TableHead>
+                      <TableHead className="text-right">Hrs Extra (1.5x)</TableHead>
+                      <TableHead className="text-right">Hrs Dobles (2x)</TableHead>
                       <TableHead className="text-right">CCSS</TableHead>
                       <TableHead className="text-right">B. Popular</TableHead>
                       <TableHead className="text-right">ISR</TableHead>
@@ -663,6 +668,20 @@ export function PreNomina() {
                               <span className="font-mono">{formatNumber(Number(line.overtime_hours || 0))}</span>
                             )}
                           </TableCell>
+                          <TableCell className="text-right">
+                            {isEditable ? (
+                              <Input
+                                type="number"
+                                step="0.5"
+                                min="0"
+                                className="w-16 h-7 text-right text-xs"
+                                value={getValue(line, 'mixed_overtime_hours' as keyof PayrollLine)}
+                                onChange={(e) => handleFieldChange(line.id, 'mixed_overtime_hours', Number(e.target.value))}
+                              />
+                            ) : (
+                              <span className="font-mono">{formatNumber(Number(line.mixed_overtime_hours || 0))}</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right font-mono text-orange-600">
                             ₡{formatNumber(detail.ccss_obrero || 0)}
                           </TableCell>
@@ -719,6 +738,9 @@ export function PreNomina() {
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         {formatNumber(totals?.overtimeHours || 0)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {formatNumber(totals?.mixedOvertimeHours || 0)}
                       </TableCell>
                       <TableCell className="text-right font-mono text-orange-600">
                         ₡{formatNumber(totals?.ccss || 0)}
