@@ -301,12 +301,14 @@ export function PreNomina() {
       (acc, line) => {
         const detail = line.deductions_detail || {};
         const grossSalary = getValue(line, 'gross_salary');
+        const overtimeHours = getValue(line, 'overtime_hours');
         const baseImponible = detail.base_imponible_crc || (grossSalary * exchangeRate);
         const netUSD = Number(line.net_pay) / exchangeRate;
         
         return {
           grossSalaryUSD: acc.grossSalaryUSD + grossSalary,
           baseImponibleCRC: acc.baseImponibleCRC + baseImponible,
+          overtimeHours: acc.overtimeHours + overtimeHours,
           ccss: acc.ccss + Number(detail.ccss_obrero || 0),
           isr: acc.isr + Number(detail.isr_neto || 0),
           bancoPopular: acc.bancoPopular + Number(detail.banco_popular || line.lpt_banco_popular || 0),
@@ -321,6 +323,7 @@ export function PreNomina() {
       {
         grossSalaryUSD: 0,
         baseImponibleCRC: 0,
+        overtimeHours: 0,
         ccss: 0,
         isr: 0,
         bancoPopular: 0,
@@ -588,6 +591,7 @@ export function PreNomina() {
                       <TableHead className="w-8 print:hidden"></TableHead>
                       <TableHead>Empleado</TableHead>
                       <TableHead className="text-right">Salario Bruto</TableHead>
+                      <TableHead className="text-right">Hrs Extra</TableHead>
                       <TableHead className="text-right">CCSS</TableHead>
                       <TableHead className="text-right">B. Popular</TableHead>
                       <TableHead className="text-right">ISR</TableHead>
@@ -645,6 +649,20 @@ export function PreNomina() {
                               <span className="font-mono">{grossDisplay}</span>
                             )}
                           </TableCell>
+                          <TableCell className="text-right">
+                            {isEditable ? (
+                              <Input
+                                type="number"
+                                step="0.5"
+                                min="0"
+                                className="w-16 h-7 text-right text-xs"
+                                value={getValue(line, 'overtime_hours')}
+                                onChange={(e) => handleFieldChange(line.id, 'overtime_hours', Number(e.target.value))}
+                              />
+                            ) : (
+                              <span className="font-mono">{formatNumber(Number(line.overtime_hours || 0))}</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right font-mono text-orange-600">
                             ₡{formatNumber(detail.ccss_obrero || 0)}
                           </TableCell>
@@ -698,6 +716,9 @@ export function PreNomina() {
                       <TableCell>TOTALES ({payrollLines.length})</TableCell>
                       <TableCell className="text-right font-mono">
                         ₡{formatNumber(totals?.baseImponibleCRC || 0)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {formatNumber(totals?.overtimeHours || 0)}
                       </TableCell>
                       <TableCell className="text-right font-mono text-orange-600">
                         ₡{formatNumber(totals?.ccss || 0)}
