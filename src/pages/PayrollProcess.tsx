@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +27,8 @@ import {
   CheckCircle,
   RefreshCw,
   Edit,
-  XCircle
+  XCircle,
+  TableProperties
 } from "lucide-react";
 import { useCompany } from "@/contexts/CompanyContext";
 import { formatCurrency } from "@/lib/utils";
@@ -64,6 +66,7 @@ interface PayrollLine {
 export function PayrollProcess() {
   const { selectedCompany } = useCompany();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [batches, setBatches] = useState<PayrollBatch[]>([]);
   const [selectedBatch, setSelectedBatch] = useState<string>("");
   const [payrollLines, setPayrollLines] = useState<PayrollLine[]>([]);
@@ -627,14 +630,25 @@ export function PayrollProcess() {
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>Detalle de Planilla ({payrollLines.length} empleados)</span>
-                    {currentBatch?.status === 'calculado' && (
-                      <div className="flex items-center gap-2">
-                        <Edit className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">
-                          Haz clic en una fila para editarla
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {currentBatch?.status === 'calculado' && (
+                        <div className="flex items-center gap-2">
+                          <Edit className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">
+                            Haz clic en una fila para editarla
+                          </span>
+                        </div>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/reports/pre-nomina?batch=${selectedBatch}`)}
+                        className="gap-2"
+                      >
+                        <TableProperties className="h-4 w-4" />
+                        Ver Desglose Completo
+                      </Button>
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
