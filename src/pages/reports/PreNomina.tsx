@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, Save, Calculator, AlertCircle, CheckCircle, FileSpreadsheet, Printer, Download } from "lucide-react";
+import { Loader2, RefreshCw, Save, Calculator, AlertCircle, CheckCircle, FileSpreadsheet, Printer, Download, Edit, Undo2 } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -98,6 +98,7 @@ export function PreNomina() {
   const [editingState, setEditingState] = useState<EditingState>({});
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRevertingStatus, setIsRevertingStatus] = useState(false);
 
   // Auto-select batch from URL parameter
   useEffect(() => {
@@ -264,6 +265,39 @@ export function PreNomina() {
       });
     } finally {
       setIsRecalculating(false);
+    }
+  };
+
+  // Revert batch status to "calculado"
+  const handleRevertToCalculado = async () => {
+    if (!selectedBatchId) return;
+
+    setIsRevertingStatus(true);
+    try {
+      const { error } = await supabase
+        .from('payroll_batches')
+        .update({ status: 'calculado' as any, updated_at: new Date().toISOString() })
+        .eq('id', selectedBatchId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Estado actualizado",
+        description: "El lote ha sido revertido a 'Calculado'. Ahora puede editar los datos.",
+      });
+
+      // Invalidate queries to refresh batch data
+      queryClient.invalidateQueries({ queryKey: ["payrollBatchesPreNomina"] });
+      queryClient.invalidateQueries({ queryKey: ["payrollBatches"] });
+      queryClient.invalidateQueries({ queryKey: ["latestBatch"] });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "No se pudo actualizar el estado",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRevertingStatus(false);
     }
   };
 
@@ -480,9 +514,25 @@ export function PreNomina() {
           {getPayrollTypeBadge(currentBatch.payroll_type)}
           <Badge variant="outline">TC: ₡{exchangeRate.toFixed(2)}</Badge>
           {!isEditable && (
-            <span className="text-sm text-muted-foreground">
-              Este batch está {currentBatch.status} y no se puede editar
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                Este batch está {currentBatch.status} y no se puede editar
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRevertToCalculado}
+                disabled={isRevertingStatus}
+                className="gap-2"
+              >
+                {isRevertingStatus ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Undo2 className="h-4 w-4" />
+                )}
+                Editar Lote
+              </Button>
+            </div>
           )}
           {Object.keys(editingState).length > 0 && (
             <Badge variant="destructive" className="animate-pulse">
