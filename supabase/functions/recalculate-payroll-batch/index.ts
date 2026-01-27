@@ -124,13 +124,19 @@ serve(async (req) => {
       fodesaf_rate: companyParams?.fodesaf_rate || 5.00,
       banco_popular_patronal: companyParams?.banco_popular_patronal || 0.25,
       ins_riesgos_trabajo: companyParams?.ins_riesgos_trabajo || 1.50,
-      renta_bracket_1_limit: companyParams?.renta_bracket_1_limit || 941000,
+      // 2026 Costa Rica Income Tax Brackets (ISR)
+      // Tramo 1: ₡0 - ₡918,000 = 0%
+      // Tramo 2: ₡918,000 - ₡1,347,000 = 10%
+      // Tramo 3: ₡1,347,000 - ₡2,364,000 = 15%
+      // Tramo 4: ₡2,364,000 - ₡4,727,000 = 20%
+      // Tramo 5: ₡4,727,000+ = 25%
+      renta_bracket_1_limit: companyParams?.renta_bracket_1_limit || 918000,
       renta_bracket_1_rate: companyParams?.renta_bracket_1_rate || 0,
-      renta_bracket_2_limit: companyParams?.renta_bracket_2_limit || 1381000,
+      renta_bracket_2_limit: companyParams?.renta_bracket_2_limit || 1347000,
       renta_bracket_2_rate: companyParams?.renta_bracket_2_rate || 10,
-      renta_bracket_3_limit: companyParams?.renta_bracket_3_limit || 2423000,
+      renta_bracket_3_limit: companyParams?.renta_bracket_3_limit || 2364000,
       renta_bracket_3_rate: companyParams?.renta_bracket_3_rate || 15,
-      renta_bracket_4_limit: companyParams?.renta_bracket_4_limit || 4845000,
+      renta_bracket_4_limit: companyParams?.renta_bracket_4_limit || 4727000,
       renta_bracket_4_rate: companyParams?.renta_bracket_4_rate || 20,
       renta_bracket_5_rate: companyParams?.renta_bracket_5_rate || 25,
     };
