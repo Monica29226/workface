@@ -36,9 +36,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUserRole, AppRole } from "@/hooks/useUserRole";
 import { useRolePreview } from "@/contexts/RolePreviewContext";
+import { usePayrollWorkflowStatus } from "@/hooks/usePayrollWorkflowStatus";
 
 // Roles that have HR/Admin access (can see full sidebar)
 const HR_ROLES: AppRole[] = ['admin', 'company_manager', 'ACL_SuperAdmin', 'ACL_PayrollSpecialist', 'ACL_Auditor', 'Client_Admin', 'Client_HR', 'Client_Viewer'];
@@ -252,11 +254,48 @@ export function AppSidebar() {
   const { t } = useLanguage();
   const { role: actualRole, loading } = useUserRole();
   const { previewRole, isPreviewMode } = useRolePreview();
+  const { data: workflowStatus } = usePayrollWorkflowStatus();
   const currentPath = location.pathname;
   const collapsed = state === "collapsed";
 
   // Use preview role if in preview mode, otherwise use actual role
   const role = isPreviewMode ? previewRole : actualRole;
+
+  // Get badge count for each workflow step
+  const getStepBadgeCount = (stepNumber?: number): number => {
+    if (!workflowStatus || !stepNumber) return 0;
+    
+    switch (stepNumber) {
+      case 1: // Crear Lote - show drafts that need calculation
+        return workflowStatus.borrador;
+      case 2: // Pre-Nómina - show calculated batches ready for review
+        return workflowStatus.calculado;
+      case 3: // Pre-Colilla - show approved batches ready for authorization
+        return workflowStatus.aprobado;
+      case 4: // Enviar Colillas - show authorized batches ready to send
+        return workflowStatus.autorizado;
+      default:
+        return 0;
+    }
+  };
+
+  // Get badge variant based on step
+  const getStepBadgeVariant = (stepNumber?: number): "default" | "secondary" | "destructive" | "outline" => {
+    if (!stepNumber) return "secondary";
+    
+    switch (stepNumber) {
+      case 1: // Borrador - needs attention
+        return "destructive";
+      case 2: // Calculado - in progress
+        return "default";
+      case 3: // Aprobado - ready for next step
+        return "secondary";
+      case 4: // Autorizado - ready to send
+        return "default";
+      default:
+        return "secondary";
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -332,7 +371,17 @@ export function AppSidebar() {
                         >
                           <item.icon className="h-4 w-4 flex-shrink-0" />
                           {!collapsed && (
-                            <span className="truncate">{t(item.title)}</span>
+                            <>
+                              <span className="truncate flex-1">{t(item.title)}</span>
+                              {item.stepNumber && getStepBadgeCount(item.stepNumber) > 0 && (
+                                <Badge 
+                                  variant={getStepBadgeVariant(item.stepNumber)} 
+                                  className="ml-auto h-5 min-w-5 px-1.5 text-xs font-medium"
+                                >
+                                  {getStepBadgeCount(item.stepNumber)}
+                                </Badge>
+                              )}
+                            </>
                           )}
                         </NavLink>
                       )}
