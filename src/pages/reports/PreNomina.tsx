@@ -26,6 +26,7 @@ interface DeductionsDetail {
   magisterio?: number;
   poliza_vida?: number;
   loan_deduction?: number;
+  banco_popular?: number;
 }
 
 interface PayrollLine {
@@ -308,6 +309,7 @@ export function PreNomina() {
           baseImponibleCRC: acc.baseImponibleCRC + baseImponible,
           ccss: acc.ccss + Number(detail.ccss_obrero || 0),
           isr: acc.isr + Number(detail.isr_neto || 0),
+          bancoPopular: acc.bancoPopular + Number(detail.banco_popular || line.lpt_banco_popular || 0),
           loans: acc.loans + Number(detail.loan_deduction || 0),
           bonuses: acc.bonuses + Number(line.additional_bonuses || 0),
           otherDeductions: acc.otherDeductions + Number(line.additional_deductions || 0),
@@ -321,6 +323,7 @@ export function PreNomina() {
         baseImponibleCRC: 0,
         ccss: 0,
         isr: 0,
+        bancoPopular: 0,
         loans: 0,
         bonuses: 0,
         otherDeductions: 0,
@@ -536,7 +539,7 @@ export function PreNomina() {
               <CardTitle className="text-base">Resumen de Deducciones</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
                 <div>
                   <div className="text-muted-foreground">CCSS ({companyParams?.ccss_obrero_total || 10.83}%)</div>
                   <div className="font-semibold text-orange-600">₡{formatNumber(totals?.ccss || 0)}</div>
@@ -544,6 +547,10 @@ export function PreNomina() {
                 <div>
                   <div className="text-muted-foreground">ISR</div>
                   <div className="font-semibold text-orange-600">₡{formatNumber(totals?.isr || 0)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Banco Popular (1%)</div>
+                  <div className="font-semibold text-orange-600">₡{formatNumber(totals?.bancoPopular || 0)}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Préstamos</div>
@@ -580,13 +587,14 @@ export function PreNomina() {
                     <TableRow className="text-xs">
                       <TableHead className="w-8 print:hidden"></TableHead>
                       <TableHead>Empleado</TableHead>
-                      <TableHead className="text-right">Salario USD</TableHead>
+                      <TableHead className="text-right">Salario Bruto</TableHead>
                       <TableHead className="text-right">CCSS</TableHead>
+                      <TableHead className="text-right">B. Popular</TableHead>
                       <TableHead className="text-right">ISR</TableHead>
                       <TableHead className="text-right">Préstamos</TableHead>
-                      <TableHead className="text-right">Bonos</TableHead>
-                      <TableHead className="text-right font-semibold">Total Ded.</TableHead>
-                      <TableHead className="text-right font-semibold text-green-600">Neto USD</TableHead>
+                      <TableHead className="text-right">Otras Ded.</TableHead>
+                      <TableHead className="text-right font-semibold text-orange-700">Total Ded.</TableHead>
+                      <TableHead className="text-right font-semibold text-green-600">Neto</TableHead>
                       <TableHead className="w-16 print:hidden"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -595,7 +603,14 @@ export function PreNomina() {
                       const isValid = validateLine(line);
                       const lineHasChanges = hasChanges(line.id);
                       const detail = line.deductions_detail || {};
-                      const netUSD = Number(line.net_pay) / exchangeRate;
+                      const isCRC = line.currency === 'CRC';
+                      const grossDisplay = isCRC 
+                        ? `₡${formatNumber(Number(line.gross_salary))}` 
+                        : `$${formatNumber(Number(line.gross_salary))}`;
+                      const netDisplay = isCRC 
+                        ? `₡${formatNumber(Number(line.net_pay))}` 
+                        : `$${(Number(line.net_pay) / exchangeRate).toFixed(2)}`;
+                      const bancoPopular = Number(detail.banco_popular || line.lpt_banco_popular || 0);
                       
                       return (
                         <TableRow 
@@ -622,16 +637,19 @@ export function PreNomina() {
                               <Input
                                 type="number"
                                 step="100"
-                                className="w-24 h-7 text-right text-xs"
+                                className="w-28 h-7 text-right text-xs"
                                 value={getValue(line, 'gross_salary')}
                                 onChange={(e) => handleFieldChange(line.id, 'gross_salary', Number(e.target.value))}
                               />
                             ) : (
-                              <span className="font-mono">${formatNumber(Number(line.gross_salary))}</span>
+                              <span className="font-mono">{grossDisplay}</span>
                             )}
                           </TableCell>
                           <TableCell className="text-right font-mono text-orange-600">
                             ₡{formatNumber(detail.ccss_obrero || 0)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-orange-600">
+                            ₡{formatNumber(bancoPopular)}
                           </TableCell>
                           <TableCell className="text-right font-mono text-orange-600">
                             ₡{formatNumber(detail.isr_neto || 0)}
@@ -645,18 +663,18 @@ export function PreNomina() {
                                 type="number"
                                 step="1000"
                                 className="w-20 h-7 text-right text-xs"
-                                value={getValue(line, 'additional_bonuses')}
-                                onChange={(e) => handleFieldChange(line.id, 'additional_bonuses', Number(e.target.value))}
+                                value={getValue(line, 'additional_deductions')}
+                                onChange={(e) => handleFieldChange(line.id, 'additional_deductions', Number(e.target.value))}
                               />
                             ) : (
-                              <span className="font-mono text-green-600">₡{formatNumber(Number(line.additional_bonuses || 0))}</span>
+                              <span className="font-mono text-orange-600">₡{formatNumber(Number(line.additional_deductions || 0))}</span>
                             )}
                           </TableCell>
                           <TableCell className="text-right font-mono font-semibold text-orange-700">
                             ₡{formatNumber(Number(line.deductions))}
                           </TableCell>
                           <TableCell className="text-right font-mono font-semibold text-green-600">
-                            ${netUSD.toFixed(2)}
+                            {netDisplay}
                           </TableCell>
                           <TableCell className="print:hidden">
                             {lineHasChanges && (
@@ -679,10 +697,13 @@ export function PreNomina() {
                       <TableCell className="print:hidden"></TableCell>
                       <TableCell>TOTALES ({payrollLines.length})</TableCell>
                       <TableCell className="text-right font-mono">
-                        ${formatNumber(totals?.grossSalaryUSD || 0)}
+                        ₡{formatNumber(totals?.baseImponibleCRC || 0)}
                       </TableCell>
                       <TableCell className="text-right font-mono text-orange-600">
                         ₡{formatNumber(totals?.ccss || 0)}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-orange-600">
+                        ₡{formatNumber(totals?.bancoPopular || 0)}
                       </TableCell>
                       <TableCell className="text-right font-mono text-orange-600">
                         ₡{formatNumber(totals?.isr || 0)}
@@ -690,14 +711,14 @@ export function PreNomina() {
                       <TableCell className="text-right font-mono text-orange-600">
                         ₡{formatNumber(totals?.loans || 0)}
                       </TableCell>
-                      <TableCell className="text-right font-mono text-green-600">
-                        ₡{formatNumber(totals?.bonuses || 0)}
+                      <TableCell className="text-right font-mono text-orange-600">
+                        ₡{formatNumber(totals?.otherDeductions || 0)}
                       </TableCell>
                       <TableCell className="text-right font-mono text-orange-700">
                         ₡{formatNumber(totals?.totalDeductions || 0)}
                       </TableCell>
                       <TableCell className="text-right font-mono text-green-600">
-                        ${formatNumber(totals?.netPayUSD || 0)}
+                        ₡{formatNumber(totals?.netPayCRC || 0)}
                       </TableCell>
                       <TableCell className="print:hidden"></TableCell>
                     </TableRow>
