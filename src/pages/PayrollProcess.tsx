@@ -2,9 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -22,23 +20,20 @@ import {
 } from "@/components/ui/select";
 import { 
   Calendar,
-  Calculator,
   FileText,
   Loader2,
   AlertCircle,
   CheckCircle,
-  Plus,
   RefreshCw,
   Edit,
   XCircle
 } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { useCompany } from "@/contexts/CompanyContext";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { EditablePayrollRow } from "@/components/payroll/EditablePayrollRow";
+import { CreatePayrollBatchForm } from "@/components/payroll/CreatePayrollBatchForm";
 
 interface PayrollBatch {
   id: string;
@@ -76,15 +71,6 @@ export function PayrollProcess() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [activeEmployees, setActiveEmployees] = useState<number>(0);
-
-  // New batch form
-  const [periodStart, setPeriodStart] = useState("");
-  const [periodEnd, setPeriodEnd] = useState("");
-  const [frequency, setFrequency] = useState<'mensual' | 'quincenal' | 'semanal'>('mensual');
-  const [payrollType, setPayrollType] = useState<'adelanto' | 'segunda' | 'completa'>('completa');
-  const [exchangeRate, setExchangeRate] = useState(510.27);
-  const [copyFromPrevious, setCopyFromPrevious] = useState(false);
-  const [previousBatchId, setPreviousBatchId] = useState<string>("");
 
   useEffect(() => {
     if (selectedCompany) {
@@ -175,65 +161,7 @@ export function PayrollProcess() {
     }
   };
 
-  const handleCreateBatch = async () => {
-    if (!selectedCompany || !periodStart || !periodEnd) {
-      toast({
-        title: "Datos incompletos",
-        description: "Completa todos los campos requeridos",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (activeEmployees === 0) {
-      toast({
-        title: "No hay empleados activos",
-        description: "Debes agregar al menos un empleado activo antes de crear una planilla",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('process-payroll', {
-        body: {
-          companyId: selectedCompany.id,
-          periodStart,
-          periodEnd,
-          frequency,
-          payrollType: frequency === 'quincenal' ? payrollType : 'completa',
-          exchangeRate,
-          copyFromBatchId: copyFromPrevious ? previousBatchId : undefined,
-        },
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Planilla procesada",
-        description: `Se crearon ${data.linesCreated} líneas de planilla`,
-      });
-
-      // Refresh batches and select the new one
-      await fetchBatches();
-      
-      // Clear form
-      setPeriodStart("");
-      setPeriodEnd("");
-      setCopyFromPrevious(false);
-      setPreviousBatchId("");
-    } catch (error: any) {
-      console.error('Error processing payroll:', error);
-      toast({
-        title: "Error",
-        description: error.message || "No se pudo procesar la planilla",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  // handleCreateBatch is now handled by CreatePayrollBatchForm component
 
   const validatePayrollLines = (): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
@@ -554,165 +482,16 @@ export function PayrollProcess() {
         </div>
       </div>
 
-      {/* Create New Batch */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              Crear Nueva Planilla
-            </div>
-            <Badge variant={activeEmployees > 0 ? "default" : "destructive"}>
-              {activeEmployees} empleados activos
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {activeEmployees === 0 && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="flex items-center justify-between">
-                <span>No hay empleados activos. Debes agregar empleados antes de crear una planilla.</span>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => window.location.href = '/employees'}
-                  className="ml-2"
-                >
-                  Ir a Empleados
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label>Fecha Inicio *</Label>
-              <Input
-                type="date"
-                value={periodStart}
-                onChange={(e) => setPeriodStart(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Fecha Fin *</Label>
-              <Input
-                type="date"
-                value={periodEnd}
-                onChange={(e) => setPeriodEnd(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Frecuencia *</Label>
-              <Select value={frequency} onValueChange={(v: any) => {
-                setFrequency(v);
-                // Reset payroll type when changing frequency
-                if (v !== 'quincenal') setPayrollType('completa');
-              }}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mensual">Mensual</SelectItem>
-                  <SelectItem value="quincenal">Quincenal</SelectItem>
-                  <SelectItem value="semanal">Semanal</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {frequency === 'quincenal' && (
-              <div className="space-y-2">
-                <Label>Tipo de Quincena *</Label>
-                <Select value={payrollType} onValueChange={(v: any) => setPayrollType(v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="adelanto">1ra Quincena - Adelanto de Salario</SelectItem>
-                    <SelectItem value="segunda">2da Quincena - Pago Final</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label>Tipo de Cambio</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={exchangeRate}
-                onChange={(e) => setExchangeRate(parseFloat(e.target.value))}
-              />
-            </div>
-          </div>
-          
-          {/* Biweekly info banner */}
-          {frequency === 'quincenal' && (
-            <Alert className="bg-blue-50 border-blue-200">
-              <AlertCircle className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800">
-                <strong>{payrollType === 'adelanto' ? 'Adelanto de Salario:' : 'Segunda Quincena:'}</strong>{' '}
-                {payrollType === 'adelanto' 
-                  ? 'Se calculará el 50% del salario neto estimado con 50% de las deducciones mensuales.'
-                  : 'Se calculará el 50% restante del salario con el otro 50% de las deducciones.'}
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {/* Copy from previous month option */}
-          <div className="space-y-4 border-t pt-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="copy-previous" 
-                checked={copyFromPrevious}
-                onCheckedChange={(checked) => setCopyFromPrevious(checked as boolean)}
-              />
-              <Label htmlFor="copy-previous" className="cursor-pointer">
-                Copiar datos del mes anterior (horas, bonos, deducciones)
-              </Label>
-            </div>
-            
-            {copyFromPrevious && batches.length > 0 && (
-              <div className="space-y-2">
-                <Label>Seleccionar planilla base</Label>
-                <Select value={previousBatchId} onValueChange={setPreviousBatchId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar planilla anterior" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {batches.map(batch => (
-                      <SelectItem key={batch.id} value={batch.id}>
-                        {batch.batch_id} - {new Date(batch.period_start).toLocaleDateString('es-CR')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-          <Button 
-            onClick={handleCreateBatch} 
-            disabled={isProcessing || !periodStart || !periodEnd || activeEmployees === 0}
-            className="gap-2"
-          >
-            {isProcessing ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Procesando...
-              </>
-            ) : (
-              <>
-                <Calculator className="h-4 w-4" />
-                Procesar Planilla
-              </>
-            )}
-          </Button>
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Este proceso creará automáticamente líneas de planilla para todos los empleados activos, 
-              calculando salarios, deducciones (CCSS, renta), aguinaldo y días de vacaciones.
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
+      {/* Create New Batch - Using improved component */}
+      {selectedCompany && (
+        <CreatePayrollBatchForm
+          companyId={selectedCompany.id}
+          companyName={selectedCompany.name || ''}
+          activeEmployees={activeEmployees}
+          existingBatches={batches}
+          onBatchCreated={fetchBatches}
+        />
+      )}
 
       {/* Existing Batches */}
       {batches.length > 0 && (
