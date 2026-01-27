@@ -16,7 +16,10 @@ import {
   Calendar,
   UserCircle,
   History,
-  Palmtree
+  Palmtree,
+  ClipboardList,
+  FileCheck,
+  Send
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,45 +59,69 @@ interface NavigationItem {
   group: string;
   isAction?: boolean;
   roles?: AppRole[];
+  stepNumber?: number;
 }
 
-// Items for HR/Admin users - using role groups for cleaner definitions
+// Items for HR/Admin users - reorganized by workflow
 const hrNavigationItems: NavigationItem[] = [
+  // === PROCESO DE PLANILLA (Paso a paso) ===
+  { 
+    title: '1. Crear Lote', 
+    url: '/payroll-process', 
+    icon: ClipboardList,
+    group: 'payroll_workflow',
+    roles: MANAGER_ROLES,
+    stepNumber: 1
+  },
+  { 
+    title: '2. Pre-Nómina', 
+    url: '/reports/pre-nomina', 
+    icon: Calculator,
+    group: 'payroll_workflow',
+    roles: HR_ROLES,
+    stepNumber: 2
+  },
+  { 
+    title: '3. Pre-Colilla', 
+    url: '/reports/pre-colilla', 
+    icon: FileCheck,
+    group: 'payroll_workflow',
+    roles: HR_ROLES,
+    stepNumber: 3
+  },
+  { 
+    title: '4. Enviar Colillas', 
+    url: '/payslips', 
+    icon: Send,
+    group: 'payroll_workflow',
+    roles: HR_ROLES,
+    stepNumber: 4
+  },
+  
+  // === GESTIÓN (Management) ===
   { 
     title: 'nav.dashboard', 
     url: '/dashboard', 
     icon: LayoutDashboard,
-    group: 'main',
+    group: 'management',
     roles: HR_ROLES
-  },
-  { 
-    title: 'nav.payroll_process', 
-    url: '/payroll-process', 
-    icon: Calculator,
-    group: 'main',
-    roles: MANAGER_ROLES
   },
   { 
     title: 'nav.employees', 
     url: '/employees', 
     icon: Users,
-    group: 'main',
+    group: 'management',
     roles: HR_ROLES
   },
   { 
     title: 'nav.projects', 
     url: '/projects', 
     icon: Clock,
-    group: 'main',
+    group: 'management',
     roles: HR_ROLES
   },
-  { 
-    title: 'nav.payslips', 
-    url: '/payslips', 
-    icon: Receipt,
-    group: 'main',
-    roles: HR_ROLES
-  },
+  
+  // === REPORTES ===
   { 
     title: 'nav.historico', 
     url: '/historico', 
@@ -131,26 +158,14 @@ const hrNavigationItems: NavigationItem[] = [
     roles: MANAGER_ROLES
   },
   { 
-    title: 'Pre-Nómina', 
-    url: '/reports/pre-nomina', 
-    icon: Calculator,
-    group: 'reports',
-    roles: HR_ROLES
-  },
-  { 
-    title: 'Pre-Colilla', 
-    url: '/reports/pre-colilla', 
-    icon: Receipt,
-    group: 'reports',
-    roles: HR_ROLES
-  },
-  { 
     title: 'nav.liquidations', 
     url: '/liquidations', 
     icon: DollarSign,
     group: 'reports',
     roles: HR_ROLES
   },
+  
+  // === COMUNICACIONES ===
   { 
     title: 'nav.email_center', 
     url: '/email-center', 
@@ -158,6 +173,8 @@ const hrNavigationItems: NavigationItem[] = [
     group: 'communications',
     roles: MANAGER_ROLES
   },
+  
+  // === ADMINISTRACIÓN ===
   { 
     title: 'nav.users', 
     url: '/users', 
@@ -215,7 +232,8 @@ const logoutItem: NavigationItem = {
 };
 
 const hrGroups = {
-  main: 'ACL Workforce HUB',
+  payroll_workflow: 'Proceso de Planilla',
+  management: 'Gestión',
   reports: 'Reportes',
   communications: 'Comunicaciones',
   admin: 'Administración',
