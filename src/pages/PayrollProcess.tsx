@@ -599,7 +599,7 @@ export function PayrollProcess() {
                   <CardContent className="pt-6">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-primary">
-                        {formatCurrency(stats.totalGross, 'USD')}
+                        ₡{stats.totalGross.toLocaleString('es-CR', { maximumFractionDigits: 0 })}
                       </div>
                       <div className="text-sm text-muted-foreground mt-1">
                         Total Bruto
@@ -612,7 +612,7 @@ export function PayrollProcess() {
                   <CardContent className="pt-6">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-green-600">
-                        {formatCurrency(stats.totalNetUSD, 'USD')}
+                        ₡{stats.totalNet.toLocaleString('es-CR', { maximumFractionDigits: 0 })}
                       </div>
                       <div className="text-sm text-muted-foreground mt-1">
                         Total a Pagar
