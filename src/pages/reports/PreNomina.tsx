@@ -1,4 +1,5 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useCompany } from "@/contexts/CompanyContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -91,10 +92,19 @@ export function PreNomina() {
   const { selectedCompany } = useCompany();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  const batchFromUrl = searchParams.get('batch');
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(batchFromUrl);
   const [editingState, setEditingState] = useState<EditingState>({});
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Auto-select batch from URL parameter
+  useEffect(() => {
+    if (batchFromUrl && batchFromUrl !== selectedBatchId) {
+      setSelectedBatchId(batchFromUrl);
+    }
+  }, [batchFromUrl]);
 
   // Fetch payroll batches
   const { data: batches, isLoading: batchesLoading } = useQuery({
