@@ -132,12 +132,15 @@ function generatePreColillaPDF(payrollLine: any, company: any): Uint8Array {
   const grayColor = [100, 100, 100];
   const lightGray = [248, 249, 250];
 
-  // Helper functions
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num || 0);
+  // Helper functions - Use proper colon symbol
+  const formatNumber = (num: number, decimals = 0) => {
+    return new Intl.NumberFormat('es-CR', { 
+      minimumFractionDigits: decimals, 
+      maximumFractionDigits: decimals 
+    }).format(num || 0);
   };
-  const formatCRC = (amount: number) => `₡${formatNumber(amount)}`;
-  const formatUSD = (amount: number) => `$${formatNumber(amount)}`;
+  // FIXED: Using proper colon symbol (₡) - Unicode \u20A1
+  const formatCRC = (amount: number) => `\u20A1${formatNumber(amount, 0)}`;
 
   // Parse data
   const periodStart = new Date(payrollLine.batch.period_start);
@@ -156,23 +159,44 @@ function generatePreColillaPDF(payrollLine: any, company: any): Uint8Array {
     console.error("Error parsing deductions_detail:", e);
   }
 
-  const exchangeRate = payrollLine.exchange_rate_to_base || 505.10;
-  const isUSDSalary = payrollLine.currency === 'USD';
-  const grossSalaryCRC = isUSDSalary ? Number(payrollLine.gross_salary) * exchangeRate : Number(payrollLine.gross_salary);
+  const grossSalaryCRC = Number(payrollLine.gross_salary);
   const netPayCRC = Number(payrollLine.net_pay);
-  const netPayUSD = netPayCRC / exchangeRate;
   const hireDate = payrollLine.employee.hire_date 
     ? new Date(payrollLine.employee.hire_date).toLocaleDateString('es-CR')
     : 'N/A';
+
+  // Calculate vacation days accrued based on months worked (1 day per month as per Costa Rican law)
+  // For biweekly payroll = 0.5 days per period
+  const isBiweekly = payrollLine.batch.frequency === 'quincenal';
+  const vacationDaysAccrued = isBiweekly ? 0.5 : 1.0;
 
   let y = 15;
   const marginLeft = 15;
   const pageWidth = 216; // Letter width in mm
   const contentWidth = pageWidth - 30;
 
-  // ===== HEADER =====
+  // ===== HEADER WITH COMPANY LOGO =====
   doc.setFillColor(...primaryColor);
   doc.rect(0, 0, pageWidth, 45, 'F');
+
+  // Try to add company logo if available
+  let logoAdded = false;
+  if (company.logo_url) {
+    try {
+      // Logo placeholder - will be positioned at left
+      // For now, we'll add a placeholder circle since we can't fetch external images easily
+      doc.setFillColor(255, 255, 255);
+      doc.circle(marginLeft + 12, 22, 10, 'F');
+      doc.setFontSize(6);
+      doc.setTextColor(...primaryColor);
+      doc.text("LOGO", marginLeft + 12, 24, { align: 'center' });
+      logoAdded = true;
+    } catch (e) {
+      console.warn("Could not add logo:", e);
+    }
+  }
+
+  const textStartX = logoAdded ? marginLeft + 30 : marginLeft;
 
   // Platform name
   doc.setTextColor(255, 255, 255);
@@ -187,18 +211,18 @@ function generatePreColillaPDF(payrollLine: any, company: any): Uint8Array {
   // Company name
   doc.setFontSize(16);
   doc.setTextColor(255, 255, 255);
-  doc.text(company.display_name, marginLeft, 22);
+  doc.text(company.display_name, textStartX, 22);
 
   if (company.tax_id) {
     doc.setFontSize(9);
     doc.setTextColor(200, 200, 200);
-    doc.text(`Cédula Jurídica: ${company.tax_id}`, marginLeft, 28);
+    doc.text(`Cedula Juridica: ${company.tax_id}`, textStartX, 28);
   }
 
   // Period
   doc.setFontSize(9);
   doc.setTextColor(...goldColor);
-  doc.text(`Período: ${periodLabel}`, marginLeft, 38);
+  doc.text(`Periodo: ${periodLabel}`, textStartX, 38);
 
   y = 50;
 
@@ -210,40 +234,9 @@ function generatePreColillaPDF(payrollLine: any, company: any): Uint8Array {
   doc.rect(marginLeft, y, contentWidth, 10, 'S');
   doc.setTextColor(133, 100, 4);
   doc.setFontSize(9);
-  doc.text("⚠ DOCUMENTO DE VALIDACIÓN - NO ES COMPROBANTE OFICIAL", pageWidth / 2, y + 6.5, { align: 'center' });
+  doc.text("DOCUMENTO DE VALIDACION - NO ES COMPROBANTE OFICIAL", pageWidth / 2, y + 6.5, { align: 'center' });
 
   y += 18;
-
-  // ===== USD SALARY BANNER =====
-  if (isUSDSalary) {
-    doc.setFillColor(227, 242, 253);
-    doc.roundedRect(marginLeft, y, contentWidth, 28, 3, 3, 'F');
-    doc.setDrawColor(...blueColor);
-    doc.setLineWidth(0.5);
-    doc.roundedRect(marginLeft, y, contentWidth, 28, 3, 3, 'S');
-
-    doc.setFontSize(11);
-    doc.setTextColor(13, 71, 161);
-    doc.text("💵 Salario Original en Dólares", marginLeft + 5, y + 7);
-
-    doc.setFontSize(9);
-    const col1 = marginLeft + 5;
-    const col2 = marginLeft + 65;
-    const col3 = marginLeft + 125;
-
-    doc.setTextColor(21, 101, 192);
-    doc.text("Salario Bruto USD", col1, y + 15);
-    doc.text("Tipo de Cambio (BCCR)", col2, y + 15);
-    doc.text("Equivalente CRC", col3, y + 15);
-
-    doc.setFontSize(10);
-    doc.setTextColor(13, 71, 161);
-    doc.text(formatUSD(Number(payrollLine.gross_salary)), col1, y + 21);
-    doc.text(`₡${exchangeRate.toFixed(2)}`, col2, y + 21);
-    doc.text(formatCRC(grossSalaryCRC), col3, y + 21);
-
-    y += 35;
-  }
 
   // ===== COLLABORATOR INFO =====
   doc.setFillColor(...lightGray);
@@ -259,7 +252,7 @@ function generatePreColillaPDF(payrollLine: any, company: any): Uint8Array {
   const infoCol4 = marginLeft + 150;
 
   doc.text("COLABORADOR", infoCol1, infoY);
-  doc.text("CÉDULA / ID", infoCol2, infoY);
+  doc.text("CEDULA / ID", infoCol2, infoY);
   doc.text("FECHA INGRESO", infoCol3, infoY);
   doc.text("CENTRO DE COSTO", infoCol4, infoY);
 
@@ -285,7 +278,7 @@ function generatePreColillaPDF(payrollLine: any, company: any): Uint8Array {
   const hoursData = [
     { label: "Ordinarias", value: Number(payrollLine.regular_hours) || 0 },
     { label: "Extra", value: Number(payrollLine.overtime_hours) || 0 },
-    { label: "Vacaciones", value: `${Number(payrollLine.vacation_days_taken) || 0} días` },
+    { label: "Vacaciones", value: `${Number(payrollLine.vacation_days_taken) || 0} dias` },
     { label: "Ausencias", value: Number(payrollLine.absence_days) || 0 },
   ];
 
@@ -360,10 +353,10 @@ function generatePreColillaPDF(payrollLine: any, company: any): Uint8Array {
     drawRow("Magisterio Nacional", `-${formatCRC(deductionsDetail.magisterio)}`, false, redColor);
   }
   if (deductionsDetail.poliza_vida > 0) {
-    drawRow("Póliza de Vida", `-${formatCRC(deductionsDetail.poliza_vida)}`, false, redColor);
+    drawRow("Poliza de Vida", `-${formatCRC(deductionsDetail.poliza_vida)}`, false, redColor);
   }
   if (deductionsDetail.loan_deduction > 0) {
-    drawRow("Préstamos", `-${formatCRC(deductionsDetail.loan_deduction)}`, false, redColor);
+    drawRow("Prestamos", `-${formatCRC(deductionsDetail.loan_deduction)}`, false, redColor);
   }
   if (Number(payrollLine.additional_deductions) > 0) {
     drawRow("Otras Deducciones", `-${formatCRC(Number(payrollLine.additional_deductions))}`, false, redColor);
@@ -386,45 +379,43 @@ function generatePreColillaPDF(payrollLine: any, company: any): Uint8Array {
   doc.roundedRect(marginLeft, y, contentWidth, 8, 2, 2, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(9);
-  doc.text("PROVISIONES DEL PERÍODO", marginLeft + 5, y + 5.5);
+  doc.text("PROVISIONES DEL PERIODO", marginLeft + 5, y + 5.5);
 
   y += 10;
 
-  drawRow("Vacaciones Acumuladas", `${Number(payrollLine.vacation_accrued_days || 0).toFixed(2)} días`);
+  // Vacation days - 1 day per month worked (Costa Rican law)
+  const vacationLabel = isBiweekly ? "Vacaciones Acumuladas (0.5 dias/quincena)" : "Vacaciones Acumuladas (1 dia/mes)";
+  drawRow(vacationLabel, `${vacationDaysAccrued.toFixed(2)} dias`);
   drawRow("Aguinaldo Acumulado", formatCRC(Number(payrollLine.aguinaldo_accrued || 0)));
 
   y += 8;
 
   // ===== NET PAY BOX =====
   doc.setFillColor(...greenColor);
-  doc.roundedRect(marginLeft, y, contentWidth, 35, 4, 4, 'F');
+  doc.roundedRect(marginLeft, y, contentWidth, 30, 4, 4, 'F');
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
   doc.text("TOTAL A DEPOSITAR", pageWidth / 2, y + 10, { align: 'center' });
 
   doc.setFontSize(22);
-  doc.text(`${formatUSD(netPayUSD)} USD`, pageWidth / 2, y + 22, { align: 'center' });
+  doc.text(formatCRC(netPayCRC), pageWidth / 2, y + 24, { align: 'center' });
 
-  doc.setFontSize(11);
-  doc.setTextColor(200, 255, 200);
-  doc.text(`(${formatCRC(netPayCRC)} CRC)`, pageWidth / 2, y + 30, { align: 'center' });
-
-  y += 45;
+  y += 40;
 
   // ===== FOOTER =====
   doc.setFillColor(255, 243, 205);
   doc.roundedRect(marginLeft, y, contentWidth, 12, 2, 2, 'F');
   doc.setTextColor(133, 100, 4);
   doc.setFontSize(8);
-  doc.text("Este es un documento de pre-visualización para validación interna.", pageWidth / 2, y + 5, { align: 'center' });
+  doc.text("Este es un documento de pre-visualizacion para validacion interna.", pageWidth / 2, y + 5, { align: 'center' });
   doc.text("NO debe ser enviado al empleado como comprobante oficial.", pageWidth / 2, y + 10, { align: 'center' });
 
   y += 18;
 
   doc.setTextColor(150, 150, 150);
   doc.setFontSize(7);
-  doc.text("ACL Workforce HUB - Gestión de Nómina Costa Rica", pageWidth / 2, y, { align: 'center' });
+  doc.text("ACL Workforce HUB - Gestion de Nomina Costa Rica", pageWidth / 2, y, { align: 'center' });
   doc.text(`Generado: ${new Date().toLocaleString('es-CR')}`, pageWidth / 2, y + 5, { align: 'center' });
 
   // Return as Uint8Array
