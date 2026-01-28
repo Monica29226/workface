@@ -19,28 +19,69 @@ const formatCRC = (amount: number): string => {
   return `₡${Math.round(amount).toLocaleString('es-CR')}`;
 };
 
+// Format USD without decimals
+const formatUSD = (amount: number): string => {
+  return `$${Math.round(amount).toLocaleString('en-US')}`;
+};
+
+// Check if company is Horizonte Positivo (uses USD)
+const isHorizontePositivo = (companyName: string | undefined): boolean => {
+  if (!companyName) return false;
+  return /horizonte\s*positivo/i.test(companyName);
+};
+
 // CCSS rate for standard companies
 const CCSS_RATE = 0.1083;
 
-// ISR 2026 brackets
+// ISR 2026 brackets - returns breakdown per bracket
+interface ISRBreakdown {
+  total: number;
+  isr_10: number;
+  isr_15: number;
+  isr_20: number;
+  isr_25: number;
+}
+
+const calculateISRWithBreakdown = (baseImponible: number): ISRBreakdown => {
+  let remaining = baseImponible;
+  let isr_10 = 0;
+  let isr_15 = 0;
+  let isr_20 = 0;
+  let isr_25 = 0;
+
+  // Bracket 25%: > ₡4,727,000
+  if (remaining > 4727000) {
+    isr_25 = (remaining - 4727000) * 0.25;
+    remaining = 4727000;
+  }
+  // Bracket 20%: ₡2,364,000 - ₡4,727,000
+  if (remaining > 2364000) {
+    isr_20 = (remaining - 2364000) * 0.20;
+    remaining = 2364000;
+  }
+  // Bracket 15%: ₡1,347,000 - ₡2,364,000
+  if (remaining > 1347000) {
+    isr_15 = (remaining - 1347000) * 0.15;
+    remaining = 1347000;
+  }
+  // Bracket 10%: ₡918,000 - ₡1,347,000
+  if (remaining > 918000) {
+    isr_10 = (remaining - 918000) * 0.10;
+  }
+  // 0% for first ₡918,000
+
+  return {
+    total: Math.round(isr_10 + isr_15 + isr_20 + isr_25),
+    isr_10: Math.round(isr_10),
+    isr_15: Math.round(isr_15),
+    isr_20: Math.round(isr_20),
+    isr_25: Math.round(isr_25),
+  };
+};
+
+// Legacy function for backward compatibility
 const calculateISR = (baseImponible: number): number => {
-  let isr = 0;
-  if (baseImponible > 4727000) {
-    isr += (baseImponible - 4727000) * 0.25;
-    baseImponible = 4727000;
-  }
-  if (baseImponible > 2364000) {
-    isr += (baseImponible - 2364000) * 0.20;
-    baseImponible = 2364000;
-  }
-  if (baseImponible > 1347000) {
-    isr += (baseImponible - 1347000) * 0.15;
-    baseImponible = 1347000;
-  }
-  if (baseImponible > 918000) {
-    isr += (baseImponible - 918000) * 0.10;
-  }
-  return isr;
+  return calculateISRWithBreakdown(baseImponible).total;
 };
 
 interface DeductionsDetail {
@@ -126,28 +167,31 @@ function calculateDoubleHoursAmount(baseSalary: number, horasDobles: number): nu
   return Math.round(hourlyRate * horasDobles * 2);
 }
 
-// Calculate deductions based on gross salary
-function calculateDeductions(grossSalary: number, adelanto: number, originalDetail: DeductionsDetail | null): {
+// Calculate deductions based on gross salary with ISR breakdown
+interface DeductionsCalc {
   ccss: number;
   isr: number;
+  isrBreakdown: ISRBreakdown;
   otros: number;
   totalDeductions: number;
   netPay: number;
   faltaPorPagar: number;
-} {
+}
+
+function calculateDeductions(grossSalary: number, adelanto: number, originalDetail: DeductionsDetail | null): DeductionsCalc {
   const baseImponible = grossSalary;
   const ccss = Math.round(baseImponible * CCSS_RATE);
   const baseParaISR = baseImponible - ccss;
-  const isr = Math.round(calculateISR(baseParaISR));
+  const isrBreakdown = calculateISRWithBreakdown(baseParaISR);
   
   // Include other deductions from original detail (loans, etc.)
   const otros = originalDetail?.loan_deduction || 0;
   
-  const totalDeductions = ccss + isr + otros;
+  const totalDeductions = ccss + isrBreakdown.total + otros;
   const netPay = grossSalary - totalDeductions;
   const faltaPorPagar = netPay - adelanto;
   
-  return { ccss, isr, otros, totalDeductions, netPay, faltaPorPagar };
+  return { ccss, isr: isrBreakdown.total, isrBreakdown, otros, totalDeductions, netPay, faltaPorPagar };
 }
 
 // Editable Employee Card Component
@@ -155,14 +199,29 @@ function EditableEmployeeCard({
   line, 
   onSave,
   isSaving,
-  t
+  t,
+  isUSD,
+  exchangeRate
 }: { 
   line: PayrollLine;
   onSave: (lineId: string, grossSalary: number, adelanto: number, deductions: number, netPay: number, overtimeHours: number, overtimeAmount: number, doubleHours: number, doubleAmount: number) => void;
   isSaving: boolean;
   t: (key: string) => string;
+  isUSD: boolean;
+  exchangeRate: number;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Currency formatter based on company type
+  const formatAmount = (amountCRC: number): string => {
+    if (isUSD && exchangeRate > 0) {
+      return formatUSD(amountCRC / exchangeRate);
+    }
+    return formatCRC(amountCRC);
+  };
+  
+  // Get currency symbol
+  const currencySymbol = isUSD ? '$' : '₡';
   
   // Get existing overtime and double hours amounts
   const existingOvertimeAmount = Number(line.overtime_hours || 0) > 0 
@@ -315,8 +374,17 @@ function EditableEmployeeCard({
           </div>
         </div>
 
-        {/* Salary Breakdown - ALL IN CRC */}
+        {/* Salary Breakdown */}
         <div className="space-y-3">
+          {/* Currency indicator for Horizonte Positivo */}
+          {isUSD && (
+            <div className="flex items-center justify-end">
+              <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                💵 Montos en USD
+              </Badge>
+            </div>
+          )}
+          
           {/* Base Salary - Editable */}
           <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${isEditing ? 'bg-primary/10 border border-primary/30' : 'bg-muted/30'}`}>
             <div className="flex items-center gap-2">
@@ -324,17 +392,25 @@ function EditableEmployeeCard({
             </div>
             {isEditing ? (
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">₡</span>
+                <span className="text-muted-foreground">{currencySymbol}</span>
                 <Input
                   type="text"
-                  value={values.baseSalary.toLocaleString('es-CR')}
-                  onChange={(e) => handleBaseSalaryChange(e.target.value)}
+                  value={isUSD && exchangeRate > 0 
+                    ? Math.round(values.baseSalary / exchangeRate).toLocaleString('en-US')
+                    : values.baseSalary.toLocaleString('es-CR')
+                  }
+                  onChange={(e) => {
+                    const rawValue = parseFloat(e.target.value.replace(/[^0-9.-]/g, '')) || 0;
+                    // If USD, convert back to CRC for storage
+                    const crcValue = isUSD && exchangeRate > 0 ? rawValue * exchangeRate : rawValue;
+                    handleBaseSalaryChange(crcValue.toString());
+                  }}
                   className="h-8 w-32 text-right font-mono text-base"
                 />
               </div>
             ) : (
               <span className="font-mono text-base font-medium text-foreground tabular-nums">
-                {formatCRC(values.baseSalary)}
+                {formatAmount(values.baseSalary)}
               </span>
             )}
           </div>
@@ -359,7 +435,7 @@ function EditableEmployeeCard({
                   />
                   <span className="text-xs text-muted-foreground">hrs</span>
                 </div>
-                <span className="font-mono text-sm text-success">= {formatCRC(overtimeAmount)}</span>
+                <span className="font-mono text-sm text-success">= {formatAmount(overtimeAmount)}</span>
               </div>
             ) : (
               <div className="flex items-center gap-2">
@@ -367,13 +443,13 @@ function EditableEmployeeCard({
                   <span className="text-xs text-muted-foreground">{values.horasExtra} hrs =</span>
                 )}
                 <span className="font-mono text-base font-medium text-success tabular-nums">
-                  +{formatCRC(overtimeAmount)}
+                  +{formatAmount(overtimeAmount)}
                 </span>
               </div>
             )}
           </div>
 
-          {/* Horas Dobles 2× - NEW Editable Field for holidays/night work */}
+          {/* Horas Dobles 2× - Editable Field for holidays/night work */}
           <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${isEditing ? 'bg-blue-50 border border-blue-200' : 'bg-blue-50/50'}`}>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs font-normal text-blue-700 border-blue-300 bg-blue-100">
@@ -393,7 +469,7 @@ function EditableEmployeeCard({
                   />
                   <span className="text-xs text-muted-foreground">hrs</span>
                 </div>
-                <span className="font-mono text-sm text-blue-700">= {formatCRC(doubleHoursAmount)}</span>
+                <span className="font-mono text-sm text-blue-700">= {formatAmount(doubleHoursAmount)}</span>
               </div>
             ) : (
               <div className="flex items-center gap-2">
@@ -401,7 +477,7 @@ function EditableEmployeeCard({
                   <span className="text-xs text-muted-foreground">{values.horasDobles} hrs =</span>
                 )}
                 <span className="font-mono text-base font-medium text-blue-700 tabular-nums">
-                  +{formatCRC(doubleHoursAmount)}
+                  +{formatAmount(doubleHoursAmount)}
                 </span>
               </div>
             )}
@@ -411,7 +487,7 @@ function EditableEmployeeCard({
           <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg border-2 border-dashed">
             <Badge variant="secondary" className="text-xs font-normal">{t('payroll.gross')}</Badge>
             <span className="font-mono text-lg font-bold text-foreground tabular-nums">
-              {formatCRC(grossSalary)}
+              {formatAmount(grossSalary)}
             </span>
           </div>
 
@@ -425,38 +501,74 @@ function EditableEmployeeCard({
             </div>
             {isEditing ? (
               <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">₡</span>
+                <span className="text-muted-foreground">{currencySymbol}</span>
                 <Input
                   type="text"
-                  value={values.adelanto.toLocaleString('es-CR')}
-                  onChange={(e) => handleAdelantoChange(e.target.value)}
+                  value={isUSD && exchangeRate > 0 
+                    ? Math.round(values.adelanto / exchangeRate).toLocaleString('en-US')
+                    : values.adelanto.toLocaleString('es-CR')
+                  }
+                  onChange={(e) => {
+                    const rawValue = parseFloat(e.target.value.replace(/[^0-9.-]/g, '')) || 0;
+                    const crcValue = isUSD && exchangeRate > 0 ? rawValue * exchangeRate : rawValue;
+                    handleAdelantoChange(crcValue.toString());
+                  }}
                   className="h-8 w-32 text-right font-mono text-base"
                   placeholder="0"
                 />
               </div>
             ) : (
               <span className="font-mono text-base font-medium text-amber-700 tabular-nums">
-                -{formatCRC(values.adelanto)}
+                -{formatAmount(values.adelanto)}
               </span>
             )}
           </div>
 
-          {/* Deductions Breakdown */}
+          {/* Deductions Breakdown with ISR Tramos */}
           <div className="bg-destructive/5 rounded-lg p-3 space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">CCSS (10.83%)</span>
-              <span className="font-mono text-destructive">-{formatCRC(calculations.ccss)}</span>
+              <span className="font-mono text-destructive">-{formatAmount(calculations.ccss)}</span>
             </div>
+            
+            {/* ISR Breakdown by Brackets */}
             {calculations.isr > 0 && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">ISR</span>
-                <span className="font-mono text-destructive">-{formatCRC(calculations.isr)}</span>
+              <div className="space-y-1 pl-2 border-l-2 border-destructive/20">
+                <div className="flex items-center justify-between text-sm font-medium">
+                  <span className="text-muted-foreground">Impuesto sobre la Renta:</span>
+                  <span className="font-mono text-destructive">-{formatAmount(calculations.isr)}</span>
+                </div>
+                {calculations.isrBreakdown.isr_10 > 0 && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground pl-2">└ Tramo 10% (₡918K-₡1.35M)</span>
+                    <span className="font-mono text-destructive/80">-{formatCRC(calculations.isrBreakdown.isr_10)}</span>
+                  </div>
+                )}
+                {calculations.isrBreakdown.isr_15 > 0 && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground pl-2">└ Tramo 15% (₡1.35M-₡2.36M)</span>
+                    <span className="font-mono text-destructive/80">-{formatCRC(calculations.isrBreakdown.isr_15)}</span>
+                  </div>
+                )}
+                {calculations.isrBreakdown.isr_20 > 0 && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground pl-2">└ Tramo 20% (₡2.36M-₡4.73M)</span>
+                    <span className="font-mono text-destructive/80">-{formatCRC(calculations.isrBreakdown.isr_20)}</span>
+                  </div>
+                )}
+                {calculations.isrBreakdown.isr_25 > 0 && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground pl-2">└ Tramo 25% (&gt;₡4.73M)</span>
+                    <span className="font-mono text-destructive/80">-{formatCRC(calculations.isrBreakdown.isr_25)}</span>
+                  </div>
+                )}
               </div>
             )}
+            
             {calculations.otros > 0 && (
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Otros (Préstamos)</span>
-                <span className="font-mono text-destructive">-{formatCRC(calculations.otros)}</span>
+                <span className="font-mono text-destructive">-{formatAmount(calculations.otros)}</span>
               </div>
             )}
             <div className="flex items-center justify-between pt-2 border-t border-destructive/20">
@@ -464,7 +576,7 @@ function EditableEmployeeCard({
                 Total Deducciones
               </Badge>
               <span className="font-mono text-base font-medium text-destructive tabular-nums">
-                -{formatCRC(calculations.totalDeductions)}
+                -{formatAmount(calculations.totalDeductions)}
               </span>
             </div>
           </div>
@@ -473,7 +585,7 @@ function EditableEmployeeCard({
           <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg border">
             <Badge variant="secondary" className="text-xs font-normal">Total a Recibir</Badge>
             <span className="font-mono text-lg font-semibold text-foreground tabular-nums">
-              {formatCRC(calculations.netPay)}
+              {formatAmount(calculations.netPay)}
             </span>
           </div>
 
@@ -484,7 +596,7 @@ function EditableEmployeeCard({
                 (-) Adelanto Recibido
               </Badge>
               <span className="font-mono text-base font-medium text-amber-800 tabular-nums">
-                -{formatCRC(values.adelanto)}
+                -{formatAmount(values.adelanto)}
               </span>
             </div>
           )}
@@ -496,7 +608,7 @@ function EditableEmployeeCard({
                 = FALTA POR PAGAR
               </Badge>
               <span className="font-mono text-xl font-bold text-white tabular-nums">
-                {formatCRC(calculations.faltaPorPagar)}
+                {formatAmount(calculations.faltaPorPagar)}
               </span>
             </div>
           </div>
@@ -769,6 +881,18 @@ export function PreColilla() {
   });
 
   const currentBatch = batches?.find(b => b.id === selectedBatchId);
+
+  // Detect if company is Horizonte Positivo (uses USD)
+  const isUSD = useMemo(() => {
+    return isHorizontePositivo(selectedCompany?.name);
+  }, [selectedCompany?.name]);
+
+  // Get exchange rate from first payroll line or default
+  const exchangeRate = useMemo(() => {
+    if (!payrollLines || payrollLines.length === 0) return 505.10; // Default Jan 2026 rate
+    const firstLineWithRate = payrollLines.find(line => line.exchange_rate_to_base && line.exchange_rate_to_base > 0);
+    return firstLineWithRate?.exchange_rate_to_base || 505.10;
+  }, [payrollLines]);
 
   // Filtered payroll lines by search
   const filteredLines = useMemo(() => {
@@ -1069,6 +1193,8 @@ export function PreColilla() {
                 onSave={handleSavePayrollLine}
                 isSaving={isSaving}
                 t={t}
+                isUSD={isUSD}
+                exchangeRate={exchangeRate}
               />
             ))}
           </div>
