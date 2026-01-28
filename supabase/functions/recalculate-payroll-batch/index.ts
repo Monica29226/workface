@@ -111,7 +111,46 @@ serve(async (req) => {
       console.warn("Company parameters not found, using defaults:", paramsError);
     }
 
-    // Build parameters from company_parameters table - NEVER use global defaults
+    // ========================================
+    // 2026 COSTA RICA ISR BRACKETS (OFFICIAL)
+    // Validated against Ministerio de Hacienda
+    // ========================================
+    const ISR_2026_BRACKETS = {
+      bracket_1_limit: 918000,   // 0% up to ₡918,000
+      bracket_2_limit: 1347000,  // 10% from ₡918,000 to ₡1,347,000
+      bracket_3_limit: 2364000,  // 15% from ₡1,347,000 to ₡2,364,000
+      bracket_4_limit: 4727000,  // 20% from ₡2,364,000 to ₡4,727,000
+      // 25% above ₡4,727,000
+    };
+
+    // Validate company ISR brackets against 2026 official values
+    const validateISRBrackets = () => {
+      const warnings: string[] = [];
+      
+      if (companyParams) {
+        if (companyParams.renta_bracket_1_limit && companyParams.renta_bracket_1_limit !== ISR_2026_BRACKETS.bracket_1_limit) {
+          warnings.push(`ISR Tramo 1: Configurado ₡${companyParams.renta_bracket_1_limit.toLocaleString()}, vigente ₡${ISR_2026_BRACKETS.bracket_1_limit.toLocaleString()}`);
+        }
+        if (companyParams.renta_bracket_2_limit && companyParams.renta_bracket_2_limit !== ISR_2026_BRACKETS.bracket_2_limit) {
+          warnings.push(`ISR Tramo 2: Configurado ₡${companyParams.renta_bracket_2_limit.toLocaleString()}, vigente ₡${ISR_2026_BRACKETS.bracket_2_limit.toLocaleString()}`);
+        }
+        if (companyParams.renta_bracket_3_limit && companyParams.renta_bracket_3_limit !== ISR_2026_BRACKETS.bracket_3_limit) {
+          warnings.push(`ISR Tramo 3: Configurado ₡${companyParams.renta_bracket_3_limit.toLocaleString()}, vigente ₡${ISR_2026_BRACKETS.bracket_3_limit.toLocaleString()}`);
+        }
+        if (companyParams.renta_bracket_4_limit && companyParams.renta_bracket_4_limit !== ISR_2026_BRACKETS.bracket_4_limit) {
+          warnings.push(`ISR Tramo 4: Configurado ₡${companyParams.renta_bracket_4_limit.toLocaleString()}, vigente ₡${ISR_2026_BRACKETS.bracket_4_limit.toLocaleString()}`);
+        }
+      }
+      
+      return warnings;
+    };
+
+    const isrValidationWarnings = validateISRBrackets();
+    if (isrValidationWarnings.length > 0) {
+      console.warn('⚠️ ISR BRACKET VALIDATION WARNINGS:', isrValidationWarnings);
+    }
+
+    // Build parameters - ALWAYS use 2026 official ISR brackets as defaults
     const params: CompanyParameters = {
       is_education_sector: companyParams?.is_education_sector || false,
       magisterio_rate: companyParams?.magisterio_rate || 0,
@@ -124,19 +163,14 @@ serve(async (req) => {
       fodesaf_rate: companyParams?.fodesaf_rate || 5.00,
       banco_popular_patronal: companyParams?.banco_popular_patronal || 0.25,
       ins_riesgos_trabajo: companyParams?.ins_riesgos_trabajo || 1.50,
-      // 2026 Costa Rica Income Tax Brackets (ISR)
-      // Tramo 1: ₡0 - ₡918,000 = 0%
-      // Tramo 2: ₡918,000 - ₡1,347,000 = 10%
-      // Tramo 3: ₡1,347,000 - ₡2,364,000 = 15%
-      // Tramo 4: ₡2,364,000 - ₡4,727,000 = 20%
-      // Tramo 5: ₡4,727,000+ = 25%
-      renta_bracket_1_limit: companyParams?.renta_bracket_1_limit || 918000,
+      // 2026 ISR brackets - use official values as defaults
+      renta_bracket_1_limit: companyParams?.renta_bracket_1_limit || ISR_2026_BRACKETS.bracket_1_limit,
       renta_bracket_1_rate: companyParams?.renta_bracket_1_rate || 0,
-      renta_bracket_2_limit: companyParams?.renta_bracket_2_limit || 1347000,
+      renta_bracket_2_limit: companyParams?.renta_bracket_2_limit || ISR_2026_BRACKETS.bracket_2_limit,
       renta_bracket_2_rate: companyParams?.renta_bracket_2_rate || 10,
-      renta_bracket_3_limit: companyParams?.renta_bracket_3_limit || 2364000,
+      renta_bracket_3_limit: companyParams?.renta_bracket_3_limit || ISR_2026_BRACKETS.bracket_3_limit,
       renta_bracket_3_rate: companyParams?.renta_bracket_3_rate || 15,
-      renta_bracket_4_limit: companyParams?.renta_bracket_4_limit || 4727000,
+      renta_bracket_4_limit: companyParams?.renta_bracket_4_limit || ISR_2026_BRACKETS.bracket_4_limit,
       renta_bracket_4_rate: companyParams?.renta_bracket_4_rate || 20,
       renta_bracket_5_rate: companyParams?.renta_bracket_5_rate || 25,
     };
@@ -427,7 +461,14 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         lines_updated: updatedLines.length,
-        is_education_sector: params.is_education_sector
+        is_education_sector: params.is_education_sector,
+        isrValidationWarnings: isrValidationWarnings.length > 0 ? isrValidationWarnings : undefined,
+        isrBracketsUsed: {
+          bracket_1: params.renta_bracket_1_limit,
+          bracket_2: params.renta_bracket_2_limit,
+          bracket_3: params.renta_bracket_3_limit,
+          bracket_4: params.renta_bracket_4_limit,
+        }
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
