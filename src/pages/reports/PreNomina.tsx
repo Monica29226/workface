@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, RefreshCw, Save, Calculator, AlertCircle, CheckCircle, FileSpreadsheet, Printer, Download, Edit, Undo2 } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { LivePayrollPreview } from "@/components/payroll/LivePayrollPreview";
 
 interface DeductionsDetail {
   ccss_obrero?: number;
@@ -99,6 +100,7 @@ export function PreNomina() {
   const [isRecalculating, setIsRecalculating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isRevertingStatus, setIsRevertingStatus] = useState(false);
+  const [focusedLineId, setFocusedLineId] = useState<string | null>(null);
 
   // Auto-select batch from URL parameter
   useEffect(() => {
@@ -705,15 +707,31 @@ export function PreNomina() {
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right relative">
                             {isEditable ? (
-                              <Input
-                                type="number"
-                                step="100"
-                                className="w-28 h-7 text-right text-xs"
-                                value={getValue(line, 'gross_salary')}
-                                onChange={(e) => handleFieldChange(line.id, 'gross_salary', Number(e.target.value))}
-                              />
+                              <div className="relative inline-block">
+                                <Input
+                                  type="number"
+                                  step="100"
+                                  className="w-28 h-7 text-right text-xs"
+                                  value={getValue(line, 'gross_salary')}
+                                  onChange={(e) => handleFieldChange(line.id, 'gross_salary', Number(e.target.value))}
+                                  onFocus={() => setFocusedLineId(line.id)}
+                                  onBlur={() => setTimeout(() => setFocusedLineId(null), 200)}
+                                />
+                                <LivePayrollPreview
+                                  currentGross={Number(line.gross_salary)}
+                                  newGross={getValue(line, 'gross_salary')}
+                                  exchangeRate={exchangeRate}
+                                  companyParams={companyParams}
+                                  currency={line.currency}
+                                  currentDeductions={detail}
+                                  loanDeduction={Number(detail.loan_deduction || 0)}
+                                  additionalDeductions={getValue(line, 'additional_deductions')}
+                                  payrollType={currentBatch?.payroll_type}
+                                  isVisible={focusedLineId === line.id && getValue(line, 'gross_salary') !== Number(line.gross_salary)}
+                                />
+                              </div>
                             ) : (
                               <span className="font-mono">{grossDisplay}</span>
                             )}
