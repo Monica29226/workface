@@ -1,16 +1,15 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useCompany } from "@/contexts/CompanyContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Eye, Search, FileText, Download, Send, ArrowDown, Minus, Building2, User } from "lucide-react";
+import { Loader2, Eye, Search, FileText, Download, Send, Minus, Building2, User, Calculator, Save, Pencil, X } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import logoACL from "@/assets/logotipo_acl.png";
@@ -20,9 +19,28 @@ const formatCRC = (amount: number): string => {
   return `₡${Math.round(amount).toLocaleString('es-CR')}`;
 };
 
-// Format USD without decimals
-const formatUSD = (amount: number): string => {
-  return `$${Math.round(amount).toLocaleString('en-US')}`;
+// CCSS rate for standard companies
+const CCSS_RATE = 0.1083;
+
+// ISR 2026 brackets
+const calculateISR = (baseImponible: number): number => {
+  let isr = 0;
+  if (baseImponible > 4727000) {
+    isr += (baseImponible - 4727000) * 0.25;
+    baseImponible = 4727000;
+  }
+  if (baseImponible > 2364000) {
+    isr += (baseImponible - 2364000) * 0.20;
+    baseImponible = 2364000;
+  }
+  if (baseImponible > 1347000) {
+    isr += (baseImponible - 1347000) * 0.15;
+    baseImponible = 1347000;
+  }
+  if (baseImponible > 918000) {
+    isr += (baseImponible - 918000) * 0.10;
+  }
+  return isr;
 };
 
 interface DeductionsDetail {
@@ -57,6 +75,7 @@ interface PayrollLine {
   regular_hours: number;
   overtime_hours: number;
   additional_bonuses: number;
+  additional_deductions: number;
   vacation_days_taken: number;
   vacation_accrued_days: number;
   aguinaldo_accrued: number;
@@ -85,27 +104,97 @@ interface PayrollBatch {
   payroll_type: string;
 }
 
-// Employee Card Component
-function EmployeePayrollCard({ 
+interface EditableValues {
+  grossSalary: number;
+  adelanto: number;
+}
+
+// Calculate deductions based on gross salary
+function calculateDeductions(grossSalary: number, adelanto: number, originalDetail: DeductionsDetail | null): {
+  ccss: number;
+  isr: number;
+  otros: number;
+  totalDeductions: number;
+  netPay: number;
+  faltaPorPagar: number;
+} {
+  const baseImponible = grossSalary;
+  const ccss = Math.round(baseImponible * CCSS_RATE);
+  const baseParaISR = baseImponible - ccss;
+  const isr = Math.round(calculateISR(baseParaISR));
+  
+  // Include other deductions from original detail (loans, etc.)
+  const otros = originalDetail?.loan_deduction || 0;
+  
+  const totalDeductions = ccss + isr + otros;
+  const netPay = grossSalary - totalDeductions;
+  const faltaPorPagar = netPay - adelanto;
+  
+  return { ccss, isr, otros, totalDeductions, netPay, faltaPorPagar };
+}
+
+// Editable Employee Card Component
+function EditableEmployeeCard({ 
   line, 
-  exchangeRate,
-  onViewDetail,
+  onSave,
+  isSaving,
   t
 }: { 
   line: PayrollLine;
-  exchangeRate: number;
-  onViewDetail: () => void;
+  onSave: (lineId: string, grossSalary: number, adelanto: number, deductions: number, netPay: number) => void;
+  isSaving: boolean;
   t: (key: string) => string;
 }) {
-  const grossCRC = line.currency === 'USD' 
-    ? Number(line.gross_salary) * exchangeRate 
-    : Number(line.gross_salary);
+  const [isEditing, setIsEditing] = useState(false);
+  const [values, setValues] = useState<EditableValues>({
+    grossSalary: Number(line.gross_salary),
+    adelanto: Number(line.additional_deductions) || 0,
+  });
   
-  const grossUSD = grossCRC / exchangeRate;
-  const netUSD = Number(line.net_pay) / exchangeRate;
+  // Calculate real-time deductions
+  const calculations = useMemo(() => {
+    return calculateDeductions(values.grossSalary, values.adelanto, line.deductions_detail);
+  }, [values.grossSalary, values.adelanto, line.deductions_detail]);
+  
+  const handleGrossSalaryChange = (value: string) => {
+    const numValue = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
+    setValues(prev => ({ ...prev, grossSalary: numValue }));
+  };
+  
+  const handleAdelantoChange = (value: string) => {
+    const numValue = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
+    setValues(prev => ({ ...prev, adelanto: numValue }));
+  };
+  
+  const handleSave = () => {
+    onSave(
+      line.id, 
+      values.grossSalary, 
+      values.adelanto, 
+      calculations.totalDeductions, 
+      calculations.netPay
+    );
+    setIsEditing(false);
+  };
+  
+  const handleCancel = () => {
+    setValues({
+      grossSalary: Number(line.gross_salary),
+      adelanto: Number(line.additional_deductions) || 0,
+    });
+    setIsEditing(false);
+  };
+
+  // Original values for comparison
+  const originalCalc = useMemo(() => {
+    return calculateDeductions(Number(line.gross_salary), Number(line.additional_deductions) || 0, line.deductions_detail);
+  }, [line.gross_salary, line.additional_deductions, line.deductions_detail]);
+
+  const hasChanges = values.grossSalary !== Number(line.gross_salary) || 
+                     values.adelanto !== (Number(line.additional_deductions) || 0);
 
   return (
-    <Card className="hover:shadow-lg transition-shadow duration-200 border-l-4 border-l-primary/20 hover:border-l-primary">
+    <Card className={`hover:shadow-lg transition-shadow duration-200 border-l-4 ${isEditing ? 'border-l-primary ring-2 ring-primary/20' : 'border-l-primary/20 hover:border-l-primary'}`}>
       <CardContent className="p-5">
         {/* Header: Employee Info */}
         <div className="flex items-start justify-between mb-4">
@@ -122,85 +211,175 @@ function EmployeePayrollCard({
               </p>
             </div>
           </div>
-          {line.cost_center && (
-            <Badge variant="outline" className="text-xs gap-1">
-              <Building2 className="h-3 w-3" />
-              {line.cost_center.code}
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {line.cost_center && (
+              <Badge variant="outline" className="text-xs gap-1">
+                <Building2 className="h-3 w-3" />
+                {line.cost_center.code}
+              </Badge>
+            )}
+            {!isEditing ? (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setIsEditing(true)}
+                className="h-8 w-8 p-0"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            ) : (
+              <div className="flex gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleSave}
+                  disabled={isSaving || !hasChanges}
+                  className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                >
+                  <Save className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                  className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Salary Breakdown with dual currency */}
+        {/* Salary Breakdown - ALL IN CRC */}
         <div className="space-y-3">
-          {/* Gross Salary */}
-          <div className="flex items-center justify-between py-2 px-3 bg-muted/30 rounded-lg">
+          {/* Gross Salary - Editable */}
+          <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${isEditing ? 'bg-primary/10 border border-primary/30' : 'bg-muted/30'}`}>
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs font-normal">{t('payroll.gross')}</Badge>
             </div>
-            <div className="text-right">
-              <span className="font-mono text-base font-medium text-foreground tabular-nums block">
-                {formatCRC(grossCRC)}
+            {isEditing ? (
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">₡</span>
+                <Input
+                  type="text"
+                  value={values.grossSalary.toLocaleString('es-CR')}
+                  onChange={(e) => handleGrossSalaryChange(e.target.value)}
+                  className="h-8 w-32 text-right font-mono text-base"
+                />
+              </div>
+            ) : (
+              <span className="font-mono text-base font-medium text-foreground tabular-nums">
+                {formatCRC(values.grossSalary)}
               </span>
-              <span className="font-mono text-xs text-muted-foreground tabular-nums">
-                {formatUSD(grossUSD)}
-              </span>
-            </div>
+            )}
           </div>
 
-          {/* Deductions */}
-          <div className="flex items-center justify-between py-2 px-3 bg-destructive/5 rounded-lg">
+          {/* Adelanto de Salario - NEW Editable Field */}
+          <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${isEditing ? 'bg-amber-50 border border-amber-200' : 'bg-amber-50/50'}`}>
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs font-normal text-destructive border-destructive/20">
+              <Badge variant="outline" className="text-xs font-normal text-amber-700 border-amber-300 bg-amber-100">
                 <Minus className="h-3 w-3 mr-1" />
-                {t('payroll.deductions')}
+                Adelanto
               </Badge>
             </div>
-            <div className="text-right">
-              <span className="font-mono text-base font-medium text-destructive tabular-nums block">
-                -{formatCRC(Number(line.deductions))}
+            {isEditing ? (
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">₡</span>
+                <Input
+                  type="text"
+                  value={values.adelanto.toLocaleString('es-CR')}
+                  onChange={(e) => handleAdelantoChange(e.target.value)}
+                  className="h-8 w-32 text-right font-mono text-base"
+                  placeholder="0"
+                />
+              </div>
+            ) : (
+              <span className="font-mono text-base font-medium text-amber-700 tabular-nums">
+                -{formatCRC(values.adelanto)}
+              </span>
+            )}
+          </div>
+
+          {/* Deductions Breakdown */}
+          <div className="bg-destructive/5 rounded-lg p-3 space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">CCSS (10.83%)</span>
+              <span className="font-mono text-destructive">-{formatCRC(calculations.ccss)}</span>
+            </div>
+            {calculations.isr > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">ISR</span>
+                <span className="font-mono text-destructive">-{formatCRC(calculations.isr)}</span>
+              </div>
+            )}
+            {calculations.otros > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Otros (Préstamos)</span>
+                <span className="font-mono text-destructive">-{formatCRC(calculations.otros)}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between pt-2 border-t border-destructive/20">
+              <Badge variant="outline" className="text-xs font-normal text-destructive border-destructive/20">
+                Total Deducciones
+              </Badge>
+              <span className="font-mono text-base font-medium text-destructive tabular-nums">
+                -{formatCRC(calculations.totalDeductions)}
               </span>
             </div>
           </div>
 
-          {/* Net Pay - Highlighted with dual currency */}
+          {/* Net Pay */}
+          <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg border">
+            <Badge variant="secondary" className="text-xs font-normal">Total a Recibir</Badge>
+            <span className="font-mono text-lg font-semibold text-foreground tabular-nums">
+              {formatCRC(calculations.netPay)}
+            </span>
+          </div>
+
+          {/* Adelanto Recibido Display */}
+          {values.adelanto > 0 && (
+            <div className="flex items-center justify-between py-2 px-3 bg-amber-100 rounded-lg border border-amber-300">
+              <Badge variant="outline" className="text-xs font-normal text-amber-800 border-amber-400 bg-amber-200">
+                (-) Adelanto Recibido
+              </Badge>
+              <span className="font-mono text-base font-medium text-amber-800 tabular-nums">
+                -{formatCRC(values.adelanto)}
+              </span>
+            </div>
+          )}
+
+          {/* FALTA POR PAGAR - Final Result */}
           <div className="bg-primary rounded-lg p-3">
             <div className="flex items-center justify-between">
-              <Badge className="text-xs font-normal bg-white/20 text-white hover:bg-white/20">{t('payroll.net')}</Badge>
-              <div className="text-right">
-                <span className="font-mono text-lg font-bold text-white tabular-nums block">
-                  {formatCRC(Number(line.net_pay))}
-                </span>
-                <span className="font-mono text-sm text-white/80 tabular-nums">
-                  {formatUSD(netUSD)}
-                </span>
-              </div>
+              <Badge className="text-xs font-bold bg-white/20 text-white hover:bg-white/20">
+                = FALTA POR PAGAR
+              </Badge>
+              <span className="font-mono text-xl font-bold text-white tabular-nums">
+                {formatCRC(calculations.faltaPorPagar)}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Action Button */}
-        <div className="mt-4 pt-3 border-t">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="w-full gap-2 hover:bg-primary/5"
-            onClick={onViewDetail}
-          >
-            <Eye className="h-4 w-4" />
-            {t('common.view_detail')}
-          </Button>
-        </div>
+        {/* Real-time calculation indicator */}
+        {isEditing && hasChanges && (
+          <div className="mt-3 flex items-center gap-2 text-xs text-primary">
+            <Calculator className="h-3 w-3 animate-pulse" />
+            <span>Cálculos actualizados en tiempo real</span>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-// Detail Modal Component - Unified with Histórico view (CRC/USD dual display)
+// Detail Modal Component - ONLY CRC
 function PayrollDetailModal({
   isOpen,
   onClose,
   line,
-  exchangeRate,
   companyName,
   periodLabel,
   onDownloadPDF,
@@ -210,7 +389,6 @@ function PayrollDetailModal({
   isOpen: boolean;
   onClose: () => void;
   line: PayrollLine | null;
-  exchangeRate: number;
   companyName: string;
   periodLabel: string;
   onDownloadPDF: () => void;
@@ -220,22 +398,14 @@ function PayrollDetailModal({
   if (!line) return null;
 
   const detail = line.deductions_detail || {};
-  const grossCRC = line.currency === 'USD' 
-    ? Number(line.gross_salary) * exchangeRate 
-    : Number(line.gross_salary);
-  
-  // USD conversions
-  const grossUSD = grossCRC / exchangeRate;
-  const deductionsUSD = Number(line.deductions) / exchangeRate;
-  const netUSD = Number(line.net_pay) / exchangeRate;
+  const adelanto = Number(line.additional_deductions) || 0;
+  const calculations = calculateDeductions(Number(line.gross_salary), adelanto, detail);
 
   // Build deductions list from detail with translations
-  const deductionItems = detail.items || [
-    { code: 'ccss', label: t('deduction.ccss'), amount: detail.ccss_obrero || 0 },
-    ...(detail.isr_neto && detail.isr_neto > 0 ? [{ code: 'isr', label: t('deduction.isr'), amount: detail.isr_neto }] : []),
-    ...(detail.magisterio && detail.magisterio > 0 ? [{ code: 'mag', label: t('deduction.magisterio'), amount: detail.magisterio }] : []),
-    ...(detail.poliza_vida && detail.poliza_vida > 0 ? [{ code: 'pol', label: t('deduction.poliza'), amount: detail.poliza_vida }] : []),
-    ...(detail.loan_deduction && detail.loan_deduction > 0 ? [{ code: 'loan', label: t('deduction.loans'), amount: detail.loan_deduction }] : []),
+  const deductionItems = [
+    { code: 'ccss', label: 'CCSS (10.83%)', amount: calculations.ccss },
+    ...(calculations.isr > 0 ? [{ code: 'isr', label: 'ISR', amount: calculations.isr }] : []),
+    ...(calculations.otros > 0 ? [{ code: 'otros', label: 'Préstamos', amount: calculations.otros }] : []),
   ].filter(item => item.amount > 0);
 
   return (
@@ -260,15 +430,30 @@ function PayrollDetailModal({
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
-          {/* Summary Cards - CRC with USD below */}
+          {/* Collaborator Info */}
+          <Card className="bg-muted/30">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold">{line.employee.full_name}</p>
+                  <p className="text-sm text-muted-foreground">{line.employee.employee_id}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Summary Cards - ONLY CRC */}
           <div className="grid grid-cols-2 gap-3">
             <Card className="bg-muted/30">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                  <span>+ {t('payroll.gross_salary')}</span>
+                  <span>+ Salario Bruto</span>
                 </div>
                 <p className="text-xl font-bold text-foreground">
-                  {formatCRC(grossCRC)}
+                  {formatCRC(Number(line.gross_salary))}
                 </p>
               </CardContent>
             </Card>
@@ -276,50 +461,19 @@ function PayrollDetailModal({
             <Card className="bg-destructive/5 border-destructive/20">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-                  <span>− {t('payroll.total_deductions')}</span>
+                  <span>− Total Deducciones</span>
                 </div>
                 <p className="text-xl font-bold text-destructive">
-                  {formatCRC(Number(line.deductions))}
+                  {formatCRC(calculations.totalDeductions)}
                 </p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Net Pay Highlight - CRC primary, USD secondary */}
-          <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/30">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">{t('payroll.total_to_receive')}</span>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">
-                    {formatCRC(Number(line.net_pay))}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatUSD(netUSD)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Exchange Rate Info */}
-          <Card className="bg-accent/30 border-accent">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-accent-foreground">{t('payroll.exchange_rate_bccr')}:</span>
-                <Badge variant="outline" className="bg-accent text-accent-foreground border-accent">
-                  {formatCRC(exchangeRate)} / $1 USD
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Deductions Breakdown */}
+          {/* Deductions Breakdown - ONLY CRC */}
           <div>
             <h4 className="font-semibold mb-3 flex items-center gap-2">
-              − {t('payroll.deductions_breakdown')}
+              − Desglose de Deducciones
             </h4>
             
             {deductionItems.length > 0 ? (
@@ -327,9 +481,8 @@ function PayrollDetailModal({
                 <table className="w-full text-sm">
                   <thead className="bg-muted/50">
                     <tr>
-                      <th className="text-left p-3 font-medium">{t('payroll.concept')}</th>
-                      <th className="text-right p-3 font-medium">CRC</th>
-                      <th className="text-right p-3 font-medium">USD</th>
+                      <th className="text-left p-3 font-medium">Concepto</th>
+                      <th className="text-right p-3 font-medium">Monto</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -339,18 +492,12 @@ function PayrollDetailModal({
                         <td className="p-3 text-right font-mono text-destructive">
                           -{formatCRC(item.amount)}
                         </td>
-                        <td className="p-3 text-right font-mono text-muted-foreground">
-                          -{formatUSD(item.amount / exchangeRate)}
-                        </td>
                       </tr>
                     ))}
                     <tr className="border-t bg-muted/30 font-semibold">
-                      <td className="p-3">{t('payroll.total')}</td>
+                      <td className="p-3">Total</td>
                       <td className="p-3 text-right font-mono text-destructive">
-                        -{formatCRC(Number(line.deductions))}
-                      </td>
-                      <td className="p-3 text-right font-mono text-muted-foreground">
-                        -{formatUSD(deductionsUSD)}
+                        -{formatCRC(calculations.totalDeductions)}
                       </td>
                     </tr>
                   </tbody>
@@ -358,10 +505,48 @@ function PayrollDetailModal({
               </div>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-4">
-                {t('precolilla.no_deductions')}
+                No hay deducciones
               </p>
             )}
           </div>
+
+          {/* Net Pay */}
+          <Card className="bg-muted/50 border">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">Total a Recibir</span>
+                <p className="text-xl font-bold text-foreground">
+                  {formatCRC(calculations.netPay)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Adelanto Section */}
+          {adelanto > 0 && (
+            <Card className="bg-amber-50 border-amber-200">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-amber-800">(-) Adelanto Recibido</span>
+                  <p className="text-xl font-bold text-amber-800">
+                    -{formatCRC(adelanto)}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* FALTA POR PAGAR - Final */}
+          <Card className="bg-gradient-to-r from-primary to-primary/80 border-primary">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-white">= FALTA POR PAGAR</span>
+                <p className="text-2xl font-bold text-white">
+                  {formatCRC(calculations.faltaPorPagar)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Download Button */}
           <div className="flex justify-end pt-2">
@@ -388,11 +573,13 @@ export function PreColilla() {
   const { selectedCompany } = useCompany();
   const { t, language } = useLanguage();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEmployee, setSelectedEmployee] = useState<PayrollLine | null>(null);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Fetch payroll batches
   const { data: batches, isLoading: batchesLoading } = useQuery({
@@ -442,26 +629,7 @@ export function PreColilla() {
     enabled: !!selectedBatchId,
   });
 
-  // Fetch company parameters
-  const { data: companyParams } = useQuery({
-    queryKey: ["companyParamsPreColilla", selectedCompany?.id],
-    queryFn: async () => {
-      if (!selectedCompany?.id) return null;
-
-      const { data, error } = await supabase
-        .from("company_parameters")
-        .select("*")
-        .eq("company_id", selectedCompany.id)
-        .single();
-
-      if (error) return null;
-      return data;
-    },
-    enabled: !!selectedCompany?.id,
-  });
-
   const currentBatch = batches?.find(b => b.id === selectedBatchId);
-  const exchangeRate = payrollLines?.[0]?.exchange_rate_to_base || 505.10;
 
   // Filtered payroll lines by search
   const filteredLines = useMemo(() => {
@@ -509,6 +677,49 @@ export function PreColilla() {
     setSelectedEmployee(line);
     setIsPdfModalOpen(true);
   };
+
+  const handleSavePayrollLine = useCallback(async (
+    lineId: string, 
+    grossSalary: number, 
+    adelanto: number, 
+    deductions: number, 
+    netPay: number
+  ) => {
+    setIsSaving(true);
+    try {
+      const faltaPorPagar = netPay - adelanto;
+      
+      const { error } = await supabase
+        .from("payroll_lines")
+        .update({
+          gross_salary: grossSalary,
+          additional_deductions: adelanto,
+          deductions: deductions,
+          net_pay: netPay,
+          total_to_pay: faltaPorPagar,
+        })
+        .eq("id", lineId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Guardado",
+        description: "Los cambios se guardaron correctamente",
+      });
+
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ["payrollLinesPreColilla", selectedBatchId] });
+    } catch (error: any) {
+      console.error('Error saving payroll line:', error);
+      toast({
+        title: "Error",
+        description: error.message || "No se pudieron guardar los cambios",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [selectedBatchId, queryClient, toast]);
 
   const handleApproveAndSend = async () => {
     if (!selectedBatchId) return;
@@ -569,20 +780,21 @@ export function PreColilla() {
     }
   };
 
-  // Summary totals
+  // Summary totals - ALL IN CRC
   const totals = useMemo(() => {
-    if (!payrollLines) return { gross: 0, deductions: 0, net: 0 };
+    if (!payrollLines) return { gross: 0, deductions: 0, net: 0, adelantos: 0, faltaPorPagar: 0 };
     return payrollLines.reduce((acc, line) => {
-      const grossCRC = line.currency === 'USD' 
-        ? Number(line.gross_salary) * exchangeRate 
-        : Number(line.gross_salary);
+      const adelanto = Number(line.additional_deductions) || 0;
+      const calc = calculateDeductions(Number(line.gross_salary), adelanto, line.deductions_detail);
       return {
-        gross: acc.gross + grossCRC,
-        deductions: acc.deductions + Number(line.deductions),
-        net: acc.net + Number(line.net_pay),
+        gross: acc.gross + Number(line.gross_salary),
+        deductions: acc.deductions + calc.totalDeductions,
+        net: acc.net + calc.netPay,
+        adelantos: acc.adelantos + adelanto,
+        faltaPorPagar: acc.faltaPorPagar + calc.faltaPorPagar,
       };
-    }, { gross: 0, deductions: 0, net: 0 });
-  }, [payrollLines, exchangeRate]);
+    }, { gross: 0, deductions: 0, net: 0, adelantos: 0, faltaPorPagar: 0 });
+  }, [payrollLines]);
 
   return (
     <div className="space-y-6">
@@ -593,7 +805,7 @@ export function PreColilla() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">{t('precolilla.title')}</h1>
             <p className="text-muted-foreground">
-              {t('precolilla.description')}
+              {t('precolilla.description')} - Solo Colones (₡)
             </p>
           </div>
         </div>
@@ -630,30 +842,35 @@ export function PreColilla() {
         </div>
       </div>
 
-      {/* Batch Info Bar */}
+      {/* Batch Info Bar - NO USD references */}
       {currentBatch && (
         <Card className="border-primary/20">
           <CardContent className="py-4">
             <div className="flex flex-wrap items-center gap-4">
               {getStatusBadge(currentBatch.status)}
               {currentBatch.payroll_type && getPayrollTypeBadge(currentBatch.payroll_type)}
-              <Badge variant="outline" className="gap-1">
-                T.C. ₡{exchangeRate.toFixed(2)}
-              </Badge>
               <span className="text-sm text-muted-foreground">
                 {payrollLines?.length || 0} {t('common.collaborators')}
               </span>
               
-              {/* Summary Totals */}
+              {/* Summary Totals - ONLY CRC */}
               <div className="ml-auto flex flex-wrap gap-4 text-sm">
                 <div className="text-muted-foreground">
-                  {t('payroll.gross')}: <span className="font-mono font-medium text-foreground">₡{formatNumber(totals.gross)}</span>
+                  Bruto: <span className="font-mono font-medium text-foreground">₡{formatNumber(totals.gross)}</span>
                 </div>
                 <div className="text-muted-foreground">
-                  {t('payroll.deductions')}: <span className="font-mono font-medium text-orange-600">–₡{formatNumber(totals.deductions)}</span>
+                  Deducciones: <span className="font-mono font-medium text-destructive">–₡{formatNumber(totals.deductions)}</span>
                 </div>
                 <div className="text-muted-foreground">
-                  {t('payroll.net')}: <span className="font-mono font-bold text-green-600">₡{formatNumber(totals.net)}</span>
+                  Neto: <span className="font-mono font-medium text-foreground">₡{formatNumber(totals.net)}</span>
+                </div>
+                {totals.adelantos > 0 && (
+                  <div className="text-muted-foreground">
+                    Adelantos: <span className="font-mono font-medium text-amber-600">–₡{formatNumber(totals.adelantos)}</span>
+                  </div>
+                )}
+                <div className="text-muted-foreground">
+                  <span className="font-semibold">Falta:</span> <span className="font-mono font-bold text-primary">₡{formatNumber(totals.faltaPorPagar)}</span>
                 </div>
               </div>
             </div>
@@ -699,11 +916,11 @@ export function PreColilla() {
           {/* Employee Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filteredLines.map((line) => (
-              <EmployeePayrollCard
+              <EditableEmployeeCard
                 key={line.id}
                 line={line}
-                exchangeRate={exchangeRate}
-                onViewDetail={() => handleViewDetail(line)}
+                onSave={handleSavePayrollLine}
+                isSaving={isSaving}
                 t={t}
               />
             ))}
@@ -725,7 +942,6 @@ export function PreColilla() {
         isOpen={isPdfModalOpen}
         onClose={() => setIsPdfModalOpen(false)}
         line={selectedEmployee}
-        exchangeRate={exchangeRate}
         companyName={selectedCompany?.name || ''}
         periodLabel={currentBatch ? formatPeriod(currentBatch.period_start, currentBatch.period_end) : ''}
         onDownloadPDF={handleDownloadPDF}
