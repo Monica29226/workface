@@ -190,7 +190,7 @@ export function PreNomina() {
     return Object.keys(editingState[lineId] || {}).length > 0;
   }, [editingState]);
 
-  // Save individual line
+  // Save individual line with auto-recalculation
   const handleSaveLine = async (line: PayrollLine) => {
     if (!hasChanges(line.id)) return;
     
@@ -198,13 +198,14 @@ export function PreNomina() {
     try {
       const updates = editingState[line.id];
       
-      const { error } = await supabase
-        .from('payroll_lines')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', line.id);
+      // Use edge function for auto-recalculation when gross_salary changes
+      const { data, error } = await supabase.functions.invoke('update-payroll-line', {
+        body: {
+          lineId: line.id,
+          updates,
+          autoRecalculate: true
+        }
+      });
 
       if (error) throw error;
 
@@ -213,9 +214,12 @@ export function PreNomina() {
         return rest;
       });
 
+      const wasRecalculated = data?.auto_recalculated;
       toast({
-        title: "Guardado",
-        description: `Cambios guardados para ${line.employee.full_name}`,
+        title: wasRecalculated ? "Guardado y Recalculado" : "Guardado",
+        description: wasRecalculated 
+          ? `Cambios guardados y deducciones recalculadas para ${line.employee.full_name}`
+          : `Cambios guardados para ${line.employee.full_name}`,
       });
 
       refetchLines();
