@@ -156,6 +156,17 @@ export function CreatePayrollBatchForm({
 
       if (error) throw error;
 
+      // Check for ISR validation warnings
+      if (data.isrValidationWarnings && data.isrValidationWarnings.length > 0) {
+        toast({
+          title: "⚠️ Advertencia ISR",
+          description: `Los tramos de renta configurados difieren de los vigentes 2026. Se usaron los valores actuales pero considera actualizar los parámetros.`,
+          variant: "destructive",
+          duration: 8000,
+        });
+        console.warn('ISR Validation Warnings:', data.isrValidationWarnings);
+      }
+
       toast({
         title: "✓ Planilla creada",
         description: `${data.linesCreated} colaboradores listos para edición`,
