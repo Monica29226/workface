@@ -102,14 +102,59 @@ serve(async (req) => {
       );
     }
 
+    // Check if this is "segunda quincena" (2nd fortnight) to look for advance payment
+    let advancePayment: number | null = null;
+    let advanceBatchId: string | null = null;
+    
+    if (payslip.batch.payroll_type === 'segunda') {
+      // Find the matching "adelanto" batch for the same month/company/employee
+      const periodStart = new Date(payslip.batch.period_start);
+      const firstDayOfMonth = new Date(periodStart.getFullYear(), periodStart.getMonth(), 1);
+      const midMonth = new Date(periodStart.getFullYear(), periodStart.getMonth(), 15);
+      
+      console.log('Looking for adelanto batch for segunda quincena:', {
+        companyId: payslip.company.id,
+        employeeId: payslip.employee_id,
+        firstDayOfMonth: firstDayOfMonth.toISOString(),
+        midMonth: midMonth.toISOString()
+      });
+      
+      // Find adelanto batch for the same month
+      const { data: adelantoBatch, error: adelantoError } = await supabaseClient
+        .from('payroll_batches')
+        .select('id, batch_id')
+        .eq('company_id', payslip.company.id)
+        .eq('payroll_type', 'adelanto')
+        .gte('period_start', firstDayOfMonth.toISOString().split('T')[0])
+        .lte('period_end', midMonth.toISOString().split('T')[0])
+        .single();
+      
+      if (adelantoBatch && !adelantoError) {
+        advanceBatchId = adelantoBatch.batch_id;
+        
+        // Get the payroll line from the adelanto batch for this employee
+        const { data: adelantoLine, error: adelantoLineError } = await supabaseClient
+          .from('payroll_lines')
+          .select('net_pay, total_to_pay')
+          .eq('batch_id', adelantoBatch.id)
+          .eq('employee_id', payslip.employee_id)
+          .single();
+        
+        if (adelantoLine && !adelantoLineError) {
+          advancePayment = adelantoLine.total_to_pay || adelantoLine.net_pay || 0;
+          console.log('Found advance payment:', advancePayment, 'from batch:', advanceBatchId);
+        }
+      }
+    }
+
     // Check if this is Horizonte Positivo - use company-specific template
     const isHorizontePositivo = payslip.company.id === '550e8400-e29b-41d4-a716-446655440000' || 
                                 payslip.company.display_name?.toLowerCase().includes('horizonte positivo');
 
     // Generate HTML for PDF - use company-specific template for Horizonte Positivo
     const html = isHorizontePositivo 
-      ? generateHorizontePositivoPayslipHTML(payslip, payrollLine)
-      : generatePayslipHTML(payslip, payrollLine);
+      ? generateHorizontePositivoPayslipHTML(payslip, payrollLine, advancePayment, advanceBatchId)
+      : generatePayslipHTML(payslip, payrollLine, advancePayment, advanceBatchId);
 
     // For now, return HTML (in production, use a PDF library like puppeteer or jsPDF)
     // This is a placeholder - you'll need to integrate actual PDF generation
@@ -149,10 +194,11 @@ interface DeductionsDetail {
   total_deductions?: number;
 }
 
-function generatePayslipHTML(payslip: any, payrollLine: any): string {
+function generatePayslipHTML(payslip: any, payrollLine: any, advancePayment: number | null = null, advanceBatchId: string | null = null): string {
   const periodStart = new Date(payslip.batch.period_start);
   const periodEnd = new Date(payslip.batch.period_end);
   const periodLabel = `${periodStart.toLocaleDateString('es-CR', { day: '2-digit', month: 'long' })} - ${periodEnd.toLocaleDateString('es-CR', { day: '2-digit', month: 'long', year: 'numeric' })}`;
+  const isSegundaQuincena = payslip.batch.payroll_type === 'segunda';
   
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('es-CR', {
@@ -741,20 +787,36 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
           </span>
         </div>
         
+        ${isSegundaQuincena && advancePayment && advancePayment > 0 ? `
+        <div class="advance-payment-section" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border: 2px solid #ff9800; border-radius: 8px; padding: 15px; margin: 15px 0;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+            <span style="font-size: 24px;">💰</span>
+            <span style="font-size: 16px; font-weight: bold; color: #e65100;">ADELANTO RECIBIDO</span>
+          </div>
+          <div class="total-row" style="padding: 5px 0;">
+            <span style="color: #bf360c;">Adelanto 1ra Quincena ${advanceBatchId ? `(${advanceBatchId})` : ''}:</span>
+            <span style="color: #e65100; font-weight: 600; font-size: 16px;">
+              -${formatCRC(advancePayment)}
+              ${isUSDSalary && exchangeRate ? ` <span style="font-size: 12px; color: #666;">(~${formatUSD(advancePayment / exchangeRate)})</span>` : ''}
+            </span>
+          </div>
+        </div>
+        ` : ''}
+        
         ${isUSDSalary ? `
         <div class="net-pay-usd">
           <div class="total-row" style="padding: 0; align-items: center;">
-            <span style="font-size: 18px; font-weight: bold; color: #0d47a1;">💵 TOTAL A DEPOSITAR:</span>
+            <span style="font-size: 18px; font-weight: bold; color: #0d47a1;">💵 ${isSegundaQuincena && advancePayment ? 'SALDO FINAL A DEPOSITAR' : 'TOTAL A DEPOSITAR'}:</span>
             <span class="total-value-container">
-              <div class="total-usd-main" style="font-size: 24px;">${formatUSD(netPayUSD)}</div>
-              <div class="total-crc-secondary">${formatCRC(netPayCRC)}</div>
+              <div class="total-usd-main" style="font-size: 24px;">${formatUSD(isSegundaQuincena && advancePayment ? (netPayCRC - advancePayment) / exchangeRate : netPayUSD)}</div>
+              <div class="total-crc-secondary">${formatCRC(isSegundaQuincena && advancePayment ? netPayCRC - advancePayment : netPayCRC)}</div>
             </span>
           </div>
         </div>
         ` : `
         <div class="total-row net-pay">
-          <span>TOTAL A DEPOSITAR:</span>
-          <span>${formatCRC(payrollLine.total_to_pay || payrollLine.net_pay)}</span>
+          <span>${isSegundaQuincena && advancePayment ? 'SALDO FINAL A DEPOSITAR' : 'TOTAL A DEPOSITAR'}:</span>
+          <span>${formatCRC(isSegundaQuincena && advancePayment ? (payrollLine.total_to_pay || payrollLine.net_pay) - advancePayment : (payrollLine.total_to_pay || payrollLine.net_pay))}</span>
         </div>
         `}
       </div>
@@ -774,7 +836,7 @@ function generatePayslipHTML(payslip: any, payrollLine: any): string {
 // =============================================================================
 // HORIZONTE POSITIVO - CUSTOM PAYSLIP TEMPLATE (USD BIWEEKLY FORMAT)
 // =============================================================================
-function generateHorizontePositivoPayslipHTML(payslip: any, payrollLine: any): string {
+function generateHorizontePositivoPayslipHTML(payslip: any, payrollLine: any, advancePayment: number | null = null, advanceBatchId: string | null = null): string {
   const periodStart = new Date(payslip.batch.period_start);
   const periodEnd = new Date(payslip.batch.period_end);
   const paymentDate = payslip.batch.payment_date 
@@ -1276,11 +1338,28 @@ function generateHorizontePositivoPayslipHTML(payslip: any, payrollLine: any): s
         </div>
       </div>
       
-      <!-- 6. Total to Pay -->
+      <!-- 6. Advance Payment (if segunda quincena) -->
+      ${advancePayment && advancePayment > 0 ? `
+      <div class="advance-section" style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border: 2px solid #ff9800; border-radius: 10px; padding: 15px 20px; margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+          <span style="font-size: 24px;">💰</span>
+          <span style="font-size: 16px; font-weight: bold; color: #e65100;">ADELANTO RECIBIDO</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="color: #bf360c;">Adelanto 1ra Quincena ${advanceBatchId ? `(${advanceBatchId})` : ''}:</span>
+          <span style="color: #e65100; font-weight: bold; font-size: 18px;">-${formatUSD(advancePayment)}</span>
+        </div>
+      </div>
+      ` : ''}
+      
+      <!-- 7. Total to Pay -->
       <div class="total-section">
-        <p class="total-label">Total a Pagar</p>
-        <p class="total-amount">${formatUSD(totalToPay)}</p>
-        <p class="total-calc">Beneficios (${formatUSD(totalBenefits)}) - Deducciones (${formatUSD(totalDeductions)})</p>
+        <p class="total-label">${advancePayment && advancePayment > 0 ? 'Saldo Final a Depositar' : 'Total a Pagar'}</p>
+        <p class="total-amount">${formatUSD(advancePayment && advancePayment > 0 ? totalToPay - advancePayment : totalToPay)}</p>
+        <p class="total-calc">${advancePayment && advancePayment > 0 
+          ? `Neto (${formatUSD(totalToPay)}) - Adelanto (${formatUSD(advancePayment)})`
+          : `Beneficios (${formatUSD(totalBenefits)}) - Deducciones (${formatUSD(totalDeductions)})`
+        }</p>
       </div>
     </div>
     
