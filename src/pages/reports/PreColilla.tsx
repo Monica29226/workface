@@ -105,8 +105,17 @@ interface PayrollBatch {
 }
 
 interface EditableValues {
-  grossSalary: number;
+  baseSalary: number;
+  horasExtra: number;
   adelanto: number;
+}
+
+// Calculate overtime amount based on hourly rate
+function calculateOvertimeAmount(baseSalary: number, horasExtra: number): number {
+  // Hourly rate = monthly salary / 240 (8 hours * 30 days)
+  const hourlyRate = baseSalary / 240;
+  // Overtime at 1.5x
+  return Math.round(hourlyRate * horasExtra * 1.5);
 }
 
 // Calculate deductions based on gross salary
@@ -141,24 +150,45 @@ function EditableEmployeeCard({
   t
 }: { 
   line: PayrollLine;
-  onSave: (lineId: string, grossSalary: number, adelanto: number, deductions: number, netPay: number) => void;
+  onSave: (lineId: string, grossSalary: number, adelanto: number, deductions: number, netPay: number, overtimeHours: number, overtimeAmount: number) => void;
   isSaving: boolean;
   t: (key: string) => string;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  
+  // Get base salary (gross - existing overtime if any)
+  const existingOvertimeAmount = Number(line.overtime_hours || 0) > 0 
+    ? calculateOvertimeAmount(Number(line.gross_salary) - (Number(line.overtime_hours || 0) * (Number(line.gross_salary) / 240) * 1.5), Number(line.overtime_hours || 0))
+    : 0;
+  
   const [values, setValues] = useState<EditableValues>({
-    grossSalary: Number(line.gross_salary),
+    baseSalary: Number(line.gross_salary) - existingOvertimeAmount,
+    horasExtra: Number(line.overtime_hours) || 0,
     adelanto: Number(line.additional_deductions) || 0,
   });
   
+  // Calculate overtime and gross in real-time
+  const overtimeAmount = useMemo(() => {
+    return calculateOvertimeAmount(values.baseSalary, values.horasExtra);
+  }, [values.baseSalary, values.horasExtra]);
+  
+  const grossSalary = useMemo(() => {
+    return values.baseSalary + overtimeAmount;
+  }, [values.baseSalary, overtimeAmount]);
+  
   // Calculate real-time deductions
   const calculations = useMemo(() => {
-    return calculateDeductions(values.grossSalary, values.adelanto, line.deductions_detail);
-  }, [values.grossSalary, values.adelanto, line.deductions_detail]);
+    return calculateDeductions(grossSalary, values.adelanto, line.deductions_detail);
+  }, [grossSalary, values.adelanto, line.deductions_detail]);
   
-  const handleGrossSalaryChange = (value: string) => {
+  const handleBaseSalaryChange = (value: string) => {
     const numValue = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
-    setValues(prev => ({ ...prev, grossSalary: numValue }));
+    setValues(prev => ({ ...prev, baseSalary: numValue }));
+  };
+  
+  const handleHorasExtraChange = (value: string) => {
+    const numValue = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
+    setValues(prev => ({ ...prev, horasExtra: numValue }));
   };
   
   const handleAdelantoChange = (value: string) => {
@@ -169,28 +199,36 @@ function EditableEmployeeCard({
   const handleSave = () => {
     onSave(
       line.id, 
-      values.grossSalary, 
+      grossSalary, 
       values.adelanto, 
       calculations.totalDeductions, 
-      calculations.netPay
+      calculations.netPay,
+      values.horasExtra,
+      overtimeAmount
     );
     setIsEditing(false);
   };
   
   const handleCancel = () => {
+    const existingOT = Number(line.overtime_hours || 0) > 0 
+      ? calculateOvertimeAmount(Number(line.gross_salary) - (Number(line.overtime_hours || 0) * (Number(line.gross_salary) / 240) * 1.5), Number(line.overtime_hours || 0))
+      : 0;
     setValues({
-      grossSalary: Number(line.gross_salary),
+      baseSalary: Number(line.gross_salary) - existingOT,
+      horasExtra: Number(line.overtime_hours) || 0,
       adelanto: Number(line.additional_deductions) || 0,
     });
     setIsEditing(false);
   };
 
-  // Original values for comparison
-  const originalCalc = useMemo(() => {
-    return calculateDeductions(Number(line.gross_salary), Number(line.additional_deductions) || 0, line.deductions_detail);
-  }, [line.gross_salary, line.additional_deductions, line.deductions_detail]);
-
-  const hasChanges = values.grossSalary !== Number(line.gross_salary) || 
+  // Check for changes
+  const originalOTAmount = Number(line.overtime_hours || 0) > 0 
+    ? calculateOvertimeAmount(Number(line.gross_salary) - existingOvertimeAmount, Number(line.overtime_hours || 0))
+    : 0;
+  const originalBase = Number(line.gross_salary) - originalOTAmount;
+  
+  const hasChanges = values.baseSalary !== originalBase || 
+                     values.horasExtra !== (Number(line.overtime_hours) || 0) ||
                      values.adelanto !== (Number(line.additional_deductions) || 0);
 
   return (
@@ -254,29 +292,71 @@ function EditableEmployeeCard({
 
         {/* Salary Breakdown - ALL IN CRC */}
         <div className="space-y-3">
-          {/* Gross Salary - Editable */}
+          {/* Base Salary - Editable */}
           <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${isEditing ? 'bg-primary/10 border border-primary/30' : 'bg-muted/30'}`}>
             <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="text-xs font-normal">{t('payroll.gross')}</Badge>
+              <Badge variant="secondary" className="text-xs font-normal">Salario Base</Badge>
             </div>
             {isEditing ? (
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">₡</span>
                 <Input
                   type="text"
-                  value={values.grossSalary.toLocaleString('es-CR')}
-                  onChange={(e) => handleGrossSalaryChange(e.target.value)}
+                  value={values.baseSalary.toLocaleString('es-CR')}
+                  onChange={(e) => handleBaseSalaryChange(e.target.value)}
                   className="h-8 w-32 text-right font-mono text-base"
                 />
               </div>
             ) : (
               <span className="font-mono text-base font-medium text-foreground tabular-nums">
-                {formatCRC(values.grossSalary)}
+                {formatCRC(values.baseSalary)}
               </span>
             )}
           </div>
 
-          {/* Adelanto de Salario - NEW Editable Field */}
+          {/* Horas Extra - NEW Editable Field */}
+          <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${isEditing ? 'bg-green-50 border border-green-200' : 'bg-green-50/50'}`}>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs font-normal text-green-700 border-green-300 bg-green-100">
+                + Hrs Extra (1.5×)
+              </Badge>
+            </div>
+            {isEditing ? (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number"
+                    value={values.horasExtra}
+                    onChange={(e) => handleHorasExtraChange(e.target.value)}
+                    className="h-8 w-16 text-right font-mono text-sm"
+                    min="0"
+                    step="0.5"
+                  />
+                  <span className="text-xs text-muted-foreground">hrs</span>
+                </div>
+                <span className="font-mono text-sm text-green-700">= {formatCRC(overtimeAmount)}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {values.horasExtra > 0 && (
+                  <span className="text-xs text-muted-foreground">{values.horasExtra} hrs =</span>
+                )}
+                <span className="font-mono text-base font-medium text-green-700 tabular-nums">
+                  +{formatCRC(overtimeAmount)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Gross Salary Total */}
+          <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg border-2 border-dashed">
+            <Badge variant="secondary" className="text-xs font-normal">{t('payroll.gross')}</Badge>
+            <span className="font-mono text-lg font-bold text-foreground tabular-nums">
+              {formatCRC(grossSalary)}
+            </span>
+          </div>
+
+          {/* Adelanto de Salario - Editable Field */}
           <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${isEditing ? 'bg-amber-50 border border-amber-200' : 'bg-amber-50/50'}`}>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className="text-xs font-normal text-amber-700 border-amber-300 bg-amber-100">
@@ -683,7 +763,9 @@ export function PreColilla() {
     grossSalary: number, 
     adelanto: number, 
     deductions: number, 
-    netPay: number
+    netPay: number,
+    overtimeHours: number,
+    overtimeAmount: number
   ) => {
     setIsSaving(true);
     try {
@@ -697,6 +779,8 @@ export function PreColilla() {
           deductions: deductions,
           net_pay: netPay,
           total_to_pay: faltaPorPagar,
+          overtime_hours: overtimeHours,
+          overtime: overtimeAmount,
         })
         .eq("id", lineId);
 
