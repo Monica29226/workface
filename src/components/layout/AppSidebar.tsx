@@ -344,25 +344,25 @@ export function AppSidebar() {
               <SidebarMenu>
                 {items.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild={!item.isAction}>
-                      {item.isAction ? (
-                        <button
-                          onClick={() => {
-                            if (item.url === '/logout') {
-                              handleLogout();
-                            } else {
-                              navigate(item.url);
-                            }
-                          }}
-                          className="w-full flex items-center gap-2 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground px-2 py-1.5 rounded-md transition-colors"
-                          title={item.title === 'Cerrar Sesión' ? item.title : t(item.title)}
-                        >
-                          <item.icon className="h-4 w-4 flex-shrink-0" />
-                          {!collapsed && (
-                            <span className="truncate">{item.title === 'Cerrar Sesión' ? item.title : t(item.title)}</span>
-                          )}
-                        </button>
-                      ) : (
+                    {item.isAction ? (
+                      <SidebarMenuButton
+                        onClick={() => {
+                          if (item.url === '/logout') {
+                            handleLogout();
+                          } else {
+                            navigate(item.url);
+                          }
+                        }}
+                        className="w-full cursor-pointer"
+                        title={item.title === 'Cerrar Sesión' ? item.title : t(item.title)}
+                      >
+                        <item.icon className="h-4 w-4 flex-shrink-0" />
+                        {!collapsed && (
+                          <span className="truncate">{item.title === 'Cerrar Sesión' ? item.title : t(item.title)}</span>
+                        )}
+                      </SidebarMenuButton>
+                    ) : (
+                      <SidebarMenuButton asChild>
                         <NavLink 
                           to={item.url} 
                           end 
@@ -384,8 +384,8 @@ export function AppSidebar() {
                             </>
                           )}
                         </NavLink>
-                      )}
-                    </SidebarMenuButton>
+                      </SidebarMenuButton>
+                    )}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
