@@ -9,11 +9,55 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, Save, Calculator, AlertCircle, CheckCircle, FileSpreadsheet, Printer, Download, Edit, Undo2, Trash2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Loader2, RefreshCw, Save, Calculator, AlertCircle, CheckCircle, FileSpreadsheet, Printer, Download, Edit, Undo2, Trash2, DollarSign } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { LivePayrollPreview } from "@/components/payroll/LivePayrollPreview";
+
+// CCSS rate for standard companies
+const CCSS_RATE = 0.1083;
+
+// ISR 2026 brackets calculation
+function calculateISR(baseImponible: number): number {
+  let isr = 0;
+  if (baseImponible > 4727000) {
+    isr += (baseImponible - 4727000) * 0.25;
+    baseImponible = 4727000;
+  }
+  if (baseImponible > 2364000) {
+    isr += (baseImponible - 2364000) * 0.20;
+    baseImponible = 2364000;
+  }
+  if (baseImponible > 1347000) {
+    isr += (baseImponible - 1347000) * 0.15;
+    baseImponible = 1347000;
+  }
+  if (baseImponible > 918000) {
+    isr += (baseImponible - 918000) * 0.10;
+  }
+  return Math.round(isr);
+}
+
+// Calculate real-time deductions based on gross salary
+function calculateRealTimeDeductions(grossSalaryCRC: number, existingDetail: DeductionsDetail | null): {
+  ccss: number;
+  isr: number;
+  bancoPopular: number;
+  loans: number;
+  total: number;
+} {
+  const ccss = Math.round(grossSalaryCRC * CCSS_RATE);
+  const baseParaISR = grossSalaryCRC - ccss;
+  const isr = calculateISR(baseParaISR);
+  const bancoPopular = Math.round(grossSalaryCRC * 0.01);
+  const loans = existingDetail?.loan_deduction || 0;
+  const total = ccss + isr + bancoPopular + loans;
+  
+  return { ccss, isr, bancoPopular, loans, total };
+}
 
 interface DeductionsDetail {
   ccss_obrero?: number;
@@ -50,7 +94,6 @@ interface PayrollLine {
   vacation_days_taken: number;
   sick_leave_days: number;
   deductions_detail: DeductionsDetail | null;
-  // New HP fields
   lpt_banco_popular?: number;
   mixed_overtime_hours?: number;
   mixed_overtime_amount?: number;
@@ -103,6 +146,7 @@ export function PreNomina() {
   const [isRevertingStatus, setIsRevertingStatus] = useState(false);
   const [focusedLineId, setFocusedLineId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showUSDColumn, setShowUSDColumn] = useState(false);
 
   // Auto-select batch from URL parameter
   useEffect(() => {
@@ -394,7 +438,7 @@ export function PreNomina() {
     link.click();
   };
 
-  // Calculate totals
+  // Calculate totals with real-time deductions
   const totals = useMemo(() => {
     if (!payrollLines) return null;
 
@@ -404,28 +448,44 @@ export function PreNomina() {
         const grossSalary = getValue(line, 'gross_salary');
         const overtimeHours = getValue(line, 'overtime_hours');
         const mixedOvertimeHours = getValue(line, 'mixed_overtime_hours' as keyof PayrollLine);
-        const baseImponible = detail.base_imponible_crc || (grossSalary * exchangeRate);
-        const netUSD = Number(line.net_pay) / exchangeRate;
+        
+        // Calculate in CRC for deductions
+        const grossSalaryCRC = line.currency === 'USD' ? grossSalary * exchangeRate : grossSalary;
+        
+        // Use stored deductions if available, otherwise calculate real-time
+        const hasStoredDeductions = (detail.ccss_obrero || 0) > 0;
+        const realTimeDeductions = hasStoredDeductions 
+          ? { 
+              ccss: detail.ccss_obrero || 0, 
+              isr: detail.isr_neto || 0, 
+              bancoPopular: detail.banco_popular || Number(line.lpt_banco_popular) || 0,
+              loans: detail.loan_deduction || 0,
+              total: Number(line.deductions) || 0
+            }
+          : calculateRealTimeDeductions(grossSalaryCRC, detail);
+        
+        const netPayCRC = grossSalaryCRC - realTimeDeductions.total - Number(line.additional_deductions || 0);
+        const netPayUSD = netPayCRC / exchangeRate;
         
         return {
-          grossSalaryUSD: acc.grossSalaryUSD + grossSalary,
-          baseImponibleCRC: acc.baseImponibleCRC + baseImponible,
+          grossSalaryCRC: acc.grossSalaryCRC + grossSalaryCRC,
+          grossSalaryUSD: acc.grossSalaryUSD + (line.currency === 'USD' ? grossSalary : grossSalary / exchangeRate),
           overtimeHours: acc.overtimeHours + overtimeHours,
           mixedOvertimeHours: acc.mixedOvertimeHours + mixedOvertimeHours,
-          ccss: acc.ccss + Number(detail.ccss_obrero || 0),
-          isr: acc.isr + Number(detail.isr_neto || 0),
-          bancoPopular: acc.bancoPopular + Number(detail.banco_popular || line.lpt_banco_popular || 0),
-          loans: acc.loans + Number(detail.loan_deduction || 0),
+          ccss: acc.ccss + realTimeDeductions.ccss,
+          isr: acc.isr + realTimeDeductions.isr,
+          bancoPopular: acc.bancoPopular + realTimeDeductions.bancoPopular,
+          loans: acc.loans + realTimeDeductions.loans,
           bonuses: acc.bonuses + Number(line.additional_bonuses || 0),
           otherDeductions: acc.otherDeductions + Number(line.additional_deductions || 0),
-          totalDeductions: acc.totalDeductions + Number(line.deductions),
-          netPayCRC: acc.netPayCRC + Number(line.net_pay),
-          netPayUSD: acc.netPayUSD + netUSD,
+          totalDeductions: acc.totalDeductions + realTimeDeductions.total + Number(line.additional_deductions || 0),
+          netPayCRC: acc.netPayCRC + netPayCRC,
+          netPayUSD: acc.netPayUSD + netPayUSD,
         };
       },
       {
+        grossSalaryCRC: 0,
         grossSalaryUSD: 0,
-        baseImponibleCRC: 0,
         overtimeHours: 0,
         mixedOvertimeHours: 0,
         ccss: 0,
@@ -601,35 +661,54 @@ export function PreNomina() {
 
       {/* Batch Info */}
       {currentBatch && (
-        <div className="flex items-center gap-4 print:hidden">
-          {getStatusBadge(currentBatch.status)}
-          {getPayrollTypeBadge(currentBatch.payroll_type)}
-          <Badge variant="outline">TC: ₡{exchangeRate.toFixed(2)}</Badge>
-          {!isEditable && (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">
-                Este batch está {currentBatch.status} y no se puede editar
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRevertToCalculado}
-                disabled={isRevertingStatus}
-                className="gap-2"
-              >
-                {isRevertingStatus ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Undo2 className="h-4 w-4" />
-                )}
-                Editar Lote
-              </Button>
+        <div className="flex items-center justify-between print:hidden">
+          <div className="flex items-center gap-4">
+            {getStatusBadge(currentBatch.status)}
+            {getPayrollTypeBadge(currentBatch.payroll_type)}
+            {!isBatchCRC && (
+              <Badge variant="outline">TC: ₡{exchangeRate.toFixed(2)}</Badge>
+            )}
+            {!isEditable && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">
+                  Este batch está {currentBatch.status} y no se puede editar
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRevertToCalculado}
+                  disabled={isRevertingStatus}
+                  className="gap-2"
+                >
+                  {isRevertingStatus ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Undo2 className="h-4 w-4" />
+                  )}
+                  Editar Lote
+                </Button>
+              </div>
+            )}
+            {Object.keys(editingState).length > 0 && (
+              <Badge variant="destructive" className="animate-pulse">
+                {Object.keys(editingState).length} cambios sin guardar
+              </Badge>
+            )}
+          </div>
+          
+          {/* USD Toggle - Only show when batch has USD employees */}
+          {!isBatchCRC && (
+            <div className="flex items-center gap-2">
+              <Switch
+                id="show-usd"
+                checked={showUSDColumn}
+                onCheckedChange={setShowUSDColumn}
+              />
+              <Label htmlFor="show-usd" className="flex items-center gap-1 cursor-pointer text-sm">
+                <DollarSign className="h-4 w-4" />
+                Mostrar USD
+              </Label>
             </div>
-          )}
-          {Object.keys(editingState).length > 0 && (
-            <Badge variant="destructive" className="animate-pulse">
-              {Object.keys(editingState).length} cambios sin guardar
-            </Badge>
           )}
         </div>
       )}
@@ -656,29 +735,34 @@ export function PreNomina() {
         </Card>
       ) : (
         <>
-          {/* Summary Cards - Currency-aware display */}
+          {/* Summary Cards - Always in CRC */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 print:grid-cols-4">
             <Card>
               <CardContent className="pt-4 pb-3">
-                <div className="text-sm text-muted-foreground">Total Bruto</div>
+                <div className="text-sm text-muted-foreground">Total Bruto CRC</div>
                 <div className="text-lg font-bold text-primary">
-                  {isBatchCRC ? '₡' : '$'}{formatNumber(totals?.grossSalaryUSD || 0)}
+                  ₡{formatNumber(Math.round(totals?.grossSalaryCRC || 0))}
                 </div>
+                {showUSDColumn && !isBatchCRC && (
+                  <div className="text-xs text-muted-foreground">
+                    ${formatNumber(Math.round(totals?.grossSalaryUSD || 0))} USD
+                  </div>
+                )}
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4 pb-3">
                 <div className="text-sm text-muted-foreground">Total Deducciones</div>
                 <div className="text-lg font-bold text-destructive">
-                  ₡{formatNumber(totals?.totalDeductions || 0)}
+                  ₡{formatNumber(Math.round(totals?.totalDeductions || 0))}
                 </div>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4 pb-3">
-                <div className="text-sm text-muted-foreground">Neto a Pagar</div>
+                <div className="text-sm text-muted-foreground">Neto CRC</div>
                 <div className="text-lg font-bold text-muted-foreground">
-                  ₡{formatNumber(totals?.netPayCRC || 0)}
+                  ₡{formatNumber(Math.round(totals?.netPayCRC || 0))}
                 </div>
               </CardContent>
             </Card>
@@ -686,8 +770,13 @@ export function PreNomina() {
               <CardContent className="pt-4 pb-3">
                 <div className="text-sm text-success">Total a Depositar</div>
                 <div className="text-lg font-bold text-success">
-                  {isBatchCRC ? '₡' : '$'}{formatNumber(isBatchCRC ? (totals?.netPayCRC || 0) : (totals?.netPayUSD || 0))}
+                  ₡{formatNumber(Math.round(totals?.netPayCRC || 0))}
                 </div>
+                {showUSDColumn && !isBatchCRC && (
+                  <div className="text-xs text-success/70">
+                    ${formatNumber(Math.round(totals?.netPayUSD || 0))} USD
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -701,27 +790,27 @@ export function PreNomina() {
               <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
                 <div>
                   <div className="text-muted-foreground">CCSS ({companyParams?.ccss_obrero_total || 10.83}%)</div>
-                  <div className="font-semibold text-destructive">₡{formatNumber(totals?.ccss || 0)}</div>
+                  <div className="font-semibold text-destructive">₡{formatNumber(Math.round(totals?.ccss || 0))}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">ISR</div>
-                  <div className="font-semibold text-destructive">₡{formatNumber(totals?.isr || 0)}</div>
+                  <div className="font-semibold text-destructive">₡{formatNumber(Math.round(totals?.isr || 0))}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Banco Popular (1%)</div>
-                  <div className="font-semibold text-destructive">₡{formatNumber(totals?.bancoPopular || 0)}</div>
+                  <div className="font-semibold text-destructive">₡{formatNumber(Math.round(totals?.bancoPopular || 0))}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Préstamos</div>
-                  <div className="font-semibold text-destructive">₡{formatNumber(totals?.loans || 0)}</div>
+                  <div className="font-semibold text-destructive">₡{formatNumber(Math.round(totals?.loans || 0))}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Bonos (+)</div>
-                  <div className="font-semibold text-success">₡{formatNumber(totals?.bonuses || 0)}</div>
+                  <div className="font-semibold text-success">₡{formatNumber(Math.round(totals?.bonuses || 0))}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Otras Ded. (-)</div>
-                  <div className="font-semibold text-destructive">₡{formatNumber(totals?.otherDeductions || 0)}</div>
+                  <div className="font-semibold text-destructive">₡{formatNumber(Math.round(totals?.otherDeductions || 0))}</div>
                 </div>
               </div>
             </CardContent>
@@ -746,7 +835,10 @@ export function PreNomina() {
                     <TableRow className="text-xs">
                       <TableHead className="w-8 print:hidden"></TableHead>
                       <TableHead>Colaborador</TableHead>
-                      <TableHead className="text-right">Salario Bruto</TableHead>
+                      <TableHead className="text-right">Salario Bruto CRC</TableHead>
+                      {showUSDColumn && !isBatchCRC && (
+                        <TableHead className="text-right text-blue-600">Bruto USD</TableHead>
+                      )}
                       <TableHead className="text-right">Hrs Extra (1.5x)</TableHead>
                       <TableHead className="text-right">Hrs Dobles (2x)</TableHead>
                       <TableHead className="text-right">CCSS</TableHead>
@@ -755,23 +847,43 @@ export function PreNomina() {
                       <TableHead className="text-right">Préstamos</TableHead>
                       <TableHead className="text-right">Otras Ded.</TableHead>
                       <TableHead className="text-right font-semibold text-destructive">Total Ded.</TableHead>
-                      <TableHead className="text-right font-semibold text-success">Neto</TableHead>
+                      <TableHead className="text-right font-semibold text-success">Neto CRC</TableHead>
+                      {showUSDColumn && !isBatchCRC && (
+                        <TableHead className="text-right font-semibold text-blue-600">Neto USD</TableHead>
+                      )}
                       <TableHead className="w-16 print:hidden"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {payrollLines.map((line) => {
-                      const isValid = validateLine(line);
                       const lineHasChanges = hasChanges(line.id);
                       const detail = line.deductions_detail || {};
-                      const isCRC = line.currency === 'CRC' || isBatchCRC;
-                      const grossDisplay = isCRC 
-                        ? `₡${formatNumber(Number(line.gross_salary))}` 
-                        : `$${formatNumber(Number(line.gross_salary))}`;
-                      const netDisplay = isCRC 
-                        ? `₡${formatNumber(Number(line.net_pay))}` 
-                        : `$${formatNumber(Number(line.net_pay) / exchangeRate)}`;
-                      const bancoPopular = Number(detail.banco_popular || line.lpt_banco_popular || 0);
+                      const grossSalary = getValue(line, 'gross_salary');
+                      
+                      // Calculate gross in CRC (convert if USD)
+                      const isUSD = line.currency === 'USD';
+                      const grossSalaryCRC = isUSD ? grossSalary * exchangeRate : grossSalary;
+                      const grossSalaryUSD = isUSD ? grossSalary : grossSalary / exchangeRate;
+                      
+                      // Use stored deductions or calculate real-time
+                      const hasStoredDeductions = (detail.ccss_obrero || 0) > 0;
+                      const calculatedDed = hasStoredDeductions 
+                        ? { 
+                            ccss: detail.ccss_obrero || 0, 
+                            isr: detail.isr_neto || 0, 
+                            bancoPopular: detail.banco_popular || Number(line.lpt_banco_popular) || 0,
+                            loans: detail.loan_deduction || 0,
+                            total: Number(line.deductions) || 0
+                          }
+                        : calculateRealTimeDeductions(grossSalaryCRC, detail);
+                      
+                      const otrasDeduciones = Number(line.additional_deductions || 0);
+                      const totalDeductions = calculatedDed.total + otrasDeduciones;
+                      const netPayCRC = grossSalaryCRC - totalDeductions;
+                      const netPayUSD = netPayCRC / exchangeRate;
+                      
+                      // Validation
+                      const isValid = hasStoredDeductions ? Math.abs(netPayCRC - Number(line.net_pay)) < 100 : true;
                       
                       return (
                         <TableRow 
@@ -819,9 +931,14 @@ export function PreNomina() {
                                 />
                               </div>
                             ) : (
-                              <span className="font-mono">{grossDisplay}</span>
+                              <span className="font-mono">₡{formatNumber(Math.round(grossSalaryCRC))}</span>
                             )}
                           </TableCell>
+                          {showUSDColumn && !isBatchCRC && (
+                            <TableCell className="text-right font-mono text-blue-600">
+                              ${formatNumber(Math.round(grossSalaryUSD))}
+                            </TableCell>
+                          )}
                           <TableCell className="text-right">
                             {isEditable ? (
                               <Input
@@ -851,16 +968,16 @@ export function PreNomina() {
                             )}
                           </TableCell>
                           <TableCell className="text-right font-mono text-destructive">
-                            ₡{formatNumber(detail.ccss_obrero || 0)}
+                            ₡{formatNumber(Math.round(calculatedDed.ccss))}
                           </TableCell>
                           <TableCell className="text-right font-mono text-destructive">
-                            ₡{formatNumber(bancoPopular)}
+                            ₡{formatNumber(Math.round(calculatedDed.bancoPopular))}
                           </TableCell>
                           <TableCell className="text-right font-mono text-destructive">
-                            ₡{formatNumber(detail.isr_neto || 0)}
+                            ₡{formatNumber(Math.round(calculatedDed.isr))}
                           </TableCell>
                           <TableCell className="text-right font-mono text-destructive">
-                            ₡{formatNumber(detail.loan_deduction || 0)}
+                            ₡{formatNumber(Math.round(calculatedDed.loans))}
                           </TableCell>
                           <TableCell className="text-right">
                             {isEditable ? (
@@ -872,15 +989,20 @@ export function PreNomina() {
                                 onChange={(e) => handleFieldChange(line.id, 'additional_deductions', Number(e.target.value))}
                               />
                             ) : (
-                              <span className="font-mono text-destructive">₡{formatNumber(Number(line.additional_deductions || 0))}</span>
+                              <span className="font-mono text-destructive">₡{formatNumber(Math.round(otrasDeduciones))}</span>
                             )}
                           </TableCell>
                           <TableCell className="text-right font-mono font-semibold text-destructive">
-                            ₡{formatNumber(Number(line.deductions))}
+                            ₡{formatNumber(Math.round(totalDeductions))}
                           </TableCell>
                           <TableCell className="text-right font-mono font-semibold text-success">
-                            {netDisplay}
+                            ₡{formatNumber(Math.round(netPayCRC))}
                           </TableCell>
+                          {showUSDColumn && !isBatchCRC && (
+                            <TableCell className="text-right font-mono font-semibold text-blue-600">
+                              ${formatNumber(Math.round(netPayUSD))}
+                            </TableCell>
+                          )}
                           <TableCell className="print:hidden">
                             {lineHasChanges && (
                               <Button
@@ -902,8 +1024,13 @@ export function PreNomina() {
                       <TableCell className="print:hidden"></TableCell>
                       <TableCell>TOTALES ({payrollLines.length})</TableCell>
                       <TableCell className="text-right font-mono">
-                        ₡{formatNumber(totals?.baseImponibleCRC || 0)}
+                        ₡{formatNumber(Math.round(totals?.grossSalaryCRC || 0))}
                       </TableCell>
+                      {showUSDColumn && !isBatchCRC && (
+                        <TableCell className="text-right font-mono text-blue-600">
+                          ${formatNumber(Math.round(totals?.grossSalaryUSD || 0))}
+                        </TableCell>
+                      )}
                       <TableCell className="text-right font-mono">
                         {formatNumber(totals?.overtimeHours || 0)}
                       </TableCell>
@@ -911,26 +1038,31 @@ export function PreNomina() {
                         {formatNumber(totals?.mixedOvertimeHours || 0)}
                       </TableCell>
                       <TableCell className="text-right font-mono text-destructive">
-                        ₡{formatNumber(totals?.ccss || 0)}
+                        ₡{formatNumber(Math.round(totals?.ccss || 0))}
                       </TableCell>
                       <TableCell className="text-right font-mono text-destructive">
-                        ₡{formatNumber(totals?.bancoPopular || 0)}
+                        ₡{formatNumber(Math.round(totals?.bancoPopular || 0))}
                       </TableCell>
                       <TableCell className="text-right font-mono text-destructive">
-                        ₡{formatNumber(totals?.isr || 0)}
+                        ₡{formatNumber(Math.round(totals?.isr || 0))}
                       </TableCell>
                       <TableCell className="text-right font-mono text-destructive">
-                        ₡{formatNumber(totals?.loans || 0)}
+                        ₡{formatNumber(Math.round(totals?.loans || 0))}
                       </TableCell>
                       <TableCell className="text-right font-mono text-destructive">
-                        ₡{formatNumber(totals?.otherDeductions || 0)}
+                        ₡{formatNumber(Math.round(totals?.otherDeductions || 0))}
                       </TableCell>
                       <TableCell className="text-right font-mono text-destructive">
-                        ₡{formatNumber(totals?.totalDeductions || 0)}
+                        ₡{formatNumber(Math.round(totals?.totalDeductions || 0))}
                       </TableCell>
                       <TableCell className="text-right font-mono text-success">
-                        {isBatchCRC ? '₡' : '$'}{formatNumber(isBatchCRC ? (totals?.netPayCRC || 0) : (totals?.netPayUSD || 0))}
+                        ₡{formatNumber(Math.round(totals?.netPayCRC || 0))}
                       </TableCell>
+                      {showUSDColumn && !isBatchCRC && (
+                        <TableCell className="text-right font-mono text-blue-600">
+                          ${formatNumber(Math.round(totals?.netPayUSD || 0))}
+                        </TableCell>
+                      )}
                       <TableCell className="print:hidden"></TableCell>
                     </TableRow>
                   </TableBody>
