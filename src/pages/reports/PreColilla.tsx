@@ -74,6 +74,9 @@ interface PayrollLine {
   exchange_rate_to_base: number;
   regular_hours: number;
   overtime_hours: number;
+  mixed_overtime_hours: number;
+  mixed_overtime_amount: number;
+  overtime: number;
   additional_bonuses: number;
   additional_deductions: number;
   vacation_days_taken: number;
@@ -107,15 +110,20 @@ interface PayrollBatch {
 interface EditableValues {
   baseSalary: number;
   horasExtra: number;
+  horasDobles: number;
   adelanto: number;
 }
 
-// Calculate overtime amount based on hourly rate
+// Calculate overtime amount based on hourly rate (1.5×)
 function calculateOvertimeAmount(baseSalary: number, horasExtra: number): number {
-  // Hourly rate = monthly salary / 240 (8 hours * 30 days)
   const hourlyRate = baseSalary / 240;
-  // Overtime at 1.5x
   return Math.round(hourlyRate * horasExtra * 1.5);
+}
+
+// Calculate double hours amount based on hourly rate (2×) - for holidays/night work
+function calculateDoubleHoursAmount(baseSalary: number, horasDobles: number): number {
+  const hourlyRate = baseSalary / 240;
+  return Math.round(hourlyRate * horasDobles * 2);
 }
 
 // Calculate deductions based on gross salary
@@ -150,31 +158,39 @@ function EditableEmployeeCard({
   t
 }: { 
   line: PayrollLine;
-  onSave: (lineId: string, grossSalary: number, adelanto: number, deductions: number, netPay: number, overtimeHours: number, overtimeAmount: number) => void;
+  onSave: (lineId: string, grossSalary: number, adelanto: number, deductions: number, netPay: number, overtimeHours: number, overtimeAmount: number, doubleHours: number, doubleAmount: number) => void;
   isSaving: boolean;
   t: (key: string) => string;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   
-  // Get base salary (gross - existing overtime if any)
+  // Get existing overtime and double hours amounts
   const existingOvertimeAmount = Number(line.overtime_hours || 0) > 0 
-    ? calculateOvertimeAmount(Number(line.gross_salary) - (Number(line.overtime_hours || 0) * (Number(line.gross_salary) / 240) * 1.5), Number(line.overtime_hours || 0))
+    ? calculateOvertimeAmount(Number(line.gross_salary) - (Number(line.overtime_hours || 0) * (Number(line.gross_salary) / 240) * 1.5) - (Number(line.mixed_overtime_hours || 0) * (Number(line.gross_salary) / 240) * 2), Number(line.overtime_hours || 0))
+    : 0;
+  const existingDoubleAmount = Number(line.mixed_overtime_hours || 0) > 0
+    ? calculateDoubleHoursAmount(Number(line.gross_salary) - existingOvertimeAmount - (Number(line.mixed_overtime_hours || 0) * (Number(line.gross_salary) / 240) * 2), Number(line.mixed_overtime_hours || 0))
     : 0;
   
   const [values, setValues] = useState<EditableValues>({
-    baseSalary: Number(line.gross_salary) - existingOvertimeAmount,
+    baseSalary: Number(line.gross_salary) - existingOvertimeAmount - existingDoubleAmount,
     horasExtra: Number(line.overtime_hours) || 0,
+    horasDobles: Number(line.mixed_overtime_hours) || 0,
     adelanto: Number(line.additional_deductions) || 0,
   });
   
-  // Calculate overtime and gross in real-time
+  // Calculate overtime amounts in real-time
   const overtimeAmount = useMemo(() => {
     return calculateOvertimeAmount(values.baseSalary, values.horasExtra);
   }, [values.baseSalary, values.horasExtra]);
   
+  const doubleHoursAmount = useMemo(() => {
+    return calculateDoubleHoursAmount(values.baseSalary, values.horasDobles);
+  }, [values.baseSalary, values.horasDobles]);
+  
   const grossSalary = useMemo(() => {
-    return values.baseSalary + overtimeAmount;
-  }, [values.baseSalary, overtimeAmount]);
+    return values.baseSalary + overtimeAmount + doubleHoursAmount;
+  }, [values.baseSalary, overtimeAmount, doubleHoursAmount]);
   
   // Calculate real-time deductions
   const calculations = useMemo(() => {
@@ -191,6 +207,11 @@ function EditableEmployeeCard({
     setValues(prev => ({ ...prev, horasExtra: numValue }));
   };
   
+  const handleHorasDoblesChange = (value: string) => {
+    const numValue = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
+    setValues(prev => ({ ...prev, horasDobles: numValue }));
+  };
+  
   const handleAdelantoChange = (value: string) => {
     const numValue = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
     setValues(prev => ({ ...prev, adelanto: numValue }));
@@ -204,31 +225,35 @@ function EditableEmployeeCard({
       calculations.totalDeductions, 
       calculations.netPay,
       values.horasExtra,
-      overtimeAmount
+      overtimeAmount,
+      values.horasDobles,
+      doubleHoursAmount
     );
     setIsEditing(false);
   };
   
   const handleCancel = () => {
     const existingOT = Number(line.overtime_hours || 0) > 0 
-      ? calculateOvertimeAmount(Number(line.gross_salary) - (Number(line.overtime_hours || 0) * (Number(line.gross_salary) / 240) * 1.5), Number(line.overtime_hours || 0))
+      ? calculateOvertimeAmount(Number(line.gross_salary) - existingOvertimeAmount - existingDoubleAmount, Number(line.overtime_hours || 0))
+      : 0;
+    const existingDouble = Number(line.mixed_overtime_hours || 0) > 0
+      ? calculateDoubleHoursAmount(Number(line.gross_salary) - existingOT - existingDoubleAmount, Number(line.mixed_overtime_hours || 0))
       : 0;
     setValues({
-      baseSalary: Number(line.gross_salary) - existingOT,
+      baseSalary: Number(line.gross_salary) - existingOT - existingDouble,
       horasExtra: Number(line.overtime_hours) || 0,
+      horasDobles: Number(line.mixed_overtime_hours) || 0,
       adelanto: Number(line.additional_deductions) || 0,
     });
     setIsEditing(false);
   };
 
   // Check for changes
-  const originalOTAmount = Number(line.overtime_hours || 0) > 0 
-    ? calculateOvertimeAmount(Number(line.gross_salary) - existingOvertimeAmount, Number(line.overtime_hours || 0))
-    : 0;
-  const originalBase = Number(line.gross_salary) - originalOTAmount;
+  const originalBase = Number(line.gross_salary) - existingOvertimeAmount - existingDoubleAmount;
   
   const hasChanges = values.baseSalary !== originalBase || 
                      values.horasExtra !== (Number(line.overtime_hours) || 0) ||
+                     values.horasDobles !== (Number(line.mixed_overtime_hours) || 0) ||
                      values.adelanto !== (Number(line.additional_deductions) || 0);
 
   return (
@@ -314,10 +339,10 @@ function EditableEmployeeCard({
             )}
           </div>
 
-          {/* Horas Extra - NEW Editable Field */}
-          <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${isEditing ? 'bg-green-50 border border-green-200' : 'bg-green-50/50'}`}>
+          {/* Horas Extra 1.5× - Editable Field */}
+          <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${isEditing ? 'bg-success/10 border border-success/30' : 'bg-success/5'}`}>
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-xs font-normal text-green-700 border-green-300 bg-green-100">
+              <Badge variant="outline" className="text-xs font-normal text-success border-success/30 bg-success/10">
                 + Hrs Extra (1.5×)
               </Badge>
             </div>
@@ -334,15 +359,49 @@ function EditableEmployeeCard({
                   />
                   <span className="text-xs text-muted-foreground">hrs</span>
                 </div>
-                <span className="font-mono text-sm text-green-700">= {formatCRC(overtimeAmount)}</span>
+                <span className="font-mono text-sm text-success">= {formatCRC(overtimeAmount)}</span>
               </div>
             ) : (
               <div className="flex items-center gap-2">
                 {values.horasExtra > 0 && (
                   <span className="text-xs text-muted-foreground">{values.horasExtra} hrs =</span>
                 )}
-                <span className="font-mono text-base font-medium text-green-700 tabular-nums">
+                <span className="font-mono text-base font-medium text-success tabular-nums">
                   +{formatCRC(overtimeAmount)}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Horas Dobles 2× - NEW Editable Field for holidays/night work */}
+          <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${isEditing ? 'bg-blue-50 border border-blue-200' : 'bg-blue-50/50'}`}>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs font-normal text-blue-700 border-blue-300 bg-blue-100">
+                + Hrs Dobles (2×)
+              </Badge>
+            </div>
+            {isEditing ? (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number"
+                    value={values.horasDobles}
+                    onChange={(e) => handleHorasDoblesChange(e.target.value)}
+                    className="h-8 w-16 text-right font-mono text-sm"
+                    min="0"
+                    step="0.5"
+                  />
+                  <span className="text-xs text-muted-foreground">hrs</span>
+                </div>
+                <span className="font-mono text-sm text-blue-700">= {formatCRC(doubleHoursAmount)}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                {values.horasDobles > 0 && (
+                  <span className="text-xs text-muted-foreground">{values.horasDobles} hrs =</span>
+                )}
+                <span className="font-mono text-base font-medium text-blue-700 tabular-nums">
+                  +{formatCRC(doubleHoursAmount)}
                 </span>
               </div>
             )}
@@ -765,7 +824,9 @@ export function PreColilla() {
     deductions: number, 
     netPay: number,
     overtimeHours: number,
-    overtimeAmount: number
+    overtimeAmount: number,
+    doubleHours: number,
+    doubleAmount: number
   ) => {
     setIsSaving(true);
     try {
@@ -781,6 +842,8 @@ export function PreColilla() {
           total_to_pay: faltaPorPagar,
           overtime_hours: overtimeHours,
           overtime: overtimeAmount,
+          mixed_overtime_hours: doubleHours,
+          mixed_overtime_amount: doubleAmount,
         })
         .eq("id", lineId);
 
