@@ -25,7 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
 
-    // Verify the requester is an admin
+    // Verify the requester is authenticated
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       throw new Error("Missing authorization header");
@@ -41,7 +41,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Unauthorized");
     }
 
-    // Check if user is admin
+    // Check if user has admin-level role
     const { data: roleData, error: roleError } = await supabaseAdmin
       .from("user_roles")
       .select("role")
@@ -49,14 +49,37 @@ const handler = async (req: Request): Promise<Response> => {
       .limit(1)
       .maybeSingle();
 
-    if (roleError || !roleData || !["admin", "ACL_SuperAdmin"].includes(roleData.role)) {
+    if (roleError || !roleData || !["admin", "ACL_SuperAdmin", "Client_Admin"].includes(roleData.role)) {
       throw new Error("Insufficient permissions");
     }
 
-    const { email, full_name, password } = await req.json();
+    const { email, full_name, password, company_id } = await req.json();
 
     if (!email) {
       throw new Error("Email is required");
+    }
+
+    // SECURITY: If company_id is provided, validate the requester has access
+    if (company_id) {
+      const { data: companyAccess } = await supabaseAdmin
+        .from("company_users")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("company_id", company_id)
+        .maybeSingle();
+
+      if (!companyAccess && roleData.role !== "admin" && roleData.role !== "ACL_SuperAdmin") {
+        // Log security attempt
+        await supabaseAdmin.from("audit_log").insert({
+          log_id: `SEC-${Date.now()}`,
+          actor_email: user.email || "unknown",
+          action: "create_user_blocked_cross_company",
+          target_email: email,
+          company_id: company_id,
+          details: `Blocked: user ${user.email} attempted to create user for company they don't belong to`,
+        });
+        throw new Error("No tiene acceso a esta empresa");
+      }
     }
 
     // Generate a temporary password if not provided
@@ -66,7 +89,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: userPassword,
-      email_confirm: true, // Auto-confirm email
+      email_confirm: true,
       user_metadata: {
         full_name: full_name || email,
       },
@@ -83,15 +106,12 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("RESEND_API_KEY is not configured");
     }
 
-    // Using noreply@aureoncr.com - domain aureoncr.com is verified in Resend
     const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@aureoncr.com").trim();
     const cleanedFrom = rawFromEmail.replace(/^\"+|\"+$/g, "").trim();
-    // Extract just the email if it has Name <email> format
     const emailMatch = cleanedFrom.match(/<([^>]+)>/);
     const pureEmail = emailMatch ? emailMatch[1] : cleanedFrom;
     const from = `ACL Workforce HUB <${pureEmail}>`;
 
-    // Fixed portal URL - always use the production portal
     const portalUrl = "https://workforcehub.calderon.cr";
     const loginLink = `${portalUrl}/auth`;
     const systemName = "ACL Workforce HUB";
@@ -115,54 +135,38 @@ const handler = async (req: Request): Promise<Response> => {
               <tr>
                 <td>
                   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                    <!-- Header with Logo -->
                     <tr>
                       <td style="background: linear-gradient(135deg, #0F2A44, #1e3a8a); padding: 32px; text-align: center;">
                         <img src="${logoUrl}" alt="Aureon" style="max-width: 180px; height: auto; margin-bottom: 16px;" />
-                        <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 600;">
-                          ${systemName}
-                        </h1>
-                        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 13px;">
-                          Sistema de Gestión de Nómina y Recursos Humanos
-                        </p>
+                        <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 600;">${systemName}</h1>
+                        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 13px;">Sistema de Gestión de Nómina y Recursos Humanos</p>
                       </td>
                     </tr>
-                    
-                    <!-- Content -->
                     <tr>
                       <td style="padding: 40px 32px;">
-                        <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 20px;">
-                          ¡Bienvenido, ${full_name || "Usuario"}!
-                        </h2>
-                        
+                        <h2 style="margin: 0 0 16px 0; color: #0f172a; font-size: 20px;">¡Bienvenido, ${full_name || "Usuario"}!</h2>
                         <p style="color: #475569; line-height: 1.7; margin: 0 0 24px 0; font-size: 15px;">
-                          Su empresa lo ha registrado en el <strong>${systemName}</strong>, el sistema de gestión de planillas y nómina para administrar su información de pagos, recibos de salario y más.
+                          Su empresa lo ha registrado en el <strong>${systemName}</strong>, el sistema de gestión de planillas y nómina.
                         </p>
-                        
-                        <p style="color: #475569; line-height: 1.7; margin: 0 0 24px 0; font-size: 15px;">
-                          A continuación encontrará sus credenciales de acceso:
-                        </p>
-                        
-                        <!-- Credentials Box -->
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; margin: 0 0 24px 0;">
                           <tr>
                             <td style="padding: 20px;">
                               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                                 <tr>
                                   <td style="padding: 0 0 12px 0;">
-                                    <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Portal de Acceso</p>
-                                    <a href="${loginLink}" style="color: #1e40af; font-size: 14px; text-decoration: underline; word-break: break-all;">${loginLink}</a>
+                                    <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; text-transform: uppercase;">Portal de Acceso</p>
+                                    <a href="${loginLink}" style="color: #1e40af; font-size: 14px; text-decoration: underline;">${loginLink}</a>
                                   </td>
                                 </tr>
                                 <tr>
                                   <td style="padding: 12px 0; border-top: 1px solid #e2e8f0;">
-                                    <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Usuario (Correo electrónico)</p>
-                                    <p style="margin: 0; color: #0f172a; font-weight: 600; font-size: 15px; word-break: break-all;">${email}</p>
+                                    <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; text-transform: uppercase;">Usuario</p>
+                                    <p style="margin: 0; color: #0f172a; font-weight: 600; font-size: 15px;">${email}</p>
                                   </td>
                                 </tr>
                                 <tr>
                                   <td style="padding: 12px 0 0 0; border-top: 1px solid #e2e8f0;">
-                                    <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Contraseña Temporal</p>
+                                    <p style="margin: 0 0 4px 0; color: #64748b; font-size: 12px; text-transform: uppercase;">Contraseña Temporal</p>
                                     <p style="margin: 0; color: #0f172a; font-weight: 600; font-size: 15px; font-family: monospace; background: #fff; padding: 8px 12px; border-radius: 6px; border: 1px dashed #cbd5e1;">${userPassword}</p>
                                   </td>
                                 </tr>
@@ -170,45 +174,33 @@ const handler = async (req: Request): Promise<Response> => {
                             </td>
                           </tr>
                         </table>
-                        
-                        <!-- Security Notice -->
                         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0; margin: 0 0 24px 0;">
                           <tr>
                             <td style="padding: 14px 16px;">
                               <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.5;">
-                                <strong>⚠️ Importante:</strong> Por seguridad, deberá cambiar su contraseña temporal después de iniciar sesión por primera vez.
+                                <strong>⚠️ Importante:</strong> Cambie su contraseña temporal después de iniciar sesión.
                               </p>
                             </td>
                           </tr>
                         </table>
-                        
-                        <!-- CTA Button -->
                         <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
                           <tr>
                             <td style="background: linear-gradient(135deg, #0f172a, #1e3a8a); border-radius: 10px;">
                               <a href="${loginLink}" style="display: inline-block; padding: 16px 40px; color: white; text-decoration: none; font-weight: 600; font-size: 16px;">
-                                Acceder al Sistema de Planillas
+                                Acceder al Sistema
                               </a>
                             </td>
                           </tr>
                         </table>
                       </td>
                     </tr>
-                    
-                    <!-- Footer -->
                     <tr>
                       <td style="background: #f8fafc; padding: 24px 32px; border-top: 1px solid #e2e8f0;">
-                        <p style="margin: 0 0 8px 0; color: #64748b; font-size: 13px; line-height: 1.6; text-align: center;">
-                          ¿Tiene preguntas o necesita ayuda? Contáctenos:
-                        </p>
-                        <p style="margin: 0 0 16px 0; text-align: center;">
-                          <a href="mailto:${supportEmail}" style="color: #1e40af; font-size: 14px; text-decoration: underline;">${supportEmail}</a>
+                        <p style="margin: 0 0 8px 0; color: #64748b; font-size: 13px; text-align: center;">
+                          ¿Necesita ayuda? <a href="mailto:${supportEmail}" style="color: #1e40af;">${supportEmail}</a>
                         </p>
                         <p style="margin: 0; color: #94a3b8; font-size: 12px; text-align: center;">
-                          © ${new Date().getFullYear()} ACL Workforce HUB. Todos los derechos reservados.
-                        </p>
-                        <p style="margin: 8px 0 0 0; color: #cbd5e1; font-size: 11px; text-align: center;">
-                          Este correo fue enviado porque su empresa lo registró en nuestro sistema. Si cree que recibió este mensaje por error, por favor contáctenos.
+                          © ${new Date().getFullYear()} ACL Workforce HUB
                         </p>
                       </td>
                     </tr>
@@ -223,8 +215,34 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (emailError) {
       console.error("Error sending credentials email:", emailError);
-      throw new Error(emailError.message || "Error sending credentials email");
     }
+
+    // Log to email_logs for traceability
+    if (company_id) {
+      await supabaseAdmin.from("email_logs").insert({
+        company_id: company_id,
+        recipient_email: email,
+        recipient_name: full_name || email,
+        subject: `Bienvenido al ${systemName}`,
+        status: emailError ? "failed" : "sent",
+        error_message: emailError ? JSON.stringify(emailError) : null,
+        sent_at: emailError ? null : new Date().toISOString(),
+      });
+    }
+
+    // Log to audit
+    await supabaseAdmin.from("audit_log").insert({
+      log_id: `USR-${Date.now()}`,
+      actor_email: user.email || "system",
+      action: "user_created",
+      target_email: email,
+      company_id: company_id || null,
+      details: JSON.stringify({
+        created_by: user.id,
+        email_sent: !emailError,
+        full_name: full_name || email,
+      }),
+    });
 
     return new Response(
       JSON.stringify({
@@ -234,7 +252,7 @@ const handler = async (req: Request): Promise<Response> => {
           email: newUser.user.email,
           full_name: full_name || email,
         },
-        email_sent: true,
+        email_sent: !emailError,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -256,4 +274,3 @@ const handler = async (req: Request): Promise<Response> => {
 };
 
 serve(handler);
-
