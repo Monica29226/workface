@@ -386,7 +386,6 @@ export function VacationApproval() {
                           size="sm"
                           className="bg-emerald-600 hover:bg-emerald-700"
                           onClick={() => openActionDialog(request, 'approve')}
-                          disabled={request.days_available < request.days_requested}
                         >
                           <CheckCircle className="h-4 w-4 mr-1" />
                           Aprobar
