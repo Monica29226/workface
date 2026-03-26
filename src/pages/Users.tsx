@@ -167,6 +167,19 @@ export function Users() {
 
       if (permError) throw permError;
 
+      // Fetch all invitations to determine status
+      const { data: allInvitations } = await supabase
+        .from('user_invitations')
+        .select('email, status, created_at, expires_at')
+        .order('created_at', { ascending: false });
+
+      // Fetch recent email logs for credential/invitation emails
+      const { data: recentEmailLogs } = await supabase
+        .from('email_logs')
+        .select('recipient_email, status, sent_at, error_message, subject')
+        .order('created_at', { ascending: false })
+        .limit(500);
+
       // Fetch auth info (last_sign_in) from edge function
       let authInfoMap: Record<string, { last_sign_in_at: string | null }> = {};
       try {
@@ -216,13 +229,51 @@ export function Users() {
             };
           });
 
+        // Determine access status
+        const lastSignIn = authInfoMap[profile.id]?.last_sign_in_at;
+        const userInvitations = allInvitations?.filter(i => i.email === profile.email) || [];
+        const latestInvite = userInvitations[0];
+        
+        // Find last email sent to this user
+        const userEmails = recentEmailLogs?.filter(e => e.recipient_email === profile.email) || [];
+        const lastEmail = userEmails[0];
+
+        let accessStatus: User['accessStatus'] = 'no_invitation';
+        let invitationStatus: string | undefined;
+
+        if (lastSignIn) {
+          accessStatus = 'active';
+        } else if (latestInvite) {
+          if (latestInvite.status === 'accepted') {
+            accessStatus = 'never_logged_in';
+            invitationStatus = 'Aceptada';
+          } else if (latestInvite.status === 'pending') {
+            if (new Date(latestInvite.expires_at) < new Date()) {
+              accessStatus = 'expired_invitation';
+              invitationStatus = 'Expirada';
+            } else {
+              accessStatus = 'pending_invitation';
+              invitationStatus = 'Pendiente';
+            }
+          } else if (latestInvite.status === 'cancelled') {
+            accessStatus = 'no_invitation';
+            invitationStatus = 'Cancelada';
+          }
+        } else {
+          accessStatus = 'never_logged_in';
+        }
+
         return {
           id: profile.id,
           email: profile.email,
           full_name: profile.full_name || profile.email,
           role: userRole?.role,
-          last_sign_in_at: authInfoMap[profile.id]?.last_sign_in_at || undefined,
-          companies: userCompanies
+          last_sign_in_at: lastSignIn || undefined,
+          companies: userCompanies,
+          accessStatus,
+          invitationStatus,
+          lastEmailSent: lastEmail?.sent_at || undefined,
+          lastEmailStatus: lastEmail?.status || undefined,
         };
       });
 
