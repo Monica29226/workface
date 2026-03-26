@@ -597,7 +597,33 @@ export function PayrollProcess() {
           {/* Summary Cards */}
           {payrollLines.length > 0 && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Currency Info Banner */}
+              {currentBatch && (
+                <Card className="border-l-4 border-l-primary">
+                  <CardContent className="py-3 px-4">
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-4">
+                        <span className="text-muted-foreground">Moneda base:</span>
+                        <Badge variant="outline" className="font-mono">{currentBatch.base_currency}</Badge>
+                        {payrollLines.some(l => l.currency === 'USD') && (
+                          <>
+                            <span className="text-muted-foreground">|</span>
+                            <span className="text-muted-foreground">Tipo cambio aplicado:</span>
+                            <Badge variant="secondary" className="font-mono">
+                              ₡{Number(exchangeRateFromLines).toFixed(2)} / USD
+                            </Badge>
+                          </>
+                        )}
+                      </div>
+                      <span className="text-muted-foreground text-xs">
+                        {payrollLines.filter(l => l.currency === 'USD').length} empleado(s) en USD
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-center">
@@ -605,7 +631,7 @@ export function PayrollProcess() {
                         ₡{stats.totalGross.toLocaleString('es-CR', { maximumFractionDigits: 0 })}
                       </div>
                       <div className="text-sm text-muted-foreground mt-1">
-                        Total Bruto
+                        Total Bruto (CRC)
                       </div>
                     </div>
                   </CardContent>
@@ -614,11 +640,29 @@ export function PayrollProcess() {
                 <Card>
                   <CardContent className="pt-6">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">
+                      <div className="text-2xl font-bold text-emerald-600">
                         ₡{stats.totalNet.toLocaleString('es-CR', { maximumFractionDigits: 0 })}
                       </div>
                       <div className="text-sm text-muted-foreground mt-1">
-                        Total a Pagar
+                        Total a Pagar (CRC)
+                      </div>
+                      {payrollLines.some(l => l.currency === 'USD') && (
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          ≈ ${stats.totalNetUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">
+                        ₡{stats.totalEmployerContrib.toLocaleString('es-CR', { maximumFractionDigits: 0 })}
+                      </div>
+                      <div className="text-sm text-muted-foreground mt-1">
+                        Cargas Patronales
                       </div>
                     </div>
                   </CardContent>

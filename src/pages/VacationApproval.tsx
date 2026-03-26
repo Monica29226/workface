@@ -168,6 +168,45 @@ export function VacationApproval() {
           .eq("id", selectedRequest.employee_id);
       }
 
+      // Send notification email to employee
+      try {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            to: [selectedRequest.employee_email],
+            subject: action === 'approve'
+              ? `✅ Vacaciones aprobadas — ${selectedRequest.days_requested} días`
+              : `❌ Solicitud de vacaciones rechazada`,
+            html: action === 'approve'
+              ? `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+                  <h2 style="color:#059669">Vacaciones Aprobadas</h2>
+                  <p>Hola <strong>${selectedRequest.employee_name}</strong>,</p>
+                  <p>Tu solicitud de <strong>${selectedRequest.days_requested} días</strong> de vacaciones ha sido aprobada.</p>
+                  <table style="border-collapse:collapse;width:100%;margin:16px 0">
+                    <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:600">Período</td>
+                        <td style="padding:8px;border:1px solid #e5e7eb">${selectedRequest.start_date} al ${selectedRequest.end_date}</td></tr>
+                    <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:600">Días</td>
+                        <td style="padding:8px;border:1px solid #e5e7eb">${selectedRequest.days_requested}</td></tr>
+                    ${reviewNotes ? `<tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:600">Notas</td>
+                        <td style="padding:8px;border:1px solid #e5e7eb">${reviewNotes}</td></tr>` : ''}
+                  </table>
+                  <p style="color:#6b7280;font-size:12px">ACL Workforce HUB</p>
+                </div>`
+              : `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+                  <h2 style="color:#dc2626">Solicitud de Vacaciones Rechazada</h2>
+                  <p>Hola <strong>${selectedRequest.employee_name}</strong>,</p>
+                  <p>Tu solicitud de <strong>${selectedRequest.days_requested} días</strong> de vacaciones (${selectedRequest.start_date} al ${selectedRequest.end_date}) ha sido rechazada.</p>
+                  ${reviewNotes ? `<p><strong>Motivo:</strong> ${reviewNotes}</p>` : ''}
+                  <p>Por favor contacta a tu supervisor para más información.</p>
+                  <p style="color:#6b7280;font-size:12px">ACL Workforce HUB</p>
+                </div>`,
+            companyId: selectedCompany.id,
+          },
+        });
+      } catch (emailError) {
+        console.error("Error sending vacation notification email:", emailError);
+        // Don't block the approval flow if email fails
+      }
+
       toast({
         title: action === 'approve' ? "Solicitud aprobada" : "Solicitud rechazada",
         description: action === 'approve' 

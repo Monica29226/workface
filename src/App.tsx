@@ -35,6 +35,7 @@ const EmployeeProfileHR = lazy(() => import("@/pages/EmployeeProfileHR").then(m 
 const EmployeeVacations = lazy(() => import("@/pages/EmployeeVacations").then(m => ({ default: m.EmployeeVacations })));
 const UsersPage = lazy(() => import("@/pages/Users").then(m => ({ default: m.Users })));
 const EmailCenter = lazy(() => import("@/pages/EmailCenter").then(m => ({ default: m.EmailCenter })));
+const EmailBitacora = lazy(() => import("@/components/email/EmailBitacoraPage"));
 const CompanySelector = lazy(() => import("./pages/CompanySelector"));
 const CreateCompany = lazy(() => import("./pages/CreateCompany"));
 const Auth = lazy(() => import("./pages/Auth"));
@@ -105,6 +106,7 @@ const App = () => (
                     <Route path="/employee-vacations" element={<EmployeeVacations />} />
                     <Route path="/create-company" element={<CreateCompany />} />
                     <Route path="/email-center" element={<EmailCenter />} />
+                    <Route path="/email-bitacora" element={<EmailBitacora />} />
                     <Route path="/settings/parameters" element={<Parameters />} />
                     <Route path="/settings/payslip" element={<PayslipSettings />} />
                     <Route path="/settings/admin" element={<div className="p-6 text-center text-muted-foreground">Administración - En desarrollo</div>} />
