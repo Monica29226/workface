@@ -35,6 +35,7 @@ const EmployeeProfileHR = lazy(() => import("@/pages/EmployeeProfileHR").then(m 
 const EmployeeVacations = lazy(() => import("@/pages/EmployeeVacations").then(m => ({ default: m.EmployeeVacations })));
 const UsersPage = lazy(() => import("@/pages/Users").then(m => ({ default: m.Users })));
 const EmailCenter = lazy(() => import("@/pages/EmailCenter").then(m => ({ default: m.EmailCenter })));
+const EmailBitacora = lazy(() => import("@/components/email/EmailBitacoraPage"));
 const CompanySelector = lazy(() => import("./pages/CompanySelector"));
 const CreateCompany = lazy(() => import("./pages/CreateCompany"));
 const Auth = lazy(() => import("./pages/Auth"));
