@@ -175,6 +175,13 @@ const hrNavigationItems: NavigationItem[] = [
     group: 'communications',
     roles: MANAGER_ROLES
   },
+  { 
+    title: 'Bitácora de Correos', 
+    url: '/email-bitacora', 
+    icon: History,
+    group: 'communications',
+    roles: MANAGER_ROLES
+  },
   
   // === ADMINISTRACIÓN ===
   { 

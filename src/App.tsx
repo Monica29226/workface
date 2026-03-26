@@ -106,6 +106,7 @@ const App = () => (
                     <Route path="/employee-vacations" element={<EmployeeVacations />} />
                     <Route path="/create-company" element={<CreateCompany />} />
                     <Route path="/email-center" element={<EmailCenter />} />
+                    <Route path="/email-bitacora" element={<EmailBitacora />} />
                     <Route path="/settings/parameters" element={<Parameters />} />
                     <Route path="/settings/payslip" element={<PayslipSettings />} />
                     <Route path="/settings/admin" element={<div className="p-6 text-center text-muted-foreground">Administración - En desarrollo</div>} />
