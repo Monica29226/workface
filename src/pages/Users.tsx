@@ -878,6 +878,7 @@ export function Users() {
                 <TableRow className="bg-muted/50">
                   <TableHead className="font-semibold">Usuario</TableHead>
                   <TableHead className="font-semibold">Rol Global</TableHead>
+                  <TableHead className="font-semibold">Estado Acceso</TableHead>
                   <TableHead className="font-semibold">Empresas</TableHead>
                   <TableHead className="font-semibold">Último Acceso</TableHead>
                   <TableHead className="font-semibold text-center">Acciones</TableHead>
