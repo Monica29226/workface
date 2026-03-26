@@ -264,7 +264,6 @@ export function Liquidaciones() {
       </style></head><body>
       <div class="header">
         <div class="company-name">${selectedCompany?.name || 'Empresa'}</div>
-        <p>Cédula Jurídica: ${selectedCompany?.tax_id || 'N/A'}</p>
       </div>
       <div class="title">Carta de Liquidación Laboral</div>
       <div class="info-box">
