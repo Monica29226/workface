@@ -34,6 +34,11 @@ interface User {
     role: string;
     permissions?: CompanyPermission;
   }>;
+  // Access status fields
+  accessStatus: 'active' | 'never_logged_in' | 'pending_invitation' | 'expired_invitation' | 'no_invitation';
+  lastEmailSent?: string;
+  lastEmailStatus?: string;
+  invitationStatus?: string;
 }
 
 interface CompanyPermission {
@@ -162,6 +167,19 @@ export function Users() {
 
       if (permError) throw permError;
 
+      // Fetch all invitations to determine status
+      const { data: allInvitations } = await supabase
+        .from('user_invitations')
+        .select('email, status, created_at, expires_at')
+        .order('created_at', { ascending: false });
+
+      // Fetch recent email logs for credential/invitation emails
+      const { data: recentEmailLogs } = await supabase
+        .from('email_logs')
+        .select('recipient_email, status, sent_at, error_message, subject')
+        .order('created_at', { ascending: false })
+        .limit(500);
+
       // Fetch auth info (last_sign_in) from edge function
       let authInfoMap: Record<string, { last_sign_in_at: string | null }> = {};
       try {
@@ -211,13 +229,51 @@ export function Users() {
             };
           });
 
+        // Determine access status
+        const lastSignIn = authInfoMap[profile.id]?.last_sign_in_at;
+        const userInvitations = allInvitations?.filter(i => i.email === profile.email) || [];
+        const latestInvite = userInvitations[0];
+        
+        // Find last email sent to this user
+        const userEmails = recentEmailLogs?.filter(e => e.recipient_email === profile.email) || [];
+        const lastEmail = userEmails[0];
+
+        let accessStatus: User['accessStatus'] = 'no_invitation';
+        let invitationStatus: string | undefined;
+
+        if (lastSignIn) {
+          accessStatus = 'active';
+        } else if (latestInvite) {
+          if (latestInvite.status === 'accepted') {
+            accessStatus = 'never_logged_in';
+            invitationStatus = 'Aceptada';
+          } else if (latestInvite.status === 'pending') {
+            if (new Date(latestInvite.expires_at) < new Date()) {
+              accessStatus = 'expired_invitation';
+              invitationStatus = 'Expirada';
+            } else {
+              accessStatus = 'pending_invitation';
+              invitationStatus = 'Pendiente';
+            }
+          } else if (latestInvite.status === 'cancelled') {
+            accessStatus = 'no_invitation';
+            invitationStatus = 'Cancelada';
+          }
+        } else {
+          accessStatus = 'never_logged_in';
+        }
+
         return {
           id: profile.id,
           email: profile.email,
           full_name: profile.full_name || profile.email,
           role: userRole?.role,
-          last_sign_in_at: authInfoMap[profile.id]?.last_sign_in_at || undefined,
-          companies: userCompanies
+          last_sign_in_at: lastSignIn || undefined,
+          companies: userCompanies,
+          accessStatus,
+          invitationStatus,
+          lastEmailSent: lastEmail?.sent_at || undefined,
+          lastEmailStatus: lastEmail?.status || undefined,
         };
       });
 
@@ -822,6 +878,7 @@ export function Users() {
                 <TableRow className="bg-muted/50">
                   <TableHead className="font-semibold">Usuario</TableHead>
                   <TableHead className="font-semibold">Rol Global</TableHead>
+                  <TableHead className="font-semibold">Estado Acceso</TableHead>
                   <TableHead className="font-semibold">Empresas</TableHead>
                   <TableHead className="font-semibold">Último Acceso</TableHead>
                   <TableHead className="font-semibold text-center">Acciones</TableHead>
@@ -830,7 +887,7 @@ export function Users() {
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       No se encontraron usuarios
                     </TableCell>
                   </TableRow>
@@ -842,6 +899,26 @@ export function Users() {
                           <div className="font-medium">{user.full_name}</div>
                           <div className="text-sm text-muted-foreground">{user.email}</div>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        {user.accessStatus === 'active' && (
+                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Activo</Badge>
+                        )}
+                        {user.accessStatus === 'never_logged_in' && (
+                          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Sin ingreso</Badge>
+                        )}
+                        {user.accessStatus === 'pending_invitation' && (
+                          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Invitación pendiente</Badge>
+                        )}
+                        {user.accessStatus === 'expired_invitation' && (
+                          <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Invitación expirada</Badge>
+                        )}
+                        {user.accessStatus === 'no_invitation' && (
+                          <Badge variant="outline">Sin invitación</Badge>
+                        )}
+                        {user.lastEmailStatus === 'failed' && (
+                          <Badge className="bg-red-100 text-red-800 hover:bg-red-100 mt-1 text-xs">Correo falló</Badge>
+                        )}
                       </TableCell>
                       <TableCell>{getRoleBadge(user.role)}</TableCell>
                       <TableCell>
