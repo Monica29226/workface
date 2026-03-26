@@ -119,6 +119,16 @@ export function VacationApproval() {
   const handleAction = async (action: 'approve' | 'reject') => {
     if (!selectedRequest || !selectedCompany) return;
 
+    // VALIDATION: Check vacation balance before approval
+    if (action === 'approve' && selectedRequest.days_available < selectedRequest.days_requested) {
+      toast({
+        title: "Saldo insuficiente",
+        description: `${selectedRequest.employee_name} tiene ${selectedRequest.days_available.toFixed(1)} días disponibles pero solicita ${selectedRequest.days_requested}. No se puede aprobar.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -386,7 +396,6 @@ export function VacationApproval() {
                           size="sm"
                           className="bg-emerald-600 hover:bg-emerald-700"
                           onClick={() => openActionDialog(request, 'approve')}
-                          disabled={request.days_available < request.days_requested}
                         >
                           <CheckCircle className="h-4 w-4 mr-1" />
                           Aprobar
