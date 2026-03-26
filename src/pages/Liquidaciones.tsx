@@ -324,9 +324,6 @@ export function Liquidaciones() {
           <h1 className="text-2xl font-bold text-gradient">Liquidaciones</h1>
           <p className="text-muted-foreground">
             Cálculo de prestaciones laborales — {selectedCompany.name}
-            {selectedCompany.base_currency && (
-              <Badge variant="outline" className="ml-2">{selectedCompany.base_currency}</Badge>
-            )}
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => setShowNewLiquidation(!showNewLiquidation)} className="gap-2">
