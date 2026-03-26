@@ -900,6 +900,26 @@ export function Users() {
                           <div className="text-sm text-muted-foreground">{user.email}</div>
                         </div>
                       </TableCell>
+                      <TableCell>
+                        {user.accessStatus === 'active' && (
+                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Activo</Badge>
+                        )}
+                        {user.accessStatus === 'never_logged_in' && (
+                          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Sin ingreso</Badge>
+                        )}
+                        {user.accessStatus === 'pending_invitation' && (
+                          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Invitación pendiente</Badge>
+                        )}
+                        {user.accessStatus === 'expired_invitation' && (
+                          <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Invitación expirada</Badge>
+                        )}
+                        {user.accessStatus === 'no_invitation' && (
+                          <Badge variant="outline">Sin invitación</Badge>
+                        )}
+                        {user.lastEmailStatus === 'failed' && (
+                          <Badge className="bg-red-100 text-red-800 hover:bg-red-100 mt-1 text-xs">Correo falló</Badge>
+                        )}
+                      </TableCell>
                       <TableCell>{getRoleBadge(user.role)}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
