@@ -34,6 +34,11 @@ interface User {
     role: string;
     permissions?: CompanyPermission;
   }>;
+  // Access status fields
+  accessStatus: 'active' | 'never_logged_in' | 'pending_invitation' | 'expired_invitation' | 'no_invitation';
+  lastEmailSent?: string;
+  lastEmailStatus?: string;
+  invitationStatus?: string;
 }
 
 interface CompanyPermission {
