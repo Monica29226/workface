@@ -270,53 +270,31 @@ export function Payslips() {
     if (!selectedCompany) return;
 
     try {
-      // First, find the payslip record in the database
-      const { data: payslipRecord, error: payslipError } = await supabase
-        .from('payslips')
-        .select('id, employee_id, payslip_id')
-        .eq('employee_id', payslip.employeeId)
-        .eq('company_id', selectedCompany.id)
-        .single();
-
-      if (payslipError || !payslipRecord) {
+      // Validate employee email exists
+      if (!payslip.email) {
         toast({
           title: "Error",
-          description: "No se encontró la colilla en la base de datos",
+          description: `El colaborador ${payslip.employeeName} no tiene correo registrado`,
           variant: "destructive",
         });
         return;
       }
 
-      // Generate PDF first
-      const { data: pdfData, error: pdfError } = await supabase.functions.invoke('generate-payslip-pdf', {
-        body: { payslipId: payslipRecord.id },
-      });
-
-      if (pdfError) throw pdfError;
-
-      // Send email with PDF
-      const { error: emailError } = await supabase.functions.invoke('send-email', {
+      // Use send-payslip-email edge function which handles everything:
+      // - Company validation
+      // - Actual deductions from deductions_detail
+      // - Proper currency handling (CRC/USD)
+      // - Email logging
+      // - Audit trail
+      const { data, error } = await supabase.functions.invoke('send-payslip-email', {
         body: {
-          to: payslip.email,
-          subject: `Colilla de Pago - ${selectedCompany.name} - ${payslip.period}`,
-          html: `
-            <h2>Colilla de Pago</h2>
-            <p>Estimado/a ${payslip.employeeName},</p>
-            <p>Adjunto encontrará su colilla de pago correspondiente al período de ${payslip.period}.</p>
-            <p><strong>Salario Neto:</strong> ${formatCurrency(payslip.netSalary, payslip.currency)}</p>
-            <p>Saludos,<br>${selectedCompany.name}</p>
-          `,
+          payrollLineId: payslip.id,
           companyId: selectedCompany.id,
         },
       });
 
-      if (emailError) throw emailError;
-
-      // Update payslip status
-      await supabase
-        .from('payslips')
-        .update({ sent_at: new Date().toISOString() })
-        .eq('id', payslipRecord.id);
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: "Colilla enviada",
@@ -327,8 +305,8 @@ export function Payslips() {
     } catch (error: any) {
       console.error('Error sending email:', error);
       toast({
-        title: "Error",
-        description: error.message || "No se pudo enviar la colilla",
+        title: "Error al enviar colilla",
+        description: error.message || "No se pudo enviar la colilla. Verifique el correo del colaborador.",
         variant: "destructive",
       });
     }
