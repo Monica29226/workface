@@ -420,7 +420,7 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    const unsubscribeEmailAddr = 'unsubscribe@aureoncr.com';
+    const unsubscribeEmailAddr = 'unsubscribe@calderon.cr';
 
     // Create email log BEFORE sending
     const { data: logEntry } = await supabase.from("email_logs").insert({

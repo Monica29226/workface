@@ -160,7 +160,7 @@ const handler = async (req: Request): Promise<Response> => {
       to: [email],
       subject: `Bienvenido al ${systemName}${company_name ? ` - ${company_name}` : ""}`,
       headers: {
-        "List-Unsubscribe": `<mailto:unsubscribe@aureoncr.com?subject=Unsubscribe>`,
+        "List-Unsubscribe": `<mailto:unsubscribe@calderon.cr?subject=Unsubscribe>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
       html: `

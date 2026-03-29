@@ -168,7 +168,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const appOrigin = "https://workforcehub.calderon.cr";
     const platformUrl = `${appOrigin}/auth`;
-    const unsubscribeEmail = "unsubscribe@aureoncr.com";
+    const unsubscribeEmail = "unsubscribe@calderon.cr";
 
     // Create email log entry BEFORE sending
     const { data: logEntry } = await supabaseAdmin

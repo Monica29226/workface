@@ -51,12 +51,12 @@ serve(async (req) => {
       // Use default if no body
     }
 
-    // Using noreply@aureoncr.com - domain aureoncr.com is verified in Resend
-    const rawFrom = (fromEmail || 'noreply@aureoncr.com').trim();
+    // Using noreply@calderon.cr - domain calderon.cr is verified in Resend
+    const rawFrom = (fromEmail || 'noreply@calderon.cr').trim();
     const cleanedFrom = rawFrom.replace(/^"+|"+$/g, '').trim();
-    const from = cleanedFrom.includes('<') && cleanedFrom.includes('>')
-      ? cleanedFrom
-      : `ACL Workforce HUB <${cleanedFrom}>`;
+    const emailMatchResult = cleanedFrom.match(/<([^>]+)>/);
+    const pureEmailAddr = emailMatchResult ? emailMatchResult[1] : cleanedFrom;
+    const from = `ACL Payroll CR <${pureEmailAddr}>`;
 
     console.log('Attempting to send test email to:', testEmail);
     console.log('Using FROM:', from);

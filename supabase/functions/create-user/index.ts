@@ -106,11 +106,11 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("RESEND_API_KEY is not configured");
     }
 
-    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@aureoncr.com").trim();
+    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@calderon.cr").trim();
     const cleanedFrom = rawFromEmail.replace(/^\"+|\"+$/g, "").trim();
     const emailMatch = cleanedFrom.match(/<([^>]+)>/);
     const pureEmail = emailMatch ? emailMatch[1] : cleanedFrom;
-    const from = `ACL Workforce HUB <${pureEmail}>`;
+    const from = `ACL Payroll CR <${pureEmail}>`;
 
     const portalUrl = "https://workforcehub.calderon.cr";
     const loginLink = `${portalUrl}/auth`;
