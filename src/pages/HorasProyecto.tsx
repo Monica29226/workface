@@ -627,21 +627,6 @@ export function HorasProyecto() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Reportes</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button variant="outline" size="sm" className="w-full justify-start">
-                <FileDownIcon className="w-4 h-4 mr-2" />
-                {t.resumenEmpleado}
-              </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start">
-                <FileDownIcon className="w-4 h-4 mr-2" />
-                {t.resumenProyecto}
-              </Button>
-            </CardContent>
-          </Card>
         </div>
       </div>
 
