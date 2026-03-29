@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, MapPin, Phone, Mail, ArrowRight } from "lucide-react";
+import { Building2, ArrowRight } from "lucide-react";
 import { useCompany } from "@/contexts/CompanyContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 
