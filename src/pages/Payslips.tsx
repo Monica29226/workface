@@ -661,7 +661,7 @@ export function Payslips() {
                         {getStatusBadge(payslip.status)}
                       </TableCell>
                       <TableCell className="text-center">
-                        <div className="text-sm">{payslip.email}</div>
+                        {getEmailStatusBadge(payslip.emailStatus)}
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1">
