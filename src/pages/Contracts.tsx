@@ -63,18 +63,7 @@ export function Contracts() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Upload className="h-4 w-4" />
-            Importar CSV
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Download className="h-4 w-4" />
-            Exportar CSV
-          </Button>
-          <Button size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />
-            Nuevo Contrato
-          </Button>
+          {/* Buttons removed — contract CRUD not yet implemented */}
         </div>
       </div>
 
