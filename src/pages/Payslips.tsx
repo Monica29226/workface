@@ -41,12 +41,14 @@ interface PayslipData {
   netSalary: number;
   aguinaldo: number;
   status: 'generated' | 'sent';
+  emailStatus: 'sent' | 'pending' | 'failed' | 'no_email';
   currency: 'CRC' | 'USD';
   exchangeRate: number;
   month: number;
   year: number;
   period: string;
   batchId: string;
+  batchUuid: string;
 }
 
 export function Payslips() {
@@ -101,12 +103,30 @@ export function Payslips() {
         throw error;
       }
 
-      console.log('Fetched payroll data:', data);
+      // Fetch payslip sent_at data to determine email status
+      const { data: payslipRecords } = await supabase
+        .from('payslips')
+        .select('employee_id, batch_id, sent_at')
+        .eq('company_id', selectedCompany.id);
+
+      const payslipSentMap = new Map<string, string | null>();
+      (payslipRecords || []).forEach((p: any) => {
+        payslipSentMap.set(`${p.employee_id}-${p.batch_id}`, p.sent_at);
+      });
 
       const transformedPayslips: PayslipData[] = (data || []).map((line: any) => {
         const periodStart = new Date(line.batch.period_start);
         const month = periodStart.getMonth() + 1;
         const year = periodStart.getFullYear();
+
+        // Determine email status
+        const sentAt = payslipSentMap.get(`${line.employee_id}-${line.batch.id}`);
+        let emailStatus: 'sent' | 'pending' | 'failed' | 'no_email' = 'pending';
+        if (!line.employee.work_email) {
+          emailStatus = 'no_email';
+        } else if (sentAt) {
+          emailStatus = 'sent';
+        }
 
         return {
           id: line.id,
@@ -118,13 +138,15 @@ export function Payslips() {
           deductions: Number(line.deductions),
           netSalary: Number(line.net_pay),
           aguinaldo: Number(line.aguinaldo_accrued || 0),
-          status: line.batch.status === 'aprobado' ? 'sent' : 'generated',
+          status: line.batch.status === 'enviado' ? 'sent' : 'generated',
+          emailStatus,
           currency: line.currency,
           exchangeRate: Number(line.exchange_rate_to_base || 1),
           month,
           year,
           period: `${monthNames[month - 1]} ${year}`,
-          batchId: line.batch.batch_id
+          batchId: line.batch.batch_id,
+          batchUuid: line.batch.id,
         };
       });
 
@@ -406,6 +428,19 @@ export function Payslips() {
       : <Badge variant="secondary">Pendiente</Badge>;
   };
 
+  const getEmailStatusBadge = (emailStatus: string) => {
+    switch (emailStatus) {
+      case 'sent':
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">✉️ Enviado</Badge>;
+      case 'failed':
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">❌ Falló</Badge>;
+      case 'no_email':
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">⚠️ Sin correo</Badge>;
+      default:
+        return <Badge variant="outline">Pendiente</Badge>;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -587,7 +622,7 @@ export function Payslips() {
                   <TableHead className="font-semibold text-right">Neto</TableHead>
                   <TableHead className="font-semibold text-right">Aguinaldo</TableHead>
                   <TableHead className="font-semibold text-center">Estado</TableHead>
-                  <TableHead className="font-semibold text-center">Email</TableHead>
+                  <TableHead className="font-semibold text-center">Correo</TableHead>
                   <TableHead className="font-semibold text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -626,7 +661,7 @@ export function Payslips() {
                         {getStatusBadge(payslip.status)}
                       </TableCell>
                       <TableCell className="text-center">
-                        <div className="text-sm">{payslip.email}</div>
+                        {getEmailStatusBadge(payslip.emailStatus)}
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-1">

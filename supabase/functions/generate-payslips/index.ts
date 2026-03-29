@@ -236,17 +236,103 @@ serve(async (req) => {
       console.error("Batch update error:", updateError);
     }
 
+    // ── AUTO-SEND PAYSLIP EMAILS ──
+    const emailResults: { employee_id: string; status: string; error?: string }[] = [];
+
+    if (newPayslips.length > 0) {
+      console.log("Auto-sending payslip emails for", lines.length, "employees");
+
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+      const authHeader = req.headers.get("Authorization") || "";
+
+      for (const line of lines) {
+        const employee = line.employee;
+
+        // Skip employees without email
+        if (!employee.work_email) {
+          console.warn(`Employee ${employee.employee_id} has no email, skipping auto-send`);
+
+          // Log the failure in email_logs
+          await supabaseAdmin.from("email_logs").insert({
+            company_id: batch.company_id,
+            recipient_email: "sin_correo@n-a.com",
+            recipient_name: employee.full_name,
+            subject: `[AUTO] Boleta de Pago - ${periodLabel}`,
+            status: "failed",
+            error_message: "Colaborador sin correo electrónico registrado",
+          });
+
+          emailResults.push({
+            employee_id: employee.employee_id,
+            status: "failed",
+            error: "Sin correo registrado",
+          });
+          continue;
+        }
+
+        try {
+          // Call send-payslip-email edge function via HTTP
+          const sendResponse = await fetch(
+            `${supabaseUrl}/functions/v1/send-payslip-email`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: authHeader,
+                apikey: Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+              },
+              body: JSON.stringify({
+                payrollLineId: line.id,
+                companyId: batch.company_id,
+              }),
+            }
+          );
+
+          const sendResult = await sendResponse.json();
+
+          if (sendResponse.ok && sendResult.success) {
+            emailResults.push({
+              employee_id: employee.employee_id,
+              status: "sent",
+            });
+          } else {
+            console.error(`Failed to send email to ${employee.work_email}:`, sendResult.error);
+            emailResults.push({
+              employee_id: employee.employee_id,
+              status: "failed",
+              error: sendResult.error || "Error desconocido",
+            });
+          }
+        } catch (emailError: any) {
+          console.error(`Error sending email to ${employee.work_email}:`, emailError.message);
+          emailResults.push({
+            employee_id: employee.employee_id,
+            status: "failed",
+            error: emailError.message,
+          });
+        }
+      }
+
+      console.log(`Auto-send complete: ${emailResults.filter(r => r.status === 'sent').length} sent, ${emailResults.filter(r => r.status === 'failed').length} failed`);
+    }
+
+    const emailsSent = emailResults.filter(r => r.status === "sent").length;
+    const emailsFailed = emailResults.filter(r => r.status === "failed").length;
+
     return new Response(
       JSON.stringify({
         success: true,
         payslipsGenerated: newPayslips.length,
         totalPayslips: lines.length,
+        emailsSent,
+        emailsFailed,
+        emailResults,
         vacationAccrual: vacationAccrualResults.length > 0 ? {
           processed: vacationAccrualResults.length,
           totalDaysAccrued: vacationAccrualResults.reduce((sum, r) => sum + r.days_accrued, 0)
         } : null,
         message: newPayslips.length > 0 
-          ? `Se generaron ${newPayslips.length} colillas nuevas${vacationAccrualResults.length > 0 ? ' y se acumularon vacaciones' : ''}` 
+          ? `Se generaron ${newPayslips.length} colillas y se enviaron ${emailsSent} correos${emailsFailed > 0 ? ` (${emailsFailed} fallidos)` : ''}${vacationAccrualResults.length > 0 ? ' + vacaciones acumuladas' : ''}` 
           : "Todas las colillas ya fueron generadas previamente"
       }),
       {
