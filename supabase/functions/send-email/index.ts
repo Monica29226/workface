@@ -72,7 +72,7 @@ serve(async (req) => {
         }
 
         // Send email via Resend - parse FROM correctly
-        // Using noreply@aureoncr.com - domain aureoncr.com is verified in Resend
+        // Using noreply@calderon.cr - domain calderon.cr is verified in Resend
         const rawFromEmail = (Deno.env.get('RESEND_FROM_EMAIL') || 'noreply@calderon.cr').trim();
         const cleanedFrom = rawFromEmail.replace(/^"+|"+$/g, '').trim();
         const emailMatchResult = cleanedFrom.match(/<([^>]+)>/);

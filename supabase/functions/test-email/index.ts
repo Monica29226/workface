@@ -74,7 +74,7 @@ serve(async (req) => {
         <hr>
         <p><strong>Configuración:</strong></p>
         <ul>
-          <li>From: ${fromEmail || 'noreply@aureoncr.com'}</li>
+          <li>From: ${fromEmail || 'noreply@calderon.cr'}</li>
           <li>Timestamp: ${new Date().toISOString()}</li>
         </ul>
       `,
