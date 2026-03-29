@@ -680,14 +680,6 @@ export function Payslips() {
                           >
                             <Mail className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8"
-                            title="Imprimir"
-                          >
-                            <Printer className="h-4 w-4" />
-                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
