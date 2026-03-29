@@ -60,7 +60,7 @@ const CompanySelector = () => {
                   {company.logo}
                 </div>
                 <CardTitle className="text-2xl mb-2">{company.name}</CardTitle>
-                <p className="text-sm text-muted-foreground">{company.description}</p>
+                <p className="text-sm text-muted-foreground">{company.juridical_id}</p>
               </CardHeader>
               
               <CardContent className="space-y-4">
