@@ -13,14 +13,8 @@ const CompanySelector = () => {
 
   const companyDisplayData = companies.map(company => ({
     ...company,
-    logo: company.name.includes("Horizonte") ? "🌅" : "🏔️",
-    color: company.name.includes("Horizonte") ? "from-primary to-accent" : "from-accent to-teal",
-    address: company.name.includes("Horizonte") ? "San José, Costa Rica" : "Bijagua de Upala, Costa Rica",
-    phone: company.name.includes("Horizonte") ? "+506 2000-0000" : "+506 2100-0000",
-    email: company.name.includes("Horizonte") ? "info@horizontepositivo.org" : "info@alturasdetenorio.com",
-    description: company.name.includes("Horizonte") 
-      ? (language === "es" ? "Organización sin fines de lucro" : "Non-profit organization")
-      : (language === "es" ? "Empresa turística y agrícola" : "Tourism and agricultural company")
+    logo: "🏢",
+    color: "from-primary to-accent",
   }));
 
 
