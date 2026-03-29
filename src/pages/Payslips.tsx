@@ -103,12 +103,30 @@ export function Payslips() {
         throw error;
       }
 
-      console.log('Fetched payroll data:', data);
+      // Fetch payslip sent_at data to determine email status
+      const { data: payslipRecords } = await supabase
+        .from('payslips')
+        .select('employee_id, batch_id, sent_at')
+        .eq('company_id', selectedCompany.id);
+
+      const payslipSentMap = new Map<string, string | null>();
+      (payslipRecords || []).forEach((p: any) => {
+        payslipSentMap.set(`${p.employee_id}-${p.batch_id}`, p.sent_at);
+      });
 
       const transformedPayslips: PayslipData[] = (data || []).map((line: any) => {
         const periodStart = new Date(line.batch.period_start);
         const month = periodStart.getMonth() + 1;
         const year = periodStart.getFullYear();
+
+        // Determine email status
+        const sentAt = payslipSentMap.get(`${line.employee_id}-${line.batch.id}`);
+        let emailStatus: 'sent' | 'pending' | 'failed' | 'no_email' = 'pending';
+        if (!line.employee.work_email) {
+          emailStatus = 'no_email';
+        } else if (sentAt) {
+          emailStatus = 'sent';
+        }
 
         return {
           id: line.id,
@@ -120,13 +138,15 @@ export function Payslips() {
           deductions: Number(line.deductions),
           netSalary: Number(line.net_pay),
           aguinaldo: Number(line.aguinaldo_accrued || 0),
-          status: line.batch.status === 'aprobado' ? 'sent' : 'generated',
+          status: line.batch.status === 'enviado' ? 'sent' : 'generated',
+          emailStatus,
           currency: line.currency,
           exchangeRate: Number(line.exchange_rate_to_base || 1),
           month,
           year,
           period: `${monthNames[month - 1]} ${year}`,
-          batchId: line.batch.batch_id
+          batchId: line.batch.batch_id,
+          batchUuid: line.batch.id,
         };
       });
 
