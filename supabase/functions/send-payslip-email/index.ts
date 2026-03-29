@@ -199,11 +199,11 @@ serve(async (req) => {
 
     const companyName = company.display_name;
 
-    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@aureoncr.com").trim();
+    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@calderon.cr").trim();
     const cleanedFrom = rawFromEmail.replace(/^"+|"+$/g, "").trim();
     const emailMatchResult = cleanedFrom.match(/<([^>]+)>/);
     const pureEmail = emailMatchResult ? emailMatchResult[1] : cleanedFrom;
-    const from = `${companyName} <${pureEmail}>`;
+    const from = `ACL Payroll CR <${pureEmail}>`;
 
     // Build deductions rows
     const deductionRows = [];
