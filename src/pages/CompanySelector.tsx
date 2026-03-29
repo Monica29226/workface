@@ -69,18 +69,6 @@ const CompanySelector = () => {
                     <Building2 className="h-4 w-4 text-muted-foreground" />
                     <span>Cédula: {company.juridical_id}</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>{company.address}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{company.phone}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{company.email}</span>
-                  </div>
                 </div>
                 
                 <Button className="w-full group-hover:bg-primary/90 transition-colors gap-2">
