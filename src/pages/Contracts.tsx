@@ -97,16 +97,9 @@ export function Contracts() {
               <p className="text-muted-foreground mb-4 max-w-md">
                 Comienza importando contratos desde un archivo CSV o creando nuevos contratos manualmente.
               </p>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Upload className="h-4 w-4" />
-                  Importar CSV
-                </Button>
-                <Button size="sm" className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Nuevo Contrato
-                </Button>
-              </div>
+              <p className="text-sm">
+                La gestión de contratos estará disponible próximamente.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
