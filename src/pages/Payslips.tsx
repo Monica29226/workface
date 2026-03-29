@@ -41,12 +41,14 @@ interface PayslipData {
   netSalary: number;
   aguinaldo: number;
   status: 'generated' | 'sent';
+  emailStatus: 'sent' | 'pending' | 'failed' | 'no_email';
   currency: 'CRC' | 'USD';
   exchangeRate: number;
   month: number;
   year: number;
   period: string;
   batchId: string;
+  batchUuid: string;
 }
 
 export function Payslips() {
