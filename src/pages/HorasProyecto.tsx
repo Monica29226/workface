@@ -490,10 +490,6 @@ export function HorasProyecto() {
                   <PlusIcon className="w-4 h-4 mr-2" />
                   {t.addRow}
                 </Button>
-                <Button variant="outline" size="sm">
-                  <FileUpIcon className="w-4 h-4 mr-2" />
-                  {t.importData}
-                </Button>
                 <Button variant="outline" size="sm" onClick={validateHours}>
                   <CheckIcon className="w-4 h-4 mr-2" />
                   {t.validate}
