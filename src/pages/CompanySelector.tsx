@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Building2, MapPin, Phone, Mail, ArrowRight } from "lucide-react";
+import { Building2, ArrowRight } from "lucide-react";
 import { useCompany } from "@/contexts/CompanyContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -13,14 +13,8 @@ const CompanySelector = () => {
 
   const companyDisplayData = companies.map(company => ({
     ...company,
-    logo: company.name.includes("Horizonte") ? "🌅" : "🏔️",
-    color: company.name.includes("Horizonte") ? "from-primary to-accent" : "from-accent to-teal",
-    address: company.name.includes("Horizonte") ? "San José, Costa Rica" : "Bijagua de Upala, Costa Rica",
-    phone: company.name.includes("Horizonte") ? "+506 2000-0000" : "+506 2100-0000",
-    email: company.name.includes("Horizonte") ? "info@horizontepositivo.org" : "info@alturasdetenorio.com",
-    description: company.name.includes("Horizonte") 
-      ? (language === "es" ? "Organización sin fines de lucro" : "Non-profit organization")
-      : (language === "es" ? "Empresa turística y agrícola" : "Tourism and agricultural company")
+    logo: "🏢",
+    color: "from-primary to-accent",
   }));
 
 
@@ -66,7 +60,7 @@ const CompanySelector = () => {
                   {company.logo}
                 </div>
                 <CardTitle className="text-2xl mb-2">{company.name}</CardTitle>
-                <p className="text-sm text-muted-foreground">{company.description}</p>
+                <p className="text-sm text-muted-foreground">{company.juridical_id}</p>
               </CardHeader>
               
               <CardContent className="space-y-4">
@@ -74,18 +68,6 @@ const CompanySelector = () => {
                   <div className="flex items-center gap-3">
                     <Building2 className="h-4 w-4 text-muted-foreground" />
                     <span>Cédula: {company.juridical_id}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>{company.address}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{company.phone}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{company.email}</span>
                   </div>
                 </div>
                 

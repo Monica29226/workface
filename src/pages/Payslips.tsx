@@ -19,9 +19,6 @@ import {
   Mail, 
   Eye,
   FileText,
-  Archive,
-  Printer,
-  Building2,
   Plus
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -454,14 +451,6 @@ export function Payslips() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" className="gap-2">
-            <Building2 className="h-4 w-4" />
-            Editar Empresa
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Archive className="h-4 w-4" />
-            ZIP Colillas
-          </Button>
           <Button variant="outline" size="sm" className="gap-2" onClick={handleBulkSend}>
             <Mail className="h-4 w-4" />
             Envío Masivo
@@ -690,14 +679,6 @@ export function Payslips() {
                             title="Enviar por email"
                           >
                             <Mail className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8"
-                            title="Imprimir"
-                          >
-                            <Printer className="h-4 w-4" />
                           </Button>
                         </div>
                       </TableCell>

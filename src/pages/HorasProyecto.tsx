@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
-import { CalendarIcon, FileUpIcon, FileDownIcon, PlusIcon, CheckIcon, XIcon, EditIcon } from "lucide-react";
+import { CalendarIcon, PlusIcon, CheckIcon, XIcon, EditIcon } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -490,10 +490,6 @@ export function HorasProyecto() {
                   <PlusIcon className="w-4 h-4 mr-2" />
                   {t.addRow}
                 </Button>
-                <Button variant="outline" size="sm">
-                  <FileUpIcon className="w-4 h-4 mr-2" />
-                  {t.importData}
-                </Button>
                 <Button variant="outline" size="sm" onClick={validateHours}>
                   <CheckIcon className="w-4 h-4 mr-2" />
                   {t.validate}
@@ -506,10 +502,6 @@ export function HorasProyecto() {
                 >
                   <CheckIcon className="w-4 h-4 mr-2" />
                   {t.approveSelected} ({selectedRows.length})
-                </Button>
-                <Button variant="outline" size="sm">
-                  <FileDownIcon className="w-4 h-4 mr-2" />
-                  {t.export}
                 </Button>
               </div>
             </CardContent>
@@ -635,21 +627,6 @@ export function HorasProyecto() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Reportes</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button variant="outline" size="sm" className="w-full justify-start">
-                <FileDownIcon className="w-4 h-4 mr-2" />
-                {t.resumenEmpleado}
-              </Button>
-              <Button variant="outline" size="sm" className="w-full justify-start">
-                <FileDownIcon className="w-4 h-4 mr-2" />
-                {t.resumenProyecto}
-              </Button>
-            </CardContent>
-          </Card>
         </div>
       </div>
 
