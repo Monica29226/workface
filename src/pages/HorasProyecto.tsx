@@ -503,10 +503,6 @@ export function HorasProyecto() {
                   <CheckIcon className="w-4 h-4 mr-2" />
                   {t.approveSelected} ({selectedRows.length})
                 </Button>
-                <Button variant="outline" size="sm">
-                  <FileDownIcon className="w-4 h-4 mr-2" />
-                  {t.export}
-                </Button>
               </div>
             </CardContent>
           </Card>
