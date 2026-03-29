@@ -622,8 +622,8 @@ export function Payslips() {
                   <TableHead className="font-semibold text-right">Neto</TableHead>
                   <TableHead className="font-semibold text-right">Aguinaldo</TableHead>
                   <TableHead className="font-semibold text-center">Estado</TableHead>
-                  <TableHead className="font-semibold text-center">Email</TableHead>
                   <TableHead className="font-semibold text-center">Correo</TableHead>
+                  <TableHead className="font-semibold text-center">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
