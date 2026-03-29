@@ -1,4 +1,4 @@
-// ACL Workforce HUB - Email Service
+// ACL Payroll CR - Email Service
 // Portal URL: https://workforcehub.calderon.cr
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -72,15 +72,15 @@ serve(async (req) => {
         }
 
         // Send email via Resend - parse FROM correctly
-        // Using noreply@aureoncr.com - domain aureoncr.com is verified in Resend
-        const rawFromEmail = (Deno.env.get('RESEND_FROM_EMAIL') || 'noreply@aureoncr.com').trim();
+        // Using noreply@calderon.cr - domain calderon.cr is verified in Resend
+        const rawFromEmail = (Deno.env.get('RESEND_FROM_EMAIL') || 'noreply@calderon.cr').trim();
         const cleanedFrom = rawFromEmail.replace(/^"+|"+$/g, '').trim();
-        const defaultFrom = cleanedFrom.includes('<') && cleanedFrom.includes('>')
-          ? cleanedFrom
-          : `Sistema de Planillas <${cleanedFrom}>`;
+        const emailMatchResult = cleanedFrom.match(/<([^>]+)>/);
+        const pureEmail = emailMatchResult ? emailMatchResult[1] : cleanedFrom;
+        const defaultFrom = `ACL Payroll CR <${pureEmail}>`;
         
         // List-Unsubscribe headers improve email reputation with Gmail, Outlook, etc.
-        const unsubscribeEmail = 'unsubscribe@aureoncr.com';
+        const unsubscribeEmail = 'unsubscribe@calderon.cr';
         const emailData: any = {
           from: from || defaultFrom,
           to: [recipient],

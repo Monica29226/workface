@@ -28,11 +28,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@aureoncr.com").trim();
+    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@calderon.cr").trim();
     const cleanedFrom = rawFromEmail.replace(/^"+|"+$/g, "").trim();
     const emailMatch = cleanedFrom.match(/<([^>]+)>/);
     const pureEmail = emailMatch ? emailMatch[1] : cleanedFrom;
-    const from = `ACL Workforce HUB <${pureEmail}>`;
+    const from = `ACL Payroll CR <${pureEmail}>`;
 
     const systemName = "ACL Workforce HUB";
     const supportEmail = "soporte@aureoncr.com";
@@ -168,7 +168,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const appOrigin = "https://workforcehub.calderon.cr";
     const platformUrl = `${appOrigin}/auth`;
-    const unsubscribeEmail = "unsubscribe@aureoncr.com";
+    const unsubscribeEmail = "unsubscribe@calderon.cr";
 
     // Create email log entry BEFORE sending
     const { data: logEntry } = await supabaseAdmin

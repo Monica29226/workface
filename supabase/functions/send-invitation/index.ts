@@ -147,8 +147,11 @@ const handler = async (req: Request): Promise<Response> => {
     const supportEmail = "soporte@aureoncr.com";
     const inviterName = inviterProfile?.full_name || inviterProfile?.email || "El administrador";
 
-    const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "noreply@aureoncr.com";
-    const from = `ACL Workforce HUB <${fromEmail}>`;
+    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@calderon.cr").trim();
+    const cleanedFromEmail = rawFromEmail.replace(/^"+|"+$/g, "").trim();
+    const emailMatchInv = cleanedFromEmail.match(/<([^>]+)>/);
+    const pureFromEmail = emailMatchInv ? emailMatchInv[1] : cleanedFromEmail;
+    const from = `ACL Payroll CR <${pureFromEmail}>`;
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -157,7 +160,7 @@ const handler = async (req: Request): Promise<Response> => {
       to: [email],
       subject: `Bienvenido al ${systemName}${company_name ? ` - ${company_name}` : ""}`,
       headers: {
-        "List-Unsubscribe": `<mailto:unsubscribe@aureoncr.com?subject=Unsubscribe>`,
+        "List-Unsubscribe": `<mailto:unsubscribe@calderon.cr?subject=Unsubscribe>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
       html: `
