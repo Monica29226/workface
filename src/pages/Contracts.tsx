@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/table";
 import { 
   Search, 
-  FileText
+  FileText,
+  Calculator
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useCompany } from "@/contexts/CompanyContext";
