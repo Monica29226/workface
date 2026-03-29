@@ -19,9 +19,6 @@ import {
   Mail, 
   Eye,
   FileText,
-  Archive,
-  Printer,
-  Building2,
   Plus
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";

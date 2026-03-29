@@ -12,13 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { 
-  Plus, 
   Search, 
-  Download, 
-  Upload, 
-  Edit, 
-  Trash2,
-  Calculator,
   FileText
 } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";

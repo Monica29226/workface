@@ -12,12 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { 
-  Plus, 
   Search, 
-  Download, 
-  Upload, 
-  Edit, 
-  Trash2,
   Building2,
   Users,
   AlertCircle
