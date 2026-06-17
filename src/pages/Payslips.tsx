@@ -19,9 +19,12 @@ import {
   Mail, 
   Eye,
   FileText,
-  Plus
+  Plus,
+  AlertTriangle,
+  CheckCircle2,
+  Send,
+  Loader2
 } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { useCompany } from "@/contexts/CompanyContext";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -57,8 +60,10 @@ export function Payslips() {
   const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedCurrency, setSelectedCurrency] = useState<'CRC' | 'USD'>('CRC');
   const [selectedMonth, setSelectedMonth] = useState<number | 'all'>('all'); // 'all' = todos los meses
+  const [emailFilter, setEmailFilter] = useState<'all' | 'ready' | 'sent' | 'missing'>('all');
   const [payslips, setPayslips] = useState<PayslipData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBulkSending, setIsBulkSending] = useState(false);
 
   const monthNames = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -173,10 +178,15 @@ export function Payslips() {
       const matchesMonth = viewMode === 'monthly' 
         ? (selectedMonth === 'all' || payslip.month === selectedMonth) 
         : true;
+      const matchesEmail =
+        emailFilter === 'all' ||
+        (emailFilter === 'ready' && payslip.emailStatus === 'pending' && payslip.status === 'generated') ||
+        (emailFilter === 'sent' && payslip.emailStatus === 'sent') ||
+        (emailFilter === 'missing' && payslip.emailStatus === 'no_email');
       
-      return matchesSearch && matchesYear && matchesMonth;
+      return matchesSearch && matchesYear && matchesMonth && matchesEmail;
     });
-  }, [payslips, searchTerm, selectedYear, selectedMonth, viewMode]);
+  }, [payslips, searchTerm, selectedYear, selectedMonth, viewMode, emailFilter]);
 
   const yearlyData = useMemo(() => {
     if (viewMode !== 'yearly') return [];
@@ -214,6 +224,20 @@ export function Payslips() {
     
     return { total, sent, pending, totalNet };
   }, [displayData]);
+
+  const operationalStats = useMemo(() => {
+    const readyToSend = filteredPayslips.filter(
+      (p) => p.emailStatus === 'pending' && p.status === 'generated'
+    );
+    const missingEmail = filteredPayslips.filter((p) => p.emailStatus === 'no_email');
+    const alreadySent = filteredPayslips.filter((p) => p.emailStatus === 'sent');
+
+    return {
+      readyToSend,
+      missingEmail,
+      alreadySent,
+    };
+  }, [filteredPayslips]);
 
   // Get exchange rate from payslips data
   const currentExchangeRate = useMemo(() => {
@@ -287,35 +311,26 @@ export function Payslips() {
     }
   };
 
-  const handleSendEmail = async (payslip: PayslipData) => {
+  const sendPayslipEmail = async (payslip: PayslipData) => {
     if (!selectedCompany) return;
+    if (!payslip.email) {
+      throw new Error(`El colaborador ${payslip.employeeName} no tiene correo registrado`);
+    }
 
+    const { data, error } = await supabase.functions.invoke('send-payslip-email', {
+      body: {
+        payrollLineId: payslip.id,
+        companyId: selectedCompany.id,
+      },
+    });
+
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+  };
+
+  const handleSendEmail = async (payslip: PayslipData) => {
     try {
-      // Validate employee email exists
-      if (!payslip.email) {
-        toast({
-          title: "Error",
-          description: `El colaborador ${payslip.employeeName} no tiene correo registrado`,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Use send-payslip-email edge function which handles everything:
-      // - Company validation
-      // - Actual deductions from deductions_detail
-      // - Proper currency handling (CRC/USD)
-      // - Email logging
-      // - Audit trail
-      const { data, error } = await supabase.functions.invoke('send-payslip-email', {
-        body: {
-          payrollLineId: payslip.id,
-          companyId: selectedCompany.id,
-        },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      await sendPayslipEmail(payslip);
 
       toast({
         title: "Colilla enviada",
@@ -377,25 +392,41 @@ export function Payslips() {
   };
 
   const handleBulkSend = async () => {
-    if (!selectedCompany || filteredPayslips.length === 0) {
+    const readyToSend = operationalStats.readyToSend;
+    if (!selectedCompany || readyToSend.length === 0) {
       toast({
-        title: "No hay colillas",
-        description: "No hay colillas para enviar en el período seleccionado",
+        title: "Nada por enviar",
+        description: operationalStats.missingEmail.length > 0
+          ? "No hay colillas listas para enviar. Revise los colaboradores sin correo."
+          : "No hay colillas pendientes de envío en el período seleccionado",
         variant: "destructive",
       });
       return;
     }
 
+    setIsBulkSending(true);
     try {
       let sentCount = 0;
-      for (const payslip of filteredPayslips) {
-        await handleSendEmail(payslip);
-        sentCount++;
+      let failedCount = 0;
+
+      for (const payslip of readyToSend) {
+        try {
+          await sendPayslipEmail(payslip);
+          sentCount++;
+        } catch (error) {
+          failedCount++;
+          console.error(`Error sending payslip to ${payslip.employeeName}:`, error);
+        }
       }
+
+      await fetchPayslips();
 
       toast({
         title: "Envío masivo completado",
-        description: `Se enviaron ${sentCount} colillas correctamente`,
+        description:
+          failedCount > 0
+            ? `Se enviaron ${sentCount} colillas y ${failedCount} quedaron con error.`
+            : `Se enviaron ${sentCount} colillas correctamente.`,
       });
     } catch (error: any) {
       console.error('Error in bulk send:', error);
@@ -404,6 +435,8 @@ export function Payslips() {
         description: "Hubo un error en el envío masivo",
         variant: "destructive",
       });
+    } finally {
+      setIsBulkSending(false);
     }
   };
 
@@ -454,8 +487,14 @@ export function Payslips() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleBulkSend}>
-            <Mail className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleBulkSend}
+            disabled={isBulkSending || operationalStats.readyToSend.length === 0}
+          >
+            {isBulkSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Envío Masivo
           </Button>
           <Button size="sm" className="gap-2 bg-navy hover:bg-navy/90 text-white" onClick={handleGenerateNew}>
@@ -463,6 +502,51 @@ export function Payslips() {
             Generar Nuevas
           </Button>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="border-l-4 border-l-emerald-500">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Listas para enviar</p>
+                <p className="text-3xl font-bold">{operationalStats.readyToSend.length}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Colillas pendientes con correo disponible
+                </p>
+              </div>
+              <CheckCircle2 className="h-10 w-10 text-emerald-500/70" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-amber-500">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Sin correo</p>
+                <p className="text-3xl font-bold">{operationalStats.missingEmail.length}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Requieren correo antes del envío automático o manual
+                </p>
+              </div>
+              <AlertTriangle className="h-10 w-10 text-amber-500/70" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-blue-500">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Ya enviadas</p>
+                <p className="text-3xl font-bold">{operationalStats.alreadySent.length}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Colillas con trazabilidad de correo en este filtro
+                </p>
+              </div>
+              <Mail className="h-10 w-10 text-blue-500/70" />
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search and Filters */}
@@ -513,6 +597,17 @@ export function Payslips() {
                 <SelectItem value="USD">USD ($)</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={emailFilter} onValueChange={(value) => setEmailFilter(value as 'all' | 'ready' | 'sent' | 'missing')}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los correos</SelectItem>
+                <SelectItem value="ready">Listas para enviar</SelectItem>
+                <SelectItem value="sent">Solo enviadas</SelectItem>
+                <SelectItem value="missing">Sin correo</SelectItem>
+              </SelectContent>
+            </Select>
             <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'monthly' | 'yearly')} className="w-48">
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="monthly">Mensual</TabsTrigger>
@@ -527,10 +622,17 @@ export function Payslips() {
       {currentExchangeRate && (
         <Card className="border-blue-200 bg-blue-50/50">
           <CardContent className="py-3">
-            <div className="flex items-center gap-2 text-sm text-blue-800">
-              <span className="font-medium">Tipo de Cambio BCCR (Venta):</span>
-              <span className="font-bold">₡{Number(currentExchangeRate).toFixed(2)}</span>
-              <span className="text-muted-foreground">/ $1 USD</span>
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between text-sm text-blue-800">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Tipo de Cambio BCCR (Venta):</span>
+                <span className="font-bold">₡{Number(currentExchangeRate).toFixed(2)}</span>
+                <span className="text-muted-foreground">/ $1 USD</span>
+              </div>
+              <div className="text-muted-foreground">
+                {operationalStats.readyToSend.length > 0
+                  ? `${operationalStats.readyToSend.length} colillas listas para enviar en esta vista`
+                  : "No hay colillas listas para enviar en esta vista"}
+              </div>
             </div>
           </CardContent>
         </Card>

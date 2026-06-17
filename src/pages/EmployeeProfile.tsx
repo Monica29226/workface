@@ -19,7 +19,9 @@ import {
   DollarSign,
   TrendingUp,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  FileBadge,
+  CalendarDays
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -217,6 +219,31 @@ export function EmployeeProfile() {
     };
   }, [payslips]);
 
+  const quickActions = [
+    {
+      title: "Ver constancias",
+      description: "Genera constancias laborales y salariales",
+      icon: FileBadge,
+      action: () => navigate("/employee-certificates"),
+    },
+    {
+      title: "Solicitar tiempo libre",
+      description: "Vacaciones, dia libre, medio dia o permiso",
+      icon: CalendarDays,
+      action: () => navigate("/employee-vacations"),
+    },
+    {
+      title: "Ultima colilla",
+      description: payslips[0]?.period_label || "Descarga tu comprobante mas reciente",
+      icon: Download,
+      action: () => {
+        if (payslips[0]) {
+          void handleDownloadPDF(payslips[0]);
+        }
+      },
+    },
+  ];
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -335,6 +362,58 @@ export function EmployeeProfile() {
           </Card>
         </div>
       )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2 card-elevated">
+          <CardHeader>
+            <CardTitle>Atajos del portal</CardTitle>
+            <CardDescription>
+              Las tareas mas usadas por el colaborador desde un solo lugar.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {quickActions.map((item) => (
+              <button
+                key={item.title}
+                onClick={item.action}
+                className="rounded-xl border bg-card p-4 text-left transition-colors hover:bg-accent/40"
+              >
+                <item.icon className="h-5 w-5 text-primary mb-3" />
+                <p className="font-medium">{item.title}</p>
+                <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle>Estado de tu portal</CardTitle>
+            <CardDescription>
+              Resumen rapido de la informacion disponible para autoservicio.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <span className="text-muted-foreground">Colillas disponibles</span>
+              <Badge variant="outline">{payslips.length}</Badge>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <span className="text-muted-foreground">Correo laboral</span>
+              <span className="font-medium truncate max-w-[180px] text-right">
+                {employee.work_email || "Pendiente"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <span className="text-muted-foreground">Empresa</span>
+              <span className="font-medium text-right">{company?.display_name || "No definida"}</span>
+            </div>
+            <div className="rounded-lg bg-muted/40 p-3 text-muted-foreground">
+              Si ves algun dato incorrecto, RRHH puede corregirlo antes del siguiente envio de colillas.
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Payslips Table */}
       <Card>
