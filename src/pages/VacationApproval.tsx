@@ -235,7 +235,7 @@ export function VacationApproval() {
 
     setIsProcessing(true);
     try {
-      const { data, error } = await supabase.rpc("process_vacation_request_approval", {
+      const { data, error } = await (supabase.rpc as any)("process_vacation_request_approval", {
         p_request_id: selectedRequest.id,
         p_action: action,
         p_notes: reviewNotes || null,

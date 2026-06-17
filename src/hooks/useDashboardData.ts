@@ -99,7 +99,7 @@ export function useDashboardData() {
         return { total: 0, pendingManager: 0, pendingHr: 0 };
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("vacation_requests")
         .select("approval_stage")
         .eq("company_id", companyId)
@@ -109,8 +109,8 @@ export function useDashboardData() {
 
       return {
         total: (data || []).length,
-        pendingManager: (data || []).filter((row) => row.approval_stage === "pending_manager").length,
-        pendingHr: (data || []).filter((row) => (row.approval_stage || "pending_hr") === "pending_hr").length,
+        pendingManager: (data || []).filter((row: any) => row.approval_stage === "pending_manager").length,
+        pendingHr: (data || []).filter((row: any) => (row.approval_stage || "pending_hr") === "pending_hr").length,
       };
     },
     enabled: !!companyId,
