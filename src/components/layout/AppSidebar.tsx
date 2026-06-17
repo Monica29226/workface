@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { 
   LayoutDashboard, 
   Users, 
@@ -19,7 +20,8 @@ import {
   Palmtree,
   ClipboardList,
   FileCheck,
-  Send
+  Send,
+  FileBadge
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -153,7 +155,7 @@ const hrNavigationItems: NavigationItem[] = [
     roles: HR_ROLES
   },
   { 
-    title: 'Aprobar Vacaciones', 
+    title: 'nav.approve_time_off', 
     url: '/vacation-approval', 
     icon: UserCheck,
     group: 'reports',
@@ -230,6 +232,20 @@ const employeeNavigationItems: NavigationItem[] = [
     group: 'employee',
     roles: ['employee']
   },
+  { 
+    title: 'nav.my_certificates', 
+    url: '/employee-certificates', 
+    icon: FileBadge,
+    group: 'employee',
+    roles: ['employee']
+  },
+  {
+    title: 'nav.approve_time_off',
+    url: '/vacation-approval',
+    icon: UserCheck,
+    group: 'employee',
+    roles: ['employee']
+  },
 ];
 
 const logoutItem: NavigationItem = { 
@@ -262,6 +278,7 @@ export function AppSidebar() {
   const { role: actualRole, loading } = useUserRole();
   const { previewRole, isPreviewMode } = useRolePreview();
   const { data: workflowStatus } = usePayrollWorkflowStatus();
+  const [hasDirectReports, setHasDirectReports] = useState(false);
   const currentPath = location.pathname;
   const collapsed = state === "collapsed";
 
@@ -317,15 +334,52 @@ export function AppSidebar() {
   // Determine which navigation items to show based on role (or preview role)
   const isEmployeeOnly = role === 'employee' || role === 'Employee_Portal';
   const hasHRAccess = role !== null && HR_ROLES.includes(role as AppRole);
+
+  useEffect(() => {
+    const checkDirectReports = async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      const authUser = authData.user;
+
+      if (!authUser) {
+        setHasDirectReports(false);
+        return;
+      }
+
+      const { data: managerEmployee } = await supabase
+        .from("employees")
+        .select("id")
+        .eq("user_id", authUser.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (!managerEmployee?.id) {
+        setHasDirectReports(false);
+        return;
+      }
+
+      const { count } = await supabase
+        .from("employees")
+        .select("*", { count: "exact", head: true })
+        .eq("manager_id", managerEmployee.id);
+
+      setHasDirectReports((count || 0) > 0);
+    };
+
+    void checkDirectReports();
+  }, [role, isPreviewMode]);
   
   // While loading, show HR navigation by default for a better UX (will filter once role loads)
+  const filteredEmployeeItems = hasDirectReports
+    ? employeeNavigationItems
+    : employeeNavigationItems.filter((item) => item.url !== "/vacation-approval");
+
   const navigationItems = loading && !isPreviewMode
     ? [...hrNavigationItems, logoutItem] // Show full menu while loading
     : isEmployeeOnly 
-      ? [...employeeNavigationItems, logoutItem]
+      ? [...filteredEmployeeItems, logoutItem]
       : hasHRAccess 
         ? [...hrNavigationItems.filter(item => !item.roles || item.roles.includes(role as AppRole)), logoutItem]
-        : [...employeeNavigationItems, logoutItem]; // Fallback to employee view
+        : [...filteredEmployeeItems, logoutItem]; // Fallback to employee view
 
   const groups = (loading && !isPreviewMode) ? hrGroups : (isEmployeeOnly || !hasHRAccess ? employeeGroups : hrGroups);
 

@@ -7,6 +7,8 @@ interface Company {
   legal_name: string;
   juridical_id: string;
   logo_url?: string;
+  base_currency?: string;
+  payroll_email_from?: string | null;
   primary_color: string;
   accent_color: string;
   light_color: string;
@@ -58,7 +60,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       const companyIds = companyUsers.map(cu => cu.company_id);
       const { data: companiesData, error: companiesError } = await supabase
         .from('companies')
-        .select('id, display_name, tax_id, logo_url')
+        .select('id, display_name, tax_id, logo_url, base_currency, payroll_email_from')
         .in('id', companyIds);
 
       if (companiesError) throw companiesError;
@@ -70,6 +72,8 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         legal_name: c.display_name,
         juridical_id: c.tax_id || '',
         logo_url: c.logo_url || undefined,
+        base_currency: c.base_currency,
+        payroll_email_from: c.payroll_email_from,
         primary_color: '#0B2B4C',
         accent_color: '#2A9D8F',
         light_color: '#F5EFE6'

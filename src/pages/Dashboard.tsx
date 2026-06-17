@@ -17,9 +17,10 @@ import {
   Sparkles,
   Clock,
   CheckCircle2,
+  FileBadge2,
+  Send,
   AlertCircle
 } from "lucide-react";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { useCompany } from "@/contexts/CompanyContext";
 import { formatCurrency } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
@@ -67,8 +68,7 @@ const KPICard = memo(({
 KPICard.displayName = "KPICard";
 
 export function Dashboard() {
-  const { t } = useLanguage();
-  const { selectedCompany } = useCompany();
+  const { selectedCompany, isLoading: isLoadingCompanies } = useCompany();
   const navigate = useNavigate();
   
   // Use cached dashboard data hook
@@ -104,6 +104,20 @@ export function Dashboard() {
       color: "bg-amber-500",
       action: () => navigate('/historico'),
     },
+    {
+      title: "Aprobar Solicitudes",
+      description: "Revisar tiempo libre pendiente",
+      icon: CalendarDays,
+      color: "bg-orange-500",
+      action: () => navigate('/vacation-approval'),
+    },
+    {
+      title: "Configurar Empresa",
+      description: "Ajustar branding y envío",
+      icon: FileBadge2,
+      color: "bg-slate-600",
+      action: () => navigate('/settings/payslip'),
+    },
   ], [navigate]);
 
   if (isLoading) {
@@ -116,6 +130,34 @@ export function Dashboard() {
           ))}
         </div>
       </div>
+    );
+  }
+
+  if (!isLoadingCompanies && !selectedCompany) {
+    return (
+      <Card className="border-dashed border-2 shadow-sm">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-amber-100 p-3 text-amber-700">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle>No hay una empresa seleccionada</CardTitle>
+              <CardDescription>
+                Asigna una empresa a tu usuario o crea una nueva para empezar a usar el sistema.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-3">
+          <Button onClick={() => navigate("/create-company")}>
+            Crear Empresa
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/users")}>
+            Revisar usuarios y accesos
+          </Button>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -138,11 +180,15 @@ export function Dashboard() {
             <p className="text-white/80 text-lg">
               {selectedCompany?.legal_name || selectedCompany?.name || 'Seleccione una empresa'}
             </p>
+            <div className="mt-3 flex flex-wrap gap-3 text-sm text-white/75">
+              {selectedCompany?.juridical_id && <span>Cédula jurídica: {selectedCompany.juridical_id}</span>}
+              {selectedCompany?.payroll_email_from && <span>Correo planilla: {selectedCompany.payroll_email_from}</span>}
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <Badge variant="outline" className="bg-white/10 text-white border-white/30 text-sm px-3 py-1">
               <DollarSign className="h-3 w-3 mr-1" />
-              CRC
+              {selectedCompany?.base_currency || 'CRC'}
             </Badge>
             <Button 
               variant="secondary" 
@@ -200,6 +246,83 @@ export function Dashboard() {
         />
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="card-elevated lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Centro de Operaciones RRHH</CardTitle>
+            <CardDescription>
+              Visibilidad rápida de solicitudes, colillas y configuración de la empresa activa.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-xl border bg-muted/20 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CalendarDays className="h-4 w-4 text-orange-600" />
+                <p className="font-medium">Tiempo libre</p>
+              </div>
+              <p className="text-3xl font-bold">{kpiData.pendingVacations}</p>
+              <p className="text-sm text-muted-foreground">
+                {kpiData.pendingManagerApprovals} jefe / {kpiData.pendingHRApprovals} RRHH
+              </p>
+              <Button variant="link" className="px-0 mt-2" onClick={() => navigate('/vacation-approval')}>
+                Revisar ahora
+              </Button>
+            </div>
+
+            <div className="rounded-xl border bg-muted/20 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Send className="h-4 w-4 text-blue-600" />
+                <p className="font-medium">Colillas</p>
+              </div>
+              <p className="text-3xl font-bold">{kpiData.pendingPayslips}</p>
+              <p className="text-sm text-muted-foreground">pendientes de envío</p>
+              <Button variant="link" className="px-0 mt-2" onClick={() => navigate('/payslips')}>
+                Ir a envíos
+              </Button>
+            </div>
+
+            <div className="rounded-xl border bg-muted/20 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <p className="font-medium">Último lote</p>
+              </div>
+              <p className="text-lg font-semibold">
+                {latestBatch?.status || 'Sin planilla reciente'}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {latestBatch?.batch_id ? `Lote ${latestBatch.batch_id}` : 'Cree una nueva planilla para iniciar'}
+              </p>
+              <Button variant="link" className="px-0 mt-2" onClick={() => navigate('/payroll-process')}>
+                Abrir flujo
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle>Portal del Colaborador</CardTitle>
+            <CardDescription>
+              Puntos clave para el autoservicio sobre el dominio de ACL.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-xl bg-primary/5 border border-primary/15 p-4">
+              <p className="text-sm text-muted-foreground">Dominio objetivo</p>
+              <p className="font-semibold">aclcostarica.com</p>
+            </div>
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>Constancias laborales y salariales listas para autoservicio.</p>
+              <p>Solicitudes de vacaciones, día libre, medio día y permiso sin goce.</p>
+              <p>Entrega de colillas por empresa con branding y correo emisor configurables.</p>
+            </div>
+            <Button variant="outline" className="w-full" onClick={() => navigate('/settings/payslip')}>
+              Ajustar identidad de empresa
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Quick Actions */}
       <Card className="card-elevated overflow-hidden">
         <CardHeader className="bg-gradient-to-r from-muted/50 to-muted/30 border-b">
@@ -215,7 +338,7 @@ export function Dashboard() {
           </div>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
             {quickActions.map((action, index) => (
               <button
                 key={index}
@@ -248,13 +371,15 @@ export function Dashboard() {
             {kpiData.pendingVacations > 0 && (
               <div 
                 className="flex items-center justify-between p-4 rounded-lg bg-amber-50 border border-amber-200 cursor-pointer hover:bg-amber-100 transition-colors"
-                onClick={() => navigate('/reports/vacations')}
+                onClick={() => navigate('/vacation-approval')}
               >
                 <div className="flex items-center gap-3">
                   <CalendarDays className="h-5 w-5 text-amber-600" />
                   <div>
-                    <p className="font-medium text-amber-900">Solicitudes de Vacaciones</p>
-                    <p className="text-sm text-amber-700">{kpiData.pendingVacations} pendiente(s) de aprobación</p>
+                    <p className="font-medium text-amber-900">Solicitudes de Tiempo Libre</p>
+                    <p className="text-sm text-amber-700">
+                      {kpiData.pendingManagerApprovals} jefe / {kpiData.pendingHRApprovals} RRHH
+                    </p>
                   </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-amber-600" />

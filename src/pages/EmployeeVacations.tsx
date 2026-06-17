@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -25,7 +26,8 @@ import {
   Loader2,
   CalendarDays,
   History,
-  Info
+  Info,
+  Ban
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,12 +57,19 @@ interface VacationRequest {
   start_date: string;
   end_date: string;
   days_requested: number;
+  approval_stage?: string;
+  request_type?: string;
+  is_half_day?: boolean;
+  manager_notes?: string | null;
+  hr_notes?: string | null;
   reason: string | null;
   status: string;
   created_at: string;
   reviewed_at: string | null;
   review_notes: string | null;
 }
+
+type TimeOffRequestType = "vacaciones" | "dia_libre" | "medio_dia" | "permiso_sin_goce";
 
 export function EmployeeVacations() {
   const { toast } = useToast();
@@ -75,6 +84,7 @@ export function EmployeeVacations() {
     from: undefined,
     to: undefined
   });
+  const [requestType, setRequestType] = useState<TimeOffRequestType>("vacaciones");
   const [requestReason, setRequestReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -161,14 +171,22 @@ export function EmployeeVacations() {
   );
 
   const pendingRequests = useMemo(() => 
-    vacationRequests.filter(r => r.status === 'pending'),
+    vacationRequests.filter(r => r.status === 'pending' && ["pending_manager", "pending_hr"].includes(r.approval_stage || "pending_hr")),
     [vacationRequests]
   );
 
   const daysRequested = useMemo(() => {
     if (!selectedRange.from || !selectedRange.to) return 0;
+    if (requestType === "medio_dia") return 0.5;
     return calculateBusinessDays(selectedRange.from, selectedRange.to);
-  }, [selectedRange]);
+  }, [selectedRange, requestType]);
+
+  const requestTypeLabels: Record<TimeOffRequestType, string> = {
+    vacaciones: "Vacaciones",
+    dia_libre: "Dia libre",
+    medio_dia: "Medio dia",
+    permiso_sin_goce: "Permiso sin goce",
+  };
 
   const handleVacationRequest = async () => {
     if (!selectedRange.from || !selectedRange.to || !employee) {
@@ -189,7 +207,9 @@ export function EmployeeVacations() {
       return;
     }
 
-    if (daysRequested > totalAvailableDays) {
+    const consumesBalance = requestType !== "permiso_sin_goce";
+
+    if (consumesBalance && daysRequested > totalAvailableDays) {
       toast({
         title: "Error",
         description: `Solo tiene ${totalAvailableDays} días disponibles. Solicitó ${daysRequested} días.`,
@@ -208,26 +228,29 @@ export function EmployeeVacations() {
           start_date: format(selectedRange.from, "yyyy-MM-dd"),
           end_date: format(selectedRange.to, "yyyy-MM-dd"),
           days_requested: daysRequested,
+          request_type: requestType,
+          is_half_day: requestType === "medio_dia",
           reason: requestReason || null,
           status: "pending",
-        });
+        } as any);
 
       if (error) throw error;
 
       toast({
         title: "Solicitud enviada",
-        description: `Su solicitud de ${daysRequested} días de vacaciones ha sido enviada para aprobación`,
+        description: `Tu solicitud de ${requestTypeLabels[requestType].toLowerCase()} fue enviada para aprobacion.`,
       });
 
       setIsRequestDialogOpen(false);
       setSelectedRange({ from: undefined, to: undefined });
+      setRequestType("vacaciones");
       setRequestReason("");
       fetchEmployeeData();
     } catch (error) {
       console.error("Error submitting vacation request:", error);
       toast({
         title: "Error",
-        description: "No se pudo enviar la solicitud de vacaciones",
+        description: "No se pudo enviar la solicitud de tiempo libre",
         variant: "destructive",
       });
     } finally {
@@ -235,14 +258,16 @@ export function EmployeeVacations() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, approvalStage?: string) => {
+    const stage = approvalStage || (status === "pending" ? "pending_hr" : status);
     const config: Record<string, { color: string; icon: any; label: string }> = {
-      pending: { color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400", icon: Clock, label: "Pendiente" },
+      pending_manager: { color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400", icon: Clock, label: "Pendiente jefe" },
+      pending_hr: { color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400", icon: Clock, label: "Pendiente RRHH" },
       approved: { color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400", icon: CheckCircle, label: "Aprobada" },
       rejected: { color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400", icon: XCircle, label: "Rechazada" },
       cancelled: { color: "bg-muted text-muted-foreground", icon: XCircle, label: "Cancelada" },
     };
-    const { color, icon: Icon, label } = config[status] || config.pending;
+    const { color, icon: Icon, label } = config[stage] || config.pending_hr;
     return (
       <Badge className={cn("gap-1", color)}>
         <Icon className="h-3 w-3" />
@@ -251,12 +276,41 @@ export function EmployeeVacations() {
     );
   };
 
+  const getRequestTypeBadge = (type?: string) => {
+    const label = requestTypeLabels[(type as TimeOffRequestType) || "vacaciones"] || "Vacaciones";
+    return <Badge variant="outline">{label}</Badge>;
+  };
+
+  const handleCancelRequest = async (requestId: string) => {
+    try {
+      const { error } = await supabase.rpc("cancel_vacation_request", {
+        p_request_id: requestId,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Solicitud cancelada",
+        description: "La solicitud pendiente fue cancelada correctamente.",
+      });
+
+      fetchEmployeeData();
+    } catch (error) {
+      console.error("Error cancelling vacation request:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo cancelar la solicitud.",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Cargando información de vacaciones...</p>
+          <p className="text-muted-foreground">Cargando información de tiempo libre...</p>
         </div>
       </div>
     );
@@ -287,13 +341,13 @@ export function EmployeeVacations() {
             <Palmtree className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Mis Vacaciones</h1>
-            <p className="text-muted-foreground">Gestiona tu tiempo libre y solicitudes</p>
+            <h1 className="text-2xl font-bold">Mi Tiempo Libre</h1>
+            <p className="text-muted-foreground">Solicita vacaciones, dias libres y consulta tu saldo disponible</p>
           </div>
         </div>
         <Button onClick={() => setIsRequestDialogOpen(true)} className="gap-2" size="lg">
           <Send className="h-4 w-4" />
-          Solicitar Vacaciones
+          Solicitar Tiempo Libre
         </Button>
       </div>
 
@@ -420,13 +474,13 @@ export function EmployeeVacations() {
             <History className="h-5 w-5" />
             Historial de Solicitudes
           </CardTitle>
-          <CardDescription>Todas tus solicitudes de vacaciones</CardDescription>
+          <CardDescription>Todas tus solicitudes de vacaciones y tiempo libre</CardDescription>
         </CardHeader>
         <CardContent>
           {vacationRequests.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
               <Palmtree className="h-12 w-12 mx-auto mb-4 opacity-20" />
-              <p>No tienes solicitudes de vacaciones registradas</p>
+              <p>No tienes solicitudes de tiempo libre registradas</p>
               <Button 
                 variant="outline" 
                 className="mt-4"
@@ -440,11 +494,13 @@ export function EmployeeVacations() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Fechas</TableHead>
+                  <TableHead>Tipo</TableHead>
                   <TableHead className="text-center">Días</TableHead>
                   <TableHead>Motivo</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Solicitado</TableHead>
                   <TableHead>Notas de Revisión</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -455,18 +511,45 @@ export function EmployeeVacations() {
                         {format(new Date(request.start_date), "dd MMM", { locale: es })} - {format(new Date(request.end_date), "dd MMM yyyy", { locale: es })}
                       </div>
                     </TableCell>
+                    <TableCell>{getRequestTypeBadge(request.request_type)}</TableCell>
                     <TableCell className="text-center">
                       <Badge variant="secondary">{request.days_requested}</Badge>
                     </TableCell>
                     <TableCell className="max-w-[200px] truncate">
                       {request.reason || <span className="text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell>{getStatusBadge(request.status)}</TableCell>
+                    <TableCell>{getStatusBadge(request.status, request.approval_stage)}</TableCell>
                     <TableCell className="text-muted-foreground">
                       {format(new Date(request.created_at), "dd MMM yyyy", { locale: es })}
                     </TableCell>
-                    <TableCell className="max-w-[200px] truncate">
-                      {request.review_notes || <span className="text-muted-foreground">—</span>}
+                    <TableCell className="max-w-[240px]">
+                      <div className="space-y-1 text-sm">
+                        {request.manager_notes && (
+                          <p><span className="font-medium">Jefe:</span> {request.manager_notes}</p>
+                        )}
+                        {request.hr_notes && (
+                          <p><span className="font-medium">RRHH:</span> {request.hr_notes}</p>
+                        )}
+                        {!request.manager_notes && !request.hr_notes && !request.review_notes && (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                        {request.review_notes && !request.hr_notes && !request.manager_notes && (
+                          <span>{request.review_notes}</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {request.status === "pending" && ["pending_manager", "pending_hr"].includes(request.approval_stage || "pending_hr") ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCancelRequest(request.id)}
+                        >
+                          <Ban className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -476,16 +559,16 @@ export function EmployeeVacations() {
         </CardContent>
       </Card>
 
-      {/* Vacation Request Dialog */}
+      {/* Time Off Request Dialog */}
       <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Palmtree className="h-5 w-5" />
-              Solicitar Vacaciones
+              Solicitar Tiempo Libre
             </DialogTitle>
             <DialogDescription>
-              Selecciona el rango de fechas en el calendario y agrega un motivo opcional
+              Selecciona el tipo de solicitud, el rango de fechas y un motivo opcional
             </DialogDescription>
           </DialogHeader>
 
@@ -494,8 +577,26 @@ export function EmployeeVacations() {
             <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
               <Info className="h-5 w-5 text-primary" />
               <span className="text-sm">
-                Tienes <span className="font-bold text-primary">{totalAvailableDays} días</span> disponibles para solicitar
+                Tienes <span className="font-bold text-primary">{totalAvailableDays} días</span> disponibles para solicitar. Las solicitudes pasan por jefe inmediato y luego por RRHH cuando corresponde.
               </span>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="request-type">Tipo de solicitud</Label>
+              <Select
+                value={requestType}
+                onValueChange={(value) => setRequestType(value as TimeOffRequestType)}
+              >
+                <SelectTrigger id="request-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vacaciones">Vacaciones</SelectItem>
+                  <SelectItem value="dia_libre">Dia libre</SelectItem>
+                  <SelectItem value="medio_dia">Medio dia</SelectItem>
+                  <SelectItem value="permiso_sin_goce">Permiso sin goce</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Calendar */}
@@ -503,7 +604,12 @@ export function EmployeeVacations() {
               <Calendar
                 mode="range"
                 selected={selectedRange}
-                onSelect={(range) => setSelectedRange({ from: range?.from, to: range?.to })}
+                onSelect={(range) =>
+                  setSelectedRange({
+                    from: range?.from,
+                    to: requestType === "medio_dia" ? range?.from : range?.to,
+                  })
+                }
                 numberOfMonths={2}
                 locale={es}
                 disabled={(date) => date < new Date() || isWeekend(date)}
@@ -521,18 +627,23 @@ export function EmployeeVacations() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Días hábiles a solicitar:</span>
+                  <span className="text-sm text-muted-foreground">Unidad a solicitar:</span>
                   <Badge 
-                    variant={daysRequested > totalAvailableDays ? "destructive" : "default"}
+                    variant={requestType !== "permiso_sin_goce" && daysRequested > totalAvailableDays ? "destructive" : "default"}
                     className="text-lg px-3"
                   >
                     {daysRequested}
                   </Badge>
                 </div>
-                {daysRequested > totalAvailableDays && (
+                {requestType !== "permiso_sin_goce" && daysRequested > totalAvailableDays && (
                   <p className="text-sm text-destructive flex items-center gap-1">
                     <AlertTriangle className="h-4 w-4" />
                     Excede los días disponibles
+                  </p>
+                )}
+                {requestType === "permiso_sin_goce" && (
+                  <p className="text-sm text-muted-foreground">
+                    Este tipo de solicitud no descuenta saldo de vacaciones.
                   </p>
                 )}
               </div>
@@ -543,7 +654,7 @@ export function EmployeeVacations() {
               <Label htmlFor="reason">Motivo (opcional)</Label>
               <Textarea
                 id="reason"
-                placeholder="Ej: Vacaciones familiares, viaje, descanso..."
+                placeholder="Ej: tramite personal, viaje, consulta medica, descanso..."
                 value={requestReason}
                 onChange={(e) => setRequestReason(e.target.value)}
                 rows={3}
@@ -557,7 +668,7 @@ export function EmployeeVacations() {
             </Button>
             <Button 
               onClick={handleVacationRequest}
-              disabled={!selectedRange.from || !selectedRange.to || daysRequested > totalAvailableDays || isSubmitting}
+              disabled={!selectedRange.from || !selectedRange.to || (requestType !== "permiso_sin_goce" && daysRequested > totalAvailableDays) || isSubmitting}
             >
               {isSubmitting ? (
                 <>

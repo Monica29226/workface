@@ -10,8 +10,17 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Save, Upload, FileText, Eye, EyeOff, Image as ImageIcon } from "lucide-react";
+import { Loader2, Save, Upload, FileText, Eye, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+interface CompanyProfileSettings {
+  id: string;
+  display_name: string;
+  tax_id: string | null;
+  payroll_email_from: string | null;
+  base_currency: string;
+  logo_url: string | null;
+}
 
 interface PayslipSettings {
   id?: string;
@@ -66,10 +75,11 @@ const defaultSettings: Omit<PayslipSettings, 'company_id'> = {
 };
 
 export function PayslipSettings() {
-  const { selectedCompany } = useCompany();
+  const { selectedCompany, refreshCompanies } = useCompany();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [settings, setSettings] = useState<PayslipSettings | null>(null);
+  const [companyProfile, setCompanyProfile] = useState<CompanyProfileSettings | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
@@ -99,11 +109,11 @@ export function PayslipSettings() {
       if (!selectedCompany?.id) return null;
       const { data, error } = await supabase
         .from("companies")
-        .select("logo_url, display_name")
+        .select("id, logo_url, display_name, tax_id, payroll_email_from, base_currency")
         .eq("id", selectedCompany.id)
         .single();
       if (error) throw error;
-      return data;
+      return data as CompanyProfileSettings;
     },
     enabled: !!selectedCompany?.id,
   });
@@ -121,30 +131,49 @@ export function PayslipSettings() {
     if (company?.logo_url) {
       setLogoPreview(company.logo_url);
     }
-  }, [company?.logo_url]);
+    if (company) {
+      setCompanyProfile(company);
+    }
+  }, [company]);
 
   // Save mutation
   const saveMutation = useMutation({
-    mutationFn: async (data: PayslipSettings) => {
+    mutationFn: async ({ payslipSettings, companySettings }: { payslipSettings: PayslipSettings; companySettings: CompanyProfileSettings | null }) => {
       if (!selectedCompany?.id) throw new Error("No company selected");
 
-      if (data.id) {
+      if (companySettings) {
+        const { error: companyError } = await supabase
+          .from("companies")
+          .update({
+            display_name: companySettings.display_name,
+            tax_id: companySettings.tax_id,
+            payroll_email_from: companySettings.payroll_email_from,
+            base_currency: companySettings.base_currency as any,
+          })
+          .eq("id", selectedCompany.id);
+
+        if (companyError) throw companyError;
+      }
+
+      if (payslipSettings.id) {
         // Update existing
         const { error } = await (supabase as any)
           .from("payslip_settings")
-          .update(data)
-          .eq("id", data.id);
+          .update(payslipSettings)
+          .eq("id", payslipSettings.id);
         if (error) throw error;
       } else {
         // Insert new
         const { error } = await (supabase as any)
           .from("payslip_settings")
-          .insert(data);
+          .insert(payslipSettings);
         if (error) throw error;
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payslipSettings"] });
+      queryClient.invalidateQueries({ queryKey: ["companyLogo"] });
+      void refreshCompanies();
       toast({
         title: "Configuración guardada",
         description: "Los ajustes de colillas se han guardado correctamente",
@@ -170,7 +199,7 @@ export function PayslipSettings() {
       const fileName = `${selectedCompany.id}/logo.${fileExt}`;
 
       // Upload to storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('company-logos')
         .upload(fileName, logoFile, { upsert: true });
 
@@ -241,13 +270,22 @@ export function PayslipSettings() {
 
   const handleSave = () => {
     if (settings) {
-      saveMutation.mutate(settings);
+      saveMutation.mutate({
+        payslipSettings: settings,
+        companySettings: companyProfile,
+      });
     }
   };
 
   const updateSetting = <K extends keyof PayslipSettings>(key: K, value: PayslipSettings[K]) => {
     if (settings) {
       setSettings({ ...settings, [key]: value });
+    }
+  };
+
+  const updateCompanyProfile = <K extends keyof CompanyProfileSettings>(key: K, value: CompanyProfileSettings[K]) => {
+    if (companyProfile) {
+      setCompanyProfile({ ...companyProfile, [key]: value });
     }
   };
 
@@ -287,8 +325,9 @@ export function PayslipSettings() {
       </div>
 
       <Tabs defaultValue="branding" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="branding">Logo y Marca</TabsTrigger>
+          <TabsTrigger value="company">Empresa</TabsTrigger>
           <TabsTrigger value="sections">Secciones</TabsTrigger>
           <TabsTrigger value="fields">Campos</TabsTrigger>
           <TabsTrigger value="texts">Textos</TabsTrigger>
@@ -379,6 +418,78 @@ export function PayslipSettings() {
                     onCheckedChange={(v) => updateSetting('show_platform_branding', v)}
                   />
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="company" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Identidad de la Empresa</CardTitle>
+              <CardDescription>
+                Estos datos se usan para colillas, constancias y comunicaciones por empresa.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="company-display-name">Nombre comercial</Label>
+                  <Input
+                    id="company-display-name"
+                    value={companyProfile?.display_name || ""}
+                    onChange={(e) => updateCompanyProfile("display_name", e.target.value)}
+                    placeholder="ACL Costa Rica"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="company-tax-id">Cédula jurídica</Label>
+                  <Input
+                    id="company-tax-id"
+                    value={companyProfile?.tax_id || ""}
+                    onChange={(e) => updateCompanyProfile("tax_id", e.target.value || null)}
+                    placeholder="3-101-XXXXXX"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="company-payroll-email">Correo emisor de planilla</Label>
+                  <Input
+                    id="company-payroll-email"
+                    type="email"
+                    value={companyProfile?.payroll_email_from || ""}
+                    onChange={(e) => updateCompanyProfile("payroll_email_from", e.target.value || null)}
+                    placeholder="planillas@aclcostarica.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="company-base-currency">Moneda base</Label>
+                  <Select
+                    value={companyProfile?.base_currency || "CRC"}
+                    onValueChange={(value) => updateCompanyProfile("base_currency", value)}
+                  >
+                    <SelectTrigger id="company-base-currency">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CRC">CRC</SelectItem>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="rounded-xl border bg-muted/30 p-4 space-y-2">
+                <p className="font-medium">Publicación sugerida del portal</p>
+                <p className="text-sm text-muted-foreground">
+                  Para el despliegue final, recomendamos publicar el portal del colaborador en
+                  {" "}
+                  <span className="font-medium text-foreground">aclcostarica.com</span>
+                  {" "}y usar un correo emisor del mismo dominio para colillas y notificaciones.
+                </p>
               </div>
             </CardContent>
           </Card>

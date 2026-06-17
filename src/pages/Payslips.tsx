@@ -30,6 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface PayslipData {
   id: string;
   employeeId: string;
+  employeeRecordId: string;
   employeeName: string;
   email: string;
   costCenter: string;
@@ -128,6 +129,7 @@ export function Payslips() {
         return {
           id: line.id,
           employeeId: line.employee.employee_id,
+          employeeRecordId: line.employee.id,
           employeeName: line.employee.full_name,
           email: line.employee.work_email,
           costCenter: 'Programas',
@@ -339,8 +341,9 @@ export function Payslips() {
       const { data: payslipRecord, error: payslipError } = await supabase
         .from('payslips')
         .select('id')
-        .eq('employee_id', payslip.employeeId)
+        .eq('employee_id', payslip.employeeRecordId)
         .eq('company_id', selectedCompany.id)
+        .eq('batch_id', payslip.batchUuid)
         .single();
 
       if (payslipError || !payslipRecord) {

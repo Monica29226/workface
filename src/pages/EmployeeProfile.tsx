@@ -27,6 +27,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { formatCurrency } from "@/lib/utils";
 import { SalaryDetailModal } from "@/components/payroll/SalaryDetailModal";
+import { useNavigate } from "react-router-dom";
 
 interface EmployeeData {
   id: string;
@@ -70,6 +71,7 @@ interface CompanyData {
 
 export function EmployeeProfile() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [employee, setEmployee] = useState<EmployeeData | null>(null);
   const [company, setCompany] = useState<CompanyData | null>(null);
@@ -262,6 +264,16 @@ export function EmployeeProfile() {
             <h1 className="text-2xl font-bold">Mi Historial Salarial</h1>
             <p className="text-muted-foreground">{employee.full_name} • {company?.display_name}</p>
           </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => navigate("/employee-certificates")}>
+            <FileText className="mr-2 h-4 w-4" />
+            Mis Constancias
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/employee-vacations")}>
+            <History className="mr-2 h-4 w-4" />
+            Tiempo Libre
+          </Button>
         </div>
       </div>
 

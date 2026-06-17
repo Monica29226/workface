@@ -662,6 +662,7 @@ export type Database = {
           job_title: string | null
           loan_amount: number | null
           loan_monthly_deduction: number | null
+          manager_id: string | null
           status: Database["public"]["Enums"]["employee_status"]
           updated_at: string
           user_id: string | null
@@ -684,6 +685,7 @@ export type Database = {
           job_title?: string | null
           loan_amount?: number | null
           loan_monthly_deduction?: number | null
+          manager_id?: string | null
           status?: Database["public"]["Enums"]["employee_status"]
           updated_at?: string
           user_id?: string | null
@@ -706,6 +708,7 @@ export type Database = {
           job_title?: string | null
           loan_amount?: number | null
           loan_monthly_deduction?: number | null
+          manager_id?: string | null
           status?: Database["public"]["Enums"]["employee_status"]
           updated_at?: string
           user_id?: string | null
@@ -732,6 +735,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]
@@ -1484,13 +1494,22 @@ export type Database = {
       }
       vacation_requests: {
         Row: {
+          approval_stage: string
           company_id: string
           created_at: string
           days_requested: number
           employee_id: string
           end_date: string
+          hr_decision_at: string | null
+          hr_decision_by: string | null
+          hr_notes: string | null
           id: string
+          is_half_day: boolean
+          manager_decision_at: string | null
+          manager_decision_by: string | null
+          manager_notes: string | null
           reason: string | null
+          request_type: string
           review_notes: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -1499,13 +1518,22 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approval_stage?: string
           company_id: string
           created_at?: string
           days_requested: number
           employee_id: string
           end_date: string
+          hr_decision_at?: string | null
+          hr_decision_by?: string | null
+          hr_notes?: string | null
           id?: string
+          is_half_day?: boolean
+          manager_decision_at?: string | null
+          manager_decision_by?: string | null
+          manager_notes?: string | null
           reason?: string | null
+          request_type?: string
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -1514,13 +1542,22 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approval_stage?: string
           company_id?: string
           created_at?: string
           days_requested?: number
           employee_id?: string
           end_date?: string
+          hr_decision_at?: string | null
+          hr_decision_by?: string | null
+          hr_notes?: string | null
           id?: string
+          is_half_day?: boolean
+          manager_decision_at?: string | null
+          manager_decision_by?: string | null
+          manager_notes?: string | null
           reason?: string | null
+          request_type?: string
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -1557,6 +1594,20 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "vacation_requests_manager_decision_by_fkey"
+            columns: ["manager_decision_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vacation_requests_hr_decision_by_fkey"
+            columns: ["hr_decision_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
@@ -1575,6 +1626,7 @@ export type Database = {
           hire_date: string | null
           hourly_rate: number | null
           id: string | null
+          manager_id: string | null
           status: Database["public"]["Enums"]["employee_status"] | null
           updated_at: string | null
           user_id: string | null
@@ -1594,6 +1646,7 @@ export type Database = {
           hire_date?: string | null
           hourly_rate?: never
           id?: string | null
+          manager_id?: string | null
           status?: Database["public"]["Enums"]["employee_status"] | null
           updated_at?: string | null
           user_id?: string | null
@@ -1613,6 +1666,7 @@ export type Database = {
           hire_date?: string | null
           hourly_rate?: never
           id?: string | null
+          manager_id?: string | null
           status?: Database["public"]["Enums"]["employee_status"] | null
           updated_at?: string | null
           user_id?: string | null
@@ -1646,6 +1700,7 @@ export type Database = {
     }
     Functions: {
       can_access_salary_data: { Args: { _user_id: string }; Returns: boolean }
+      cancel_vacation_request: { Args: { p_request_id: string }; Returns: Json }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -1685,8 +1740,20 @@ export type Database = {
           read_ct: number
         }[]
       }
+      process_vacation_request_approval: {
+        Args: { p_action: string; p_notes?: string | null; p_request_id: string }
+        Returns: Json
+      }
       user_belongs_to_company: {
         Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_can_hr_manage_time_off: {
+        Args: { _company_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_is_manager_for_employee: {
+        Args: { _employee_id: string; _user_id: string }
         Returns: boolean
       }
     }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, LogOut, Settings, ChevronDown } from "lucide-react";
+import { User, LogOut, Settings, ChevronDown, FileBadge, Palmtree } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -72,12 +72,16 @@ export function UserMenu() {
   const t = {
     es: {
       profile: "Mi Perfil",
+      certificates: "Mis Constancias",
+      vacations: "Mis Vacaciones",
       settings: "Configuración",
       logout: "Cerrar Sesión",
       loading: "Cargando...",
     },
     en: {
       profile: "My Profile",
+      certificates: "My Certificates",
+      vacations: "My Vacations",
       settings: "Settings",
       logout: "Sign Out",
       loading: "Loading...",
@@ -133,6 +137,14 @@ export function UserMenu() {
         <DropdownMenuItem onClick={() => navigate("/employee-profile")} className="cursor-pointer">
           <User className="mr-2 h-4 w-4" />
           {labels.profile}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate("/employee-certificates")} className="cursor-pointer">
+          <FileBadge className="mr-2 h-4 w-4" />
+          {labels.certificates}
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate("/employee-vacations")} className="cursor-pointer">
+          <Palmtree className="mr-2 h-4 w-4" />
+          {labels.vacations}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigate("/settings/parameters")} className="cursor-pointer">
           <Settings className="mr-2 h-4 w-4" />

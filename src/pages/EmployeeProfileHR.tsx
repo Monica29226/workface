@@ -28,9 +28,7 @@ import {
   Briefcase,
   CreditCard,
   Palmtree,
-  Clock,
-  Mail,
-  Phone
+  FileBadge
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,7 +36,6 @@ import { format, differenceInMonths, differenceInYears } from "date-fns";
 import { es } from "date-fns/locale";
 import { formatCurrency } from "@/lib/utils";
 import { SalaryDetailModal } from "@/components/payroll/SalaryDetailModal";
-import { useCompany } from "@/contexts/CompanyContext";
 
 interface EmployeeData {
   id: string;
@@ -105,6 +102,19 @@ interface LoanRecord {
   notes: string | null;
 }
 
+interface TimeOffRequestRecord {
+  id: string;
+  start_date: string;
+  end_date: string;
+  days_requested: number;
+  request_type: string | null;
+  status: string;
+  approval_stage: string | null;
+  manager_notes: string | null;
+  hr_notes: string | null;
+  created_at: string;
+}
+
 interface CompanyData {
   id: string;
   display_name: string;
@@ -116,20 +126,20 @@ export function EmployeeProfileHR() {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { selectedCompany } = useCompany();
-  
   const [isLoading, setIsLoading] = useState(true);
   const [employee, setEmployee] = useState<EmployeeData | null>(null);
   const [company, setCompany] = useState<CompanyData | null>(null);
   const [payslips, setPayslips] = useState<PayslipWithLine[]>([]);
   const [vacations, setVacations] = useState<VacationRecord[]>([]);
   const [loans, setLoans] = useState<LoanRecord[]>([]);
+  const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequestRecord[]>([]);
   const [activeTab, setActiveTab] = useState("overview");
 
   // Salary detail modal
   const [selectedPayslip, setSelectedPayslip] = useState<PayslipWithLine | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isDownloadingPDF, setIsDownloadingPDF] = useState(false);
+  const [isGeneratingCertificate, setIsGeneratingCertificate] = useState<"laboral" | "salarial" | null>(null);
 
   useEffect(() => {
     if (employeeId) {
@@ -199,6 +209,15 @@ export function EmployeeProfileHR() {
         .order("year", { ascending: false });
 
       if (vacationData) setVacations(vacationData);
+
+      const { data: requestData } = await supabase
+        .from("vacation_requests")
+        .select("id, start_date, end_date, days_requested, request_type, status, approval_stage, manager_notes, hr_notes, created_at")
+        .eq("employee_id", employeeData.id)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (requestData) setTimeOffRequests(requestData);
 
       // Fetch loan records
       const { data: loanData } = await supabase
@@ -297,6 +316,21 @@ export function EmployeeProfileHR() {
     };
   }, [vacations]);
 
+  const stageLabels: Record<string, string> = {
+    pending_manager: "Pendiente jefe",
+    pending_hr: "Pendiente RRHH",
+    approved: "Aprobada",
+    rejected: "Rechazada",
+    cancelled: "Cancelada",
+  };
+
+  const requestTypeLabels: Record<string, string> = {
+    vacaciones: "Vacaciones",
+    dia_libre: "Dia libre",
+    medio_dia: "Medio dia",
+    permiso_sin_goce: "Permiso sin goce",
+  };
+
   // Loan summary
   const loanSummary = useMemo(() => {
     const activeLoans = loans.filter(l => l.status === 'activo');
@@ -318,6 +352,140 @@ export function EmployeeProfileHR() {
     const months = differenceInMonths(new Date(), hireDate) % 12;
     return { years, months };
   }, [employee?.hire_date]);
+
+  const latestPayrollLine = payslips[0]?.payroll_line || null;
+
+  const handleGenerateCertificate = (kind: "laboral" | "salarial") => {
+    if (!employee || !company) {
+      toast({
+        title: "Información incompleta",
+        description: "No hay suficientes datos para generar la constancia.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGeneratingCertificate(kind);
+
+    try {
+      const issueDate = format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: es });
+      const hireDate = employee.hire_date
+        ? format(new Date(employee.hire_date), "dd 'de' MMMM 'de' yyyy", { locale: es })
+        : "No registrada";
+      const salaryReference = latestPayrollLine?.gross_salary || employee.base_salary || 0;
+      const netReference = latestPayrollLine?.total_to_pay || latestPayrollLine?.net_pay || 0;
+      const certificateTitle = kind === "laboral" ? "Constancia Laboral" : "Constancia Salarial";
+
+      const details = kind === "laboral"
+        ? [
+            ["Empresa", company.display_name],
+            ["Cedula juridica", company.tax_id || "No registrada"],
+            ["Colaborador", employee.full_name],
+            ["Identificacion interna", employee.employee_id],
+            ["Puesto", employee.contract_type === "mensual" ? "Contrato mensual" : "Contrato por horas"],
+            ["Fecha de ingreso", hireDate],
+          ]
+        : [
+            ["Empresa", company.display_name],
+            ["Cedula juridica", company.tax_id || "No registrada"],
+            ["Colaborador", employee.full_name],
+            ["Moneda", employee.currency],
+            ["Salario base", formatCurrency(employee.base_salary, employee.currency)],
+            ["Ultimo neto disponible", netReference > 0 ? formatCurrency(netReference, latestPayrollLine?.currency || employee.currency) : "No disponible"],
+          ];
+
+      const detailRows = details
+        .map(
+          ([label, value]) => `
+            <tr>
+              <td style="padding:10px 12px;border:1px solid #d7dde5;background:#f6f8fb;font-weight:600;">${label}</td>
+              <td style="padding:10px 12px;border:1px solid #d7dde5;">${value}</td>
+            </tr>
+          `
+        )
+        .join("");
+
+      const leadParagraph =
+        kind === "laboral"
+          ? `Por este medio se hace constar que <strong>${employee.full_name}</strong>, identificacion interna <strong>${employee.employee_id}</strong>, labora activamente para <strong>${company.display_name}</strong> desde el <strong>${hireDate}</strong>.`
+          : `Por este medio se hace constar que <strong>${employee.full_name}</strong> mantiene una relacion laboral activa con <strong>${company.display_name}</strong> y percibe la remuneracion indicada en este documento.`;
+
+      const middleParagraph =
+        kind === "laboral"
+          ? `La presente constancia se emite a solicitud del area administrativa para los fines que correspondan.`
+          : `El salario bruto de referencia es <strong>${formatCurrency(salaryReference, employee.currency)}</strong>${netReference > 0 ? ` y el ultimo neto disponible es <strong>${formatCurrency(netReference, latestPayrollLine?.currency || employee.currency)}</strong>` : ""}.`;
+
+      const certificateWindow = window.open("", "_blank", "noopener,noreferrer,width=960,height=720");
+      if (!certificateWindow) throw new Error("No se pudo abrir la ventana de impresión.");
+
+      certificateWindow.document.write(`
+        <!doctype html>
+        <html lang="es">
+          <head>
+            <meta charset="utf-8" />
+            <title>${certificateTitle}</title>
+            <style>
+              body { font-family: Arial, sans-serif; color: #16324f; margin: 0; background: #eef3f8; }
+              .page { max-width: 840px; margin: 32px auto; background: #ffffff; padding: 48px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12); }
+              .header { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 32px; }
+              .brand h1 { margin: 0; font-size: 28px; }
+              .brand p { margin: 6px 0 0; color: #516173; }
+              .pill { display: inline-block; padding: 6px 10px; border-radius: 999px; background: #e8f0fa; color: #16324f; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+              h2 { font-size: 24px; margin: 32px 0 16px; }
+              p { line-height: 1.75; margin: 0 0 16px; }
+              table { width: 100%; border-collapse: collapse; margin: 28px 0; }
+              .footer { margin-top: 36px; padding-top: 20px; border-top: 1px solid #d7dde5; color: #516173; font-size: 13px; }
+              .signature { margin-top: 56px; }
+              .signature-line { width: 260px; border-top: 1px solid #16324f; margin-top: 48px; padding-top: 8px; font-weight: 600; }
+              .print-button { position: fixed; right: 24px; top: 24px; padding: 10px 16px; background: #16324f; color: #fff; border: 0; border-radius: 10px; cursor: pointer; }
+              @media print {
+                body { background: #fff; }
+                .page { margin: 0; box-shadow: none; max-width: none; }
+                .print-button { display: none; }
+              }
+            </style>
+          </head>
+          <body>
+            <button class="print-button" onclick="window.print()">Imprimir o guardar PDF</button>
+            <div class="page">
+              <div class="header">
+                <div class="brand">
+                  <span class="pill">ACL Workforce HUB</span>
+                  <h1>${company.display_name}</h1>
+                  <p>Cedula juridica: ${company.tax_id || "No registrada"}</p>
+                </div>
+                <div style="text-align:right">
+                  <strong>Fecha de emision</strong>
+                  <div>${issueDate}</div>
+                </div>
+              </div>
+              <h2>${certificateTitle}</h2>
+              <p>${leadParagraph}</p>
+              <p>${middleParagraph}</p>
+              <table>${detailRows}</table>
+              <p>La presente constancia se emite a solicitud de la empresa para los fines administrativos que se estimen convenientes.</p>
+              <div class="signature">
+                <div class="signature-line">${company.display_name}</div>
+              </div>
+              <div class="footer">
+                Documento generado desde la plataforma de ACL Costa Rica el ${issueDate}.
+              </div>
+            </div>
+          </body>
+        </html>
+      `);
+      certificateWindow.document.close();
+    } catch (error) {
+      console.error("Error generating HR certificate:", error);
+      toast({
+        title: "Error",
+        description: "No se pudo generar la constancia.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingCertificate(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -373,6 +541,16 @@ export function EmployeeProfileHR() {
               </Badge>
             </div>
           </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={() => handleGenerateCertificate("laboral")} disabled={isGeneratingCertificate !== null}>
+            <FileBadge className="h-4 w-4 mr-2" />
+            Constancia Laboral
+          </Button>
+          <Button variant="outline" onClick={() => handleGenerateCertificate("salarial")} disabled={isGeneratingCertificate !== null}>
+            <FileText className="h-4 w-4 mr-2" />
+            Constancia Salarial
+          </Button>
         </div>
       </div>
 
@@ -563,6 +741,53 @@ export function EmployeeProfileHR() {
                     </Button>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          )}
+
+          {timeOffRequests.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Palmtree className="h-5 w-5" />
+                  Solicitudes Recientes de Tiempo Libre
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Período</TableHead>
+                      <TableHead>Etapa</TableHead>
+                      <TableHead>Notas</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {timeOffRequests.map((request) => (
+                      <TableRow key={request.id}>
+                        <TableCell className="font-medium">
+                          {requestTypeLabels[request.request_type || "vacaciones"] || "Vacaciones"}
+                        </TableCell>
+                        <TableCell>
+                          {format(new Date(request.start_date), "dd/MM/yyyy")} - {format(new Date(request.end_date), "dd/MM/yyyy")}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {stageLabels[request.approval_stage || request.status] || "Pendiente RRHH"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[260px]">
+                          <div className="space-y-1 text-sm">
+                            {request.manager_notes && <p><span className="font-medium">Jefe:</span> {request.manager_notes}</p>}
+                            {request.hr_notes && <p><span className="font-medium">RRHH:</span> {request.hr_notes}</p>}
+                            {!request.manager_notes && !request.hr_notes && <span className="text-muted-foreground">—</span>}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           )}

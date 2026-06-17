@@ -32,6 +32,8 @@ const translations = {
     'nav.my_profile': 'Mi Perfil',
     'nav.my_salary_history': 'Mi Historial Salarial',
     'nav.my_vacations': 'Mis Vacaciones',
+    'nav.my_certificates': 'Mis Constancias',
+    'nav.approve_time_off': 'Aprobar Tiempo Libre',
     'nav.pre_colilla': 'Pre-Colilla',
     'nav.pre_nomina': 'Pre-Nómina',
 
@@ -129,7 +131,9 @@ const translations = {
     // Company Selector
     'companySelector.title': 'Sistema de Planillas Costa Rica',
     'companySelector.subtitle': 'Seleccione su compañía para continuar',
-    'companySelector.enter': 'Ingresar'
+    'companySelector.enter': 'Ingresar',
+    'employeePortal.timeOff': 'Tiempo Libre',
+    'employeePortal.certificates': 'Constancias'
   },
   en: {
     // Navigation
@@ -154,6 +158,8 @@ const translations = {
     'nav.my_profile': 'My Profile',
     'nav.my_salary_history': 'My Salary History',
     'nav.my_vacations': 'My Vacations',
+    'nav.my_certificates': 'My Certificates',
+    'nav.approve_time_off': 'Approve Time Off',
     'nav.pre_colilla': 'Pre-Payslip',
     'nav.pre_nomina': 'Pre-Payroll',
 
@@ -251,7 +257,9 @@ const translations = {
     // Company Selector
     'companySelector.title': 'Costa Rica Payroll System',
     'companySelector.subtitle': 'Select your company to continue',
-    'companySelector.enter': 'Enter'
+    'companySelector.enter': 'Enter',
+    'employeePortal.timeOff': 'Time Off',
+    'employeePortal.certificates': 'Certificates'
   }
 };
 

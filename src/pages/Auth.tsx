@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import logoACL from "@/assets/logotipo_acl.png";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,34 @@ export default function Auth() {
   
   // Reset password state
   const [resetEmail, setResetEmail] = useState("");
+
+  const getAuthErrorMessage = (message?: string) => {
+    if (!message) return "No se pudo completar la solicitud.";
+
+    const normalized = message.toLowerCase();
+
+    if (normalized.includes("invalid login credentials")) {
+      return "Correo o contrasena incorrectos.";
+    }
+
+    if (normalized.includes("email not confirmed")) {
+      return "Debes confirmar tu correo antes de iniciar sesion.";
+    }
+
+    if (normalized.includes("too many requests")) {
+      return "Se detectaron demasiados intentos. Intenta de nuevo en unos minutos.";
+    }
+
+    if (normalized.includes("user already registered")) {
+      return "Este correo ya tiene una cuenta registrada.";
+    }
+
+    if (normalized.includes("signup is disabled")) {
+      return "El registro no esta disponible en este momento.";
+    }
+
+    return message;
+  };
 
   // Check for invitation token in URL
   useEffect(() => {
@@ -90,6 +118,11 @@ export default function Auth() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!loginEmail.trim() || !loginPassword.trim()) {
+      setError("Ingresa tu correo y contrasena.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -109,10 +142,11 @@ export default function Auth() {
         navigate("/dashboard");
       }
     } catch (err: any) {
-      setError(err.message || "Error al iniciar sesión");
+      const message = getAuthErrorMessage(err.message || "Error al iniciar sesion");
+      setError(message);
       toast({
         title: "Error",
-        description: err.message || "No se pudo iniciar sesión",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -172,10 +206,11 @@ export default function Auth() {
       setSignupPassword("");
       setSignupConfirmPassword("");
     } catch (err: any) {
-      setError(err.message || "Error al crear la cuenta");
+      const message = getAuthErrorMessage(err.message || "Error al crear la cuenta");
+      setError(message);
       toast({
         title: "Error",
-        description: err.message || "No se pudo crear la cuenta",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -202,10 +237,11 @@ export default function Auth() {
       setShowResetPassword(false);
       setResetEmail("");
     } catch (err: any) {
-      setError(err.message || "Error al enviar correo de recuperación");
+      const message = getAuthErrorMessage(err.message || "Error al enviar correo de recuperacion");
+      setError(message);
       toast({
         title: "Error",
-        description: err.message || "No se pudo enviar el correo de recuperación",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -234,7 +270,7 @@ export default function Auth() {
             <div className="inline-flex items-center justify-center mb-6">
               <img 
                 src={logoACL} 
-                alt="ACL Halderon" 
+                alt="ACL Calderon" 
                 className="w-[500px] h-auto max-w-full"
               />
             </div>
@@ -275,6 +311,7 @@ export default function Auth() {
                     type="email"
                     value={inviteData.email}
                     disabled
+                    autoComplete="email"
                     className="h-11 bg-muted"
                   />
                 </div>
@@ -288,6 +325,7 @@ export default function Auth() {
                     value={signupFullName}
                     onChange={(e) => setSignupFullName(e.target.value)}
                     disabled={loading}
+                    autoComplete="name"
                     className="h-11"
                   />
                 </div>
@@ -303,6 +341,7 @@ export default function Auth() {
                     required
                     disabled={loading}
                     minLength={6}
+                    autoComplete="new-password"
                     className="h-11"
                   />
                 </div>
@@ -318,6 +357,7 @@ export default function Auth() {
                     required
                     disabled={loading}
                     minLength={6}
+                    autoComplete="new-password"
                     className="h-11"
                   />
                 </div>
@@ -364,6 +404,7 @@ export default function Auth() {
                     onChange={(e) => setResetEmail(e.target.value)}
                     required
                     disabled={loading}
+                    autoComplete="email"
                     className="h-11"
                   />
                 </div>
@@ -417,6 +458,7 @@ export default function Auth() {
                     onChange={(e) => setLoginEmail(e.target.value)}
                     required
                     disabled={loading}
+                    autoComplete="email"
                     className="h-11"
                   />
                 </div>
@@ -432,6 +474,7 @@ export default function Auth() {
                     required
                     disabled={loading}
                     minLength={6}
+                    autoComplete="current-password"
                     className="h-11"
                   />
                 </div>
@@ -465,12 +508,18 @@ export default function Auth() {
           {/* Footer Links */}
           <div className="mt-8 pt-6 border-t border-border">
             <div className="flex justify-center gap-6 text-sm">
-              <button className="text-muted-foreground hover:text-foreground transition-colors">
+              <Link
+                to="/terminos"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
                 Términos y Condiciones
-              </button>
-              <button className="text-muted-foreground hover:text-foreground transition-colors">
+              </Link>
+              <Link
+                to="/privacidad"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
                 Políticas de Privacidad
-              </button>
+              </Link>
             </div>
           </div>
         </div>

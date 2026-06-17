@@ -11,6 +11,8 @@ export interface KPIData {
   activeEmployees: number;
   avgCostEmployee: number;
   pendingVacations: number;
+  pendingManagerApprovals: number;
+  pendingHRApprovals: number;
   pendingPayslips: number;
 }
 
@@ -90,19 +92,26 @@ export function useDashboardData() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: pendingVacations } = useQuery({
-    queryKey: ["pendingVacations", companyId],
+  const { data: pendingVacationCounts } = useQuery({
+    queryKey: ["pendingVacationCounts", companyId],
     queryFn: async () => {
-      if (!companyId) return 0;
-      
-      const { count, error } = await supabase
+      if (!companyId) {
+        return { total: 0, pendingManager: 0, pendingHr: 0 };
+      }
+
+      const { data, error } = await supabase
         .from("vacation_requests")
-        .select("*", { count: "exact", head: true })
+        .select("approval_stage")
         .eq("company_id", companyId)
         .eq("status", "pending");
 
       if (error) throw error;
-      return count || 0;
+
+      return {
+        total: (data || []).length,
+        pendingManager: (data || []).filter((row) => row.approval_stage === "pending_manager").length,
+        pendingHr: (data || []).filter((row) => (row.approval_stage || "pending_hr") === "pending_hr").length,
+      };
     },
     enabled: !!companyId,
     staleTime: 1000 * 60 * 2,
@@ -154,10 +163,12 @@ export function useDashboardData() {
       employerCharges: totalEmployerCharges,
       activeEmployees: employeeCount || 0,
       avgCostEmployee: empCount > 0 ? totalGross / empCount : 0,
-      pendingVacations: pendingVacations || 0,
+      pendingVacations: pendingVacationCounts?.total || 0,
+      pendingManagerApprovals: pendingVacationCounts?.pendingManager || 0,
+      pendingHRApprovals: pendingVacationCounts?.pendingHr || 0,
       pendingPayslips: pendingPayslips || 0,
     };
-  }, [payrollLines, employeeCount, pendingVacations, pendingPayslips]);
+  }, [payrollLines, employeeCount, pendingVacationCounts, pendingPayslips]);
 
   const isLoading = !companyId || batchLoading || linesLoading;
 

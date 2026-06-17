@@ -33,6 +33,7 @@ const VacationApproval = lazy(() => import("@/pages/VacationApproval").then(m =>
 const EmployeeProfile = lazy(() => import("@/pages/EmployeeProfile").then(m => ({ default: m.EmployeeProfile })));
 const EmployeeProfileHR = lazy(() => import("@/pages/EmployeeProfileHR").then(m => ({ default: m.EmployeeProfileHR })));
 const EmployeeVacations = lazy(() => import("@/pages/EmployeeVacations").then(m => ({ default: m.EmployeeVacations })));
+const EmployeeCertificates = lazy(() => import("@/pages/EmployeeCertificates").then(m => ({ default: m.EmployeeCertificates })));
 const UsersPage = lazy(() => import("@/pages/Users").then(m => ({ default: m.Users })));
 const EmailCenter = lazy(() => import("@/pages/EmailCenter").then(m => ({ default: m.EmailCenter })));
 const EmailBitacora = lazy(() => import("@/components/email/EmailBitacoraPage"));
@@ -40,6 +41,8 @@ const CompanySelector = lazy(() => import("./pages/CompanySelector"));
 const CreateCompany = lazy(() => import("./pages/CreateCompany"));
 const Auth = lazy(() => import("./pages/Auth"));
 const Index = lazy(() => import("./pages/Index"));
+const TermsPage = lazy(() => import("./pages/TermsPage"));
+const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Optimized QueryClient with caching and stale time
@@ -75,6 +78,8 @@ const App = () => (
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
+                  <Route path="/terminos" element={<TermsPage />} />
+                  <Route path="/privacidad" element={<PrivacyPage />} />
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/index" element={<Index />} />
                   <Route
@@ -104,6 +109,7 @@ const App = () => (
                     <Route path="/employee-profile" element={<EmployeeProfile />} />
                     <Route path="/employee-profile/:employeeId" element={<EmployeeProfileHR />} />
                     <Route path="/employee-vacations" element={<EmployeeVacations />} />
+                    <Route path="/employee-certificates" element={<EmployeeCertificates />} />
                     <Route path="/create-company" element={<CreateCompany />} />
                     <Route path="/email-center" element={<EmailCenter />} />
                     <Route path="/email-bitacora" element={<EmailBitacora />} />

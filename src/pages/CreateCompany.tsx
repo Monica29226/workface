@@ -204,6 +204,8 @@ export default function CreateCompany() {
         legal_name: company.display_name,
         juridical_id: company.tax_id || '',
         logo_url: company.logo_url || undefined,
+        base_currency: company.base_currency,
+        payroll_email_from: company.payroll_email_from,
         primary_color: '#0B2B4C',
         accent_color: '#2A9D8F',
         light_color: '#F5EFE6'
