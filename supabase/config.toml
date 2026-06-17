@@ -1,61 +1,45 @@
 project_id = "eployozkxxqalgmfrylw"
 
-[functions.send-email]
-verify_jwt = false
-
-[functions.send-bulk-emails]
-verify_jwt = false
-
-[functions.create-user]
-verify_jwt = true
-
-[functions.process-payroll]
-verify_jwt = true
-
-[functions.generate-payslips]
-verify_jwt = true
-
-[functions.generate-payslip-pdf]
-verify_jwt = true
-
-[functions.generate-precolilla-pdf]
-verify_jwt = false
-
-[functions.update-payroll-line]
-verify_jwt = true
-
-[functions.recalculate-payroll-batch]
-verify_jwt = true
-
-[functions.facial-recognition]
-verify_jwt = false
-
-[functions.test-email]
-verify_jwt = false
-
-[functions.send-invitation]
-verify_jwt = true
-
-[functions.send-payslip-email]
-verify_jwt = false
-
-[functions.accrue-vacation]
-verify_jwt = true
-
-[functions.accept-invitation]
-verify_jwt = false
-
-[functions.resend-credentials]
-verify_jwt = true
-
-[functions.get-users-auth-info]
-verify_jwt = true
-
-[functions.delete-user]
-verify_jwt = false
-
-[functions.get-bccr-exchange-rate]
-verify_jwt = false
-
-[functions.process-email-queue]
-verify_jwt = true
+[functions]
+  [functions.accept-invitation]
+    verify_jwt = false
+  [functions.accrue-vacation]
+    verify_jwt = true
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.create-user]
+    verify_jwt = true
+  [functions.delete-user]
+    verify_jwt = false
+  [functions.facial-recognition]
+    verify_jwt = false
+  [functions.generate-payslip-pdf]
+    verify_jwt = true
+  [functions.generate-payslips]
+    verify_jwt = true
+  [functions.generate-precolilla-pdf]
+    verify_jwt = false
+  [functions.get-bccr-exchange-rate]
+    verify_jwt = false
+  [functions.get-users-auth-info]
+    verify_jwt = true
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.process-payroll]
+    verify_jwt = true
+  [functions.recalculate-payroll-batch]
+    verify_jwt = true
+  [functions.resend-credentials]
+    verify_jwt = true
+  [functions.send-bulk-emails]
+    verify_jwt = false
+  [functions.send-email]
+    verify_jwt = false
+  [functions.send-invitation]
+    verify_jwt = true
+  [functions.send-payslip-email]
+    verify_jwt = false
+  [functions.test-email]
+    verify_jwt = false
+  [functions.update-payroll-line]
+    verify_jwt = true
