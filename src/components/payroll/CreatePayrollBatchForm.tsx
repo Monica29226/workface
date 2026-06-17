@@ -63,7 +63,6 @@ export function CreatePayrollBatchForm({
   const [periodEnd, setPeriodEnd] = useState("");
   
   // Other options
-  const [exchangeRate, setExchangeRate] = useState(505.10);
   const [copyFromPrevious, setCopyFromPrevious] = useState(false);
   const [previousBatchId, setPreviousBatchId] = useState("");
   
@@ -149,7 +148,6 @@ export function CreatePayrollBatchForm({
           periodEnd: calculatedDates.end,
           frequency: 'quincenal',
           payrollType,
-          exchangeRate,
           copyFromBatchId: copyFromPrevious ? previousBatchId : undefined,
         },
       });
@@ -368,13 +366,12 @@ export function CreatePayrollBatchForm({
             <span className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-sm">3</span>
             Tipo de Cambio (₡/$)
           </Label>
-          <Input
-            type="number"
-            step="0.01"
-            value={exchangeRate}
-            onChange={(e) => setExchangeRate(parseFloat(e.target.value) || 505.10)}
-            className="w-40"
-          />
+          <Alert className="bg-blue-50 border-blue-200">
+            <AlertCircle className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-900">
+              El sistema toma automaticamente el tipo de cambio de venta del Banco Central de Costa Rica para la fecha final del periodo.
+            </AlertDescription>
+          </Alert>
         </div>
 
         {/* Copy from previous (optional) */}

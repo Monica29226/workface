@@ -15,7 +15,6 @@ interface ProcessPayrollRequest {
   periodEnd: string;
   frequency: 'mensual' | 'quincenal' | 'semanal';
   payrollType?: 'adelanto' | 'segunda' | 'completa';  // For biweekly: adelanto=1st half, segunda=2nd half
-  exchangeRate?: number;
   copyFromBatchId?: string;
 }
 
@@ -123,7 +122,7 @@ serve(async (req) => {
       );
     }
 
-    const { companyId, periodStart, periodEnd, frequency, payrollType = 'completa', exchangeRate = 1.0, copyFromBatchId }: ProcessPayrollRequest = await req.json();
+    const { companyId, periodStart, periodEnd, frequency, payrollType = 'completa', copyFromBatchId }: ProcessPayrollRequest = await req.json();
     
     // Biweekly payroll: adelanto = 50% net with 50% deductions, segunda = remaining 50%
     const isBiweekly = frequency === 'quincenal';
@@ -294,20 +293,20 @@ serve(async (req) => {
     
     if (hasUSDEmployees) {
       console.log('USD employees detected, fetching BCCR exchange rate...');
-      
-      // Use provided exchange rate or fetch from BCCR
-      if (exchangeRate && exchangeRate !== 1.0) {
-        bccrExchangeRate = exchangeRate;
-        console.log(`Using provided exchange rate: ${bccrExchangeRate}`);
+
+      // Fetch BCCR rate using period_end date (most recent date in period)
+      const bccrResult = await fetchBCCRExchangeRate(periodEnd);
+      if (bccrResult) {
+        bccrExchangeRate = bccrResult.venta;
+        console.log(`Using BCCR exchange rate: ${bccrExchangeRate} for date ${periodEnd}`);
       } else {
-        // Fetch BCCR rate using period_end date (most recent date in period)
-        const bccrResult = await fetchBCCRExchangeRate(periodEnd);
-        if (bccrResult) {
-          bccrExchangeRate = bccrResult.venta;
-          console.log(`Using BCCR exchange rate: ${bccrExchangeRate} for date ${periodEnd}`);
-        } else {
-          console.warn('Could not fetch BCCR rate, USD salaries will not be converted');
-        }
+        console.error('Could not fetch BCCR rate for USD payroll processing');
+        return new Response(
+          JSON.stringify({
+            error: "No se pudo obtener el tipo de cambio del BCCR para este periodo. La planilla con salarios en USD no puede procesarse sin ese dato oficial."
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
     }
 
