@@ -283,7 +283,7 @@ export function EmployeeVacations() {
 
   const handleCancelRequest = async (requestId: string) => {
     try {
-      const { error } = await supabase.rpc("cancel_vacation_request", {
+      const { error } = await (supabase.rpc as any)("cancel_vacation_request", {
         p_request_id: requestId,
       });
 

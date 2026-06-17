@@ -210,14 +210,14 @@ export function EmployeeProfileHR() {
 
       if (vacationData) setVacations(vacationData);
 
-      const { data: requestData } = await supabase
+      const { data: requestData } = await (supabase as any)
         .from("vacation_requests")
         .select("id, start_date, end_date, days_requested, request_type, status, approval_stage, manager_notes, hr_notes, created_at")
         .eq("employee_id", employeeData.id)
         .order("created_at", { ascending: false })
         .limit(5);
 
-      if (requestData) setTimeOffRequests(requestData);
+      if (requestData) setTimeOffRequests(requestData as any);
 
       // Fetch loan records
       const { data: loanData } = await supabase

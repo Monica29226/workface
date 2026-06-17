@@ -357,7 +357,7 @@ export function AppSidebar() {
         return;
       }
 
-      const { count } = await supabase
+      const { count } = await (supabase as any)
         .from("employees")
         .select("*", { count: "exact", head: true })
         .eq("manager_id", managerEmployee.id);
