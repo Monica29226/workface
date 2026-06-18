@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import aclLogo from "@/assets/logotipo_acl.png";
+import { ACLLogo } from "@/components/branding/ACLLogo";
 
 import {
   Sidebar,
@@ -457,19 +457,18 @@ export function AppSidebar() {
         {/* ACL Logo Branding Section */}
         <SidebarGroup className="mt-auto border-t">
           <div className="px-3 py-4">
-            <div className="flex items-center gap-2">
-              <img 
-                src={aclLogo} 
-                alt="ACL Workforce HUB" 
-                className={collapsed ? "h-8 w-auto" : "h-10 w-auto"}
-              />
+            <div className={`flex ${collapsed ? "justify-center" : "items-center gap-3"}`}>
+              <ACLLogo variant={collapsed ? "mark" : "stack"} onInk size={collapsed ? 26 : 54} />
               {!collapsed && (
                 <div>
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-sidebar-primary/90">
+                    ACL Web
+                  </p>
                   <h3 className="text-sm font-semibold text-sidebar-foreground">
-                    ACL Workforce HUB
+                    ACL Web · Planillas
                   </h3>
                   <p className="text-xs text-sidebar-foreground/60">
-                    {isEmployeeOnly ? 'Portal del Colaborador' : 'Gestión de Nómina CR'}
+                    {isEmployeeOnly ? 'Portal del colaborador' : 'Operacion multiempresa y RRHH'}
                   </p>
                 </div>
               )}

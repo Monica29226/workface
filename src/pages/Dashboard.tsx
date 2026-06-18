@@ -164,35 +164,35 @@ export function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Hero Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-secondary p-8 text-white shadow-xl">
-        <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent opacity-50" />
+      <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-8 shadow-lg">
+        <div className="absolute inset-x-0 top-0 h-px bg-[hsl(var(--gold))]/70" />
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <Sparkles className="h-6 w-6 text-yellow-300" />
-              <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30">
+              <Sparkles className="h-5 w-5 text-[hsl(var(--gold-dark))]" />
+              <Badge className="border-border bg-secondary text-foreground hover:bg-secondary">
                 Sistema Multi-Empresa
               </Badge>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight mb-2">
-              ACL Payroll CR
+            <p className="acl-eyebrow mb-3">ACL Web</p>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">
+              ACL Web · Planillas
             </h1>
-            <p className="text-white/80 text-lg">
+            <p className="text-lg text-foreground">
               {selectedCompany?.legal_name || selectedCompany?.name || 'Seleccione una empresa'}
             </p>
-            <div className="mt-3 flex flex-wrap gap-3 text-sm text-white/75">
+            <div className="mt-3 flex flex-wrap gap-3 text-sm text-muted-foreground">
               {selectedCompany?.juridical_id && <span>Cédula jurídica: {selectedCompany.juridical_id}</span>}
               {selectedCompany?.payroll_email_from && <span>Correo planilla: {selectedCompany.payroll_email_from}</span>}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="outline" className="bg-white/10 text-white border-white/30 text-sm px-3 py-1">
+            <Badge variant="outline" className="text-sm px-3 py-1">
               <DollarSign className="h-3 w-3 mr-1" />
               {selectedCompany?.base_currency || 'CRC'}
             </Badge>
             <Button 
-              variant="secondary" 
-              className="bg-white text-primary hover:bg-white/90 shadow-lg"
+              variant="default"
               onClick={() => navigate('/payroll-process')}
             >
               <Calculator className="h-4 w-4 mr-2" />

@@ -415,7 +415,7 @@ function generatePreColillaPDF(payrollLine: any, company: any): Uint8Array {
 
   doc.setTextColor(150, 150, 150);
   doc.setFontSize(7);
-  doc.text("ACL Workforce HUB - Gestion de Nomina Costa Rica", pageWidth / 2, y, { align: 'center' });
+  doc.text("ACL Web · Planillas Costa Rica", pageWidth / 2, y, { align: 'center' });
   doc.text(`Generado: ${new Date().toLocaleString('es-CR')}`, pageWidth / 2, y + 5, { align: 'center' });
 
   // Return as Uint8Array

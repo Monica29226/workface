@@ -18,8 +18,8 @@ export const MagicLinkEmail = ({ siteName, confirmationUrl }: MagicLinkEmailProp
     <Body style={main}>
       <Container style={container}>
         <Section style={header}>
-          <Heading style={headerTitle}>ACL Workforce HUB</Heading>
-          <Text style={headerSubtitle}>Sistema de Gestión de Planillas</Text>
+          <Heading style={headerTitle}>ACL Web · Planillas</Heading>
+          <Text style={headerSubtitle}>Portal institucional de nomina y autoservicio</Text>
         </Section>
         <Section style={card}>
           <Heading style={h1}>Su enlace de acceso</Heading>
@@ -29,7 +29,7 @@ export const MagicLinkEmail = ({ siteName, confirmationUrl }: MagicLinkEmailProp
           <Button style={button} href={confirmationUrl}>Iniciar sesión</Button>
           <Text style={footer}>
             Si no solicitó este enlace, puede ignorar este correo.<br />
-            © {new Date().getFullYear()} ACL Workforce HUB
+            © {new Date().getFullYear()} ACL Web · Planillas
           </Text>
         </Section>
       </Container>

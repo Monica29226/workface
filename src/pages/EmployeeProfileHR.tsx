@@ -450,7 +450,7 @@ export function EmployeeProfileHR() {
             <div class="page">
               <div class="header">
                 <div class="brand">
-                  <span class="pill">ACL Workforce HUB</span>
+                  <span class="pill">ACL Web · Planillas</span>
                   <h1>${company.display_name}</h1>
                   <p>Cedula juridica: ${company.tax_id || "No registrada"}</p>
                 </div>

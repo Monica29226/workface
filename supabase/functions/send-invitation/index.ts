@@ -141,17 +141,17 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Build the invitation link
-    const appOrigin = "https://workforcehub.calderon.cr";
+    const appOrigin = "https://aclcostarica.com";
     const inviteLink = `${appOrigin}/auth?invite=${invitation.token}`;
-    const systemName = "ACL Workforce HUB";
-    const supportEmail = "soporte@aureoncr.com";
+    const systemName = "ACL Web · Planillas";
+    const supportEmail = "soporte@aclcostarica.com";
     const inviterName = inviterProfile?.full_name || inviterProfile?.email || "El administrador";
 
-    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@calderon.cr").trim();
+    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@aclcostarica.com").trim();
     const cleanedFromEmail = rawFromEmail.replace(/^"+|"+$/g, "").trim();
     const emailMatchInv = cleanedFromEmail.match(/<([^>]+)>/);
     const pureFromEmail = emailMatchInv ? emailMatchInv[1] : cleanedFromEmail;
-    const from = `ACL Payroll CR <${pureFromEmail}>`;
+    const from = `ACL Web Planillas <${pureFromEmail}>`;
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -160,7 +160,7 @@ const handler = async (req: Request): Promise<Response> => {
       to: [email],
       subject: `Bienvenido al ${systemName}${company_name ? ` - ${company_name}` : ""}`,
       headers: {
-        "List-Unsubscribe": `<mailto:unsubscribe@calderon.cr?subject=Unsubscribe>`,
+        "List-Unsubscribe": `<mailto:unsubscribe@aclcostarica.com?subject=Unsubscribe>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
       html: `
@@ -172,10 +172,10 @@ const handler = async (req: Request): Promise<Response> => {
             <tr><td>
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                 <tr>
-                  <td style="background: linear-gradient(135deg, #0F2A44, #1e3a8a); padding: 32px; text-align: center;">
-                    <img src="https://aureoncr.com/wp-content/uploads/2024/01/logo-aureon-blanco.png" alt="Aureon" style="max-width: 180px; height: auto; margin-bottom: 16px;" />
+                  <td style="background: #0F2A44; padding: 32px; text-align: center;">
+                    <p style="color: #C9A24D; margin: 0 0 10px 0; font-size: 12px; letter-spacing: 2px; text-transform: uppercase;">ACL · Accounting Consulting Leaders</p>
                     <h1 style="color: white; margin: 0; font-size: 22px;">${systemName}</h1>
-                    <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 13px;">Sistema de Gestión de Nómina y Recursos Humanos</p>
+                    <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 13px;">Portal institucional de nomina y autoservicio</p>
                   </td>
                 </tr>
                 <tr>
@@ -214,7 +214,7 @@ const handler = async (req: Request): Promise<Response> => {
                       ¿Necesita ayuda? <a href="mailto:${supportEmail}" style="color: #1e40af;">${supportEmail}</a>
                     </p>
                     <p style="margin: 0; color: #94a3b8; font-size: 12px; text-align: center;">
-                      © ${new Date().getFullYear()} ACL Workforce HUB
+                      © ${new Date().getFullYear()} ACL Web · Planillas
                     </p>
                   </td>
                 </tr>

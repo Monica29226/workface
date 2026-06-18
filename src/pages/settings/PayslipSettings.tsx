@@ -409,7 +409,7 @@ export function PayslipSettings() {
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label>Mostrar marca "ACL Workforce HUB"</Label>
+                    <Label>Mostrar marca "ACL Web · Planillas"</Label>
                     <p className="text-sm text-muted-foreground">
                       Incluir el nombre de la plataforma en el encabezado
                     </p>

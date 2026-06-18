@@ -659,7 +659,7 @@ function generatePayslipHTML(payslip: any, payrollLine: any, advancePayment: num
           }
         </div>
         <div class="header-brand">
-          <p class="platform-name">ACL Workforce HUB</p>
+          <p class="platform-name">ACL Web · Planillas</p>
           <p class="payslip-title">COMPROBANTE DE PAGO</p>
         </div>
       </div>

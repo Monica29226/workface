@@ -23,7 +23,7 @@ export default function TermsPage() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm leading-6 text-muted-foreground">
             <p>
-              ACL Workforce HUB es una plataforma para la gestion de planillas y procesos de recursos humanos.
+              ACL Web · Planillas es una plataforma para la gestion de planillas y procesos de recursos humanos.
               El acceso al sistema esta destinado unicamente a usuarios autorizados por su empresa o por ACL.
             </p>
             <p>

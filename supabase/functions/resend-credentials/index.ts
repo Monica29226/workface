@@ -28,15 +28,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@calderon.cr").trim();
+    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@aclcostarica.com").trim();
     const cleanedFrom = rawFromEmail.replace(/^"+|"+$/g, "").trim();
     const emailMatch = cleanedFrom.match(/<([^>]+)>/);
     const pureEmail = emailMatch ? emailMatch[1] : cleanedFrom;
-    const from = `ACL Payroll CR <${pureEmail}>`;
+    const from = `ACL Web Planillas <${pureEmail}>`;
 
-    const systemName = "ACL Workforce HUB";
-    const supportEmail = "soporte@aureoncr.com";
-    const logoUrl = "https://aureoncr.com/wp-content/uploads/2024/01/logo-aureon-blanco.png";
+    const systemName = "ACL Web · Planillas";
+    const supportEmail = "soporte@aclcostarica.com";
 
     // Verify authorization
     const authHeader = req.headers.get("Authorization");
@@ -166,9 +165,9 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const appOrigin = "https://workforcehub.calderon.cr";
+    const appOrigin = "https://aclcostarica.com";
     const platformUrl = `${appOrigin}/auth`;
-    const unsubscribeEmail = "unsubscribe@calderon.cr";
+    const unsubscribeEmail = "unsubscribe@aclcostarica.com";
 
     // Create email log entry BEFORE sending
     const { data: logEntry } = await supabaseAdmin
@@ -206,10 +205,10 @@ const handler = async (req: Request): Promise<Response> => {
                   <td>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                       <tr>
-                        <td style="background: linear-gradient(135deg, #0F2A44, #1e3a8a); padding: 32px; text-align: center;">
-                          <img src="${logoUrl}" alt="Aureon" style="max-width: 180px; height: auto; margin-bottom: 16px;" />
+                        <td style="background: #0F2A44; padding: 32px; text-align: center;">
+                          <p style="color: #C9A24D; margin: 0 0 10px 0; font-size: 12px; letter-spacing: 2px; text-transform: uppercase;">ACL · Accounting Consulting Leaders</p>
                           <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 600;">${systemName}</h1>
-                          <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 13px;">Sistema de Gestión de Nómina y Recursos Humanos</p>
+                          <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 13px;">Portal institucional de nomina y autoservicio</p>
                         </td>
                       </tr>
                       <tr>
@@ -276,7 +275,7 @@ const handler = async (req: Request): Promise<Response> => {
                             <a href="mailto:${supportEmail}" style="color: #1e40af; font-size: 14px; text-decoration: underline;">${supportEmail}</a>
                           </p>
                           <p style="margin: 0; color: #94a3b8; font-size: 12px; text-align: center;">
-                            © ${new Date().getFullYear()} ACL Workforce HUB. Todos los derechos reservados.
+                            © ${new Date().getFullYear()} ACL Web · Planillas. Todos los derechos reservados.
                           </p>
                           <p style="margin: 8px 0 0 0; color: #cbd5e1; font-size: 11px; text-align: center;">
                             Si no solicitó nuevas credenciales, por favor contacte al administrador de su empresa.

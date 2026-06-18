@@ -51,12 +51,11 @@ serve(async (req) => {
       // Use default if no body
     }
 
-    // Using noreply@calderon.cr - domain calderon.cr is verified in Resend
-    const rawFrom = (fromEmail || 'noreply@calderon.cr').trim();
+    const rawFrom = (fromEmail || 'noreply@aclcostarica.com').trim();
     const cleanedFrom = rawFrom.replace(/^"+|"+$/g, '').trim();
     const emailMatchResult = cleanedFrom.match(/<([^>]+)>/);
     const pureEmailAddr = emailMatchResult ? emailMatchResult[1] : cleanedFrom;
-    const from = `ACL Payroll CR <${pureEmailAddr}>`;
+    const from = `ACL Web Planillas <${pureEmailAddr}>`;
 
     console.log('Attempting to send test email to:', testEmail);
     console.log('Using FROM:', from);
@@ -65,16 +64,16 @@ serve(async (req) => {
     const { data, error } = await resend.emails.send({
       from,
       to: [testEmail],
-      subject: 'Test Email - ACL Workforce HUB',
+      subject: 'Test Email - ACL Web Planillas',
       html: `
-        <h1>Email de Prueba - ACL Workforce HUB</h1>
-        <p>Este es un email de prueba del sistema ACL Workforce HUB.</p>
+        <h1>Email de Prueba - ACL Web Planillas</h1>
+        <p>Este es un email de prueba del sistema ACL Web · Planillas.</p>
         <p>Si recibes este email, la configuración de Resend está funcionando correctamente.</p>
-        <p><strong>Portal:</strong> <a href="https://workforcehub.calderon.cr">https://workforcehub.calderon.cr</a></p>
+        <p><strong>Portal:</strong> <a href="https://aclcostarica.com">https://aclcostarica.com</a></p>
         <hr>
         <p><strong>Configuración:</strong></p>
         <ul>
-          <li>From: ${fromEmail || 'noreply@calderon.cr'}</li>
+          <li>From: ${fromEmail || 'noreply@aclcostarica.com'}</li>
           <li>Timestamp: ${new Date().toISOString()}</li>
         </ul>
       `,

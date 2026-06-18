@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import logoACL from "@/assets/logotipo_acl.png";
+import { ACLLogo } from "@/components/branding/ACLLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -265,17 +265,17 @@ export default function Auth() {
     <div className="min-h-screen flex">
       {/* Left Side - Dark Blue with Logo */}
       <div className="hidden lg:flex lg:w-1/2 bg-navy items-center justify-center p-12">
-        <div className="text-center">
+        <div className="text-center max-w-md">
+          <p className="mb-5 text-[11px] uppercase tracking-[0.26em] text-[hsl(var(--gold-light))]">
+            ACL Web
+          </p>
           <div className="mb-8">
             <div className="inline-flex items-center justify-center mb-6">
-              <img 
-                src={logoACL} 
-                alt="ACL Calderon" 
-                className="w-[500px] h-auto max-w-full"
-              />
+              <ACLLogo variant="stack" onInk size={132} />
             </div>
           </div>
-          <p className="text-white/70 text-sm">Sistema de Planillas Costa Rica</p>
+          <p className="text-white text-lg">Plataforma de planillas y autoservicio</p>
+          <p className="mt-3 text-white/70 text-sm">Entorno institucional para colaboradores, RRHH y operacion multiempresa.</p>
         </div>
       </div>
 
@@ -293,7 +293,7 @@ export default function Auth() {
                 <h1 className="text-3xl font-bold text-foreground mb-2">Crear Cuenta</h1>
                 <p className="text-muted-foreground">
                   Completa tu registro para acceder a{' '}
-                  <strong>{inviteData.company?.display_name || 'ACL Payroll'}</strong>
+                  <strong>{inviteData.company?.display_name || 'ACL Web · Planillas'}</strong>
                 </p>
               </div>
 

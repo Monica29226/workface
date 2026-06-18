@@ -291,7 +291,7 @@ export function Liquidaciones() {
       </div>
       <div class="footer">
         <p>Los cálculos se basan en la legislación laboral costarricense vigente. Consulte con su asesor legal.</p>
-        <p>Generado el ${formatDate(new Date().toISOString())} • ${selectedCompany?.name} • ACL Workforce HUB</p>
+        <p>Generado el ${formatDate(new Date().toISOString())} • ${selectedCompany?.name} • ACL Web · Planillas</p>
       </div>
       </body></html>
     `);

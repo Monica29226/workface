@@ -1,4 +1,4 @@
-import { Languages, Moon, Sun } from "lucide-react";
+import { Globe, Languages, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
@@ -12,16 +12,25 @@ import { UserMenu } from "./UserMenu";
 import { RolePreviewSwitcher } from "./RolePreviewSwitcher";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useTheme } from "next-themes";
+import { ACLLogo } from "@/components/branding/ACLLogo";
 
 export function AppHeader() {
   const { language, setLanguage } = useLanguage();
   const { theme, setTheme } = useTheme();
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 items-center justify-between">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="container flex min-h-[72px] items-center justify-between gap-4 py-3">
         <div className="flex items-center gap-4">
           <SidebarTrigger className="h-8 w-8" />
+          <div className="hidden lg:flex items-center gap-4">
+            <ACLLogo variant="row" size={38} />
+            <div className="border-l border-border pl-4">
+              <p className="acl-eyebrow">ACL Web</p>
+              <p className="text-sm font-semibold text-foreground">Plataforma de Planillas</p>
+              <p className="text-xs text-muted-foreground">Entorno institucional para planillas, RRHH y autoservicio</p>
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center gap-4">
@@ -44,18 +53,28 @@ export function AppHeader() {
                   onClick={() => setLanguage('es')}
                   className={language === 'es' ? 'bg-accent' : ''}
                 >
-                  <span className="mr-2">🇨🇷</span>
                   Español
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setLanguage('en')}
                   className={language === 'en' ? 'bg-accent' : ''}
                 >
-                  <span className="mr-2">🇺🇸</span>
                   English
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="hidden md:inline-flex gap-2"
+            >
+              <a href="https://aclcostarica.com" target="_blank" rel="noreferrer">
+                <Globe className="h-4 w-4" />
+                ACL WEB
+              </a>
+            </Button>
 
             {/* Theme Toggle */}
             <Button

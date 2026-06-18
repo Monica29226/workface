@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Loader2, Eye, Search, FileText, Download, Send, Minus, Building2, User, Calculator, Save, Pencil, X } from "lucide-react";
 import { formatNumber } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import logoACL from "@/assets/logotipo_acl.png";
+import { ACLLogo } from "@/components/branding/ACLLogo";
 
 // Format CRC without decimals
 const formatCRC = (amount: number): string => {
@@ -1072,7 +1072,9 @@ export function PreColilla() {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <img src={logoACL} alt="ACL" className="h-10 w-auto hidden lg:block" />
+          <div className="hidden lg:block">
+            <ACLLogo variant="compact" size={26} />
+          </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">{t('precolilla.title')}</h1>
             <p className="text-muted-foreground">

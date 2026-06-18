@@ -1,7 +1,7 @@
-# Plan de Accion ACL Workforce HUB
+# Plan de Accion ACL Web · Planillas
 
 ## Objetivo General
-Convertir ACL Workforce HUB en una plataforma multiempresa de planillas y autoservicio del colaborador para `aclcostarica.com`, con foco en constancias, tiempo libre, colillas de pago y operacion administrativa por empresa.
+Convertir ACL Web · Planillas en una plataforma multiempresa de planillas y autoservicio del colaborador para `aclcostarica.com`, con foco en constancias, tiempo libre, colillas de pago y operacion administrativa por empresa.
 
 ## Fase 0. Diagnostico y Base
 Estado: completada

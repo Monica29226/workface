@@ -526,12 +526,12 @@ export function EmailCenter() {
                   <Label htmlFor="from_email">Email remitente de la empresa</Label>
                   <Input
                     id="from_email"
-                    placeholder="ACL Payroll CR <noreply@calderon.cr>"
-                    value="ACL Payroll CR <noreply@calderon.cr>"
+                    placeholder="ACL Web Planillas <noreply@aclcostarica.com>"
+                    value="ACL Web Planillas <noreply@aclcostarica.com>"
                     disabled
                   />
                   <p className="text-xs text-muted-foreground">
-                    Email configurado para el envío de correos (dominio calderon.cr)
+                    Email configurado para el envío de correos del dominio aclcostarica.com
                   </p>
                 </div>
               </div>

@@ -21,8 +21,8 @@ export const EmailChangeEmail = ({ siteName, oldEmail, newEmail, confirmationUrl
     <Body style={main}>
       <Container style={container}>
         <Section style={header}>
-          <Heading style={headerTitle}>ACL Workforce HUB</Heading>
-          <Text style={headerSubtitle}>Sistema de Gestión de Planillas</Text>
+          <Heading style={headerTitle}>ACL Web · Planillas</Heading>
+          <Text style={headerSubtitle}>Portal institucional de nomina y autoservicio</Text>
         </Section>
         <Section style={card}>
           <Heading style={h1}>Confirme el cambio de correo</Heading>
@@ -34,7 +34,7 @@ export const EmailChangeEmail = ({ siteName, oldEmail, newEmail, confirmationUrl
           <Button style={button} href={confirmationUrl}>Confirmar cambio</Button>
           <Text style={footer}>
             Si usted no solicitó este cambio, asegure su cuenta de inmediato.<br />
-            © {new Date().getFullYear()} ACL Workforce HUB
+            © {new Date().getFullYear()} ACL Web · Planillas
           </Text>
         </Section>
       </Container>

@@ -262,14 +262,14 @@ export function VacationApproval() {
                       <p>Hola <strong>${selectedRequest.employee_name}</strong>,</p>
                       <p>Tu solicitud de <strong>${requestTypeLabels[selectedRequest.request_type || "vacaciones"]}</strong> ha sido aprobada.</p>
                       <p>Notas: ${reviewNotes || "Sin observaciones"}</p>
-                      <p style="color:#6b7280;font-size:12px">ACL Workforce HUB</p>
+                      <p style="color:#6b7280;font-size:12px">ACL Web · Planillas</p>
                     </div>`
                   : `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
                       <h2 style="color:#dc2626">Solicitud Rechazada</h2>
                       <p>Hola <strong>${selectedRequest.employee_name}</strong>,</p>
                       <p>Tu solicitud de <strong>${requestTypeLabels[selectedRequest.request_type || "vacaciones"]}</strong> ha sido rechazada.</p>
                       <p>Motivo: ${reviewNotes || "Sin observaciones"}</p>
-                      <p style="color:#6b7280;font-size:12px">ACL Workforce HUB</p>
+                      <p style="color:#6b7280;font-size:12px">ACL Web · Planillas</p>
                     </div>`,
               companyId: selectedCompany?.id,
             },

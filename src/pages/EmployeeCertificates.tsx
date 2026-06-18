@@ -174,22 +174,25 @@ export function EmployeeCertificates() {
           <meta charset="utf-8" />
           <title>${certificateTitle}</title>
           <style>
-            body { font-family: Arial, sans-serif; color: #16324f; margin: 0; background: #eef3f8; }
-            .page { max-width: 840px; margin: 32px auto; background: #ffffff; padding: 48px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12); }
-            .header { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 32px; }
-            .brand h1 { margin: 0; font-size: 28px; }
-            .brand p { margin: 6px 0 0; color: #516173; }
-            .pill { display: inline-block; padding: 6px 10px; border-radius: 999px; background: #e8f0fa; color: #16324f; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
-            h2 { font-size: 24px; margin: 32px 0 16px; }
+            body { font-family: Mulish, Arial, sans-serif; color: #1A2046; margin: 0; background: #F5F2E9; }
+            .page { max-width: 840px; margin: 32px auto; background: #ffffff; padding: 48px; box-shadow: 0 18px 48px rgba(21,22,44,.14); position: relative; }
+            .page::before { content: ""; position: absolute; inset: 14px; border: 1px solid rgba(182,146,79,.55); pointer-events: none; }
+            .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid #D9D3C0; }
+            .brand h1 { margin: 10px 0 0; font-size: 28px; font-family: "Libre Caslon Display", Georgia, serif; font-weight: 400; }
+            .brand p { margin: 6px 0 0; color: #6A6B7C; }
+            .eyebrow { display: inline-block; color: #8C6E38; font-size: 11px; font-weight: 700; letter-spacing: .24em; text-transform: uppercase; }
+            .platform { margin-top: 8px; font-size: 14px; color: #1A2046; font-weight: 600; }
+            h2 { font-size: 30px; margin: 32px 0 16px; font-family: "Libre Caslon Display", Georgia, serif; font-weight: 400; }
             p { line-height: 1.75; margin: 0 0 16px; }
             table { width: 100%; border-collapse: collapse; margin: 28px 0; }
-            .footer { margin-top: 36px; padding-top: 20px; border-top: 1px solid #d7dde5; color: #516173; font-size: 13px; }
+            .footer { margin-top: 36px; padding-top: 20px; border-top: 1px solid #D9D3C0; color: #6A6B7C; font-size: 13px; }
             .signature { margin-top: 56px; }
-            .signature-line { width: 260px; border-top: 1px solid #16324f; margin-top: 48px; padding-top: 8px; font-weight: 600; }
-            .print-button { position: fixed; right: 24px; top: 24px; padding: 10px 16px; background: #16324f; color: #fff; border: 0; border-radius: 10px; cursor: pointer; }
+            .signature-line { width: 280px; border-top: 1px solid #1A2046; margin-top: 48px; padding-top: 8px; font-weight: 600; }
+            .print-button { position: fixed; right: 24px; top: 24px; padding: 10px 16px; background: #1A2046; color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
             @media print {
               body { background: #fff; }
               .page { margin: 0; box-shadow: none; max-width: none; }
+              .page::before { inset: 10px; }
               .print-button { display: none; }
             }
           </style>
@@ -199,7 +202,8 @@ export function EmployeeCertificates() {
           <div class="page">
             <div class="header">
               <div class="brand">
-                <span class="pill">ACL Workforce HUB</span>
+                <span class="eyebrow">ACL Web</span>
+                <div class="platform">Plataforma de Planillas</div>
                 <h1>${company.display_name}</h1>
                 <p>Cedula juridica: ${company.tax_id || "No registrada"}</p>
               </div>
@@ -214,7 +218,7 @@ export function EmployeeCertificates() {
             <table>${detailRows}</table>
             <p>La presente constancia se emite a solicitud de la persona interesada para los fines que estime convenientes.</p>
             <div class="signature">
-              <div class="signature-line">ACL Workforce HUB · ${company.display_name}</div>
+              <div class="signature-line">ACL Web · Planillas · ${company.display_name}</div>
             </div>
             <div class="footer">
               Documento generado desde la plataforma de ACL Costa Rica el ${summary.issueDate}.

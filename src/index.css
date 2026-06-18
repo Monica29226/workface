@@ -1,83 +1,68 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&family=Mulish:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ACL Corporate Design System - AUREON Payroll
+/* ACL Corporate Design System - ACL Workforce
    All colors MUST be HSL for proper Tailwind integration.
-   
-   Color Palette:
-   - Primary (ACL Blue): #0F2A44 → 210 66% 16%
-   - Secondary (Graphite): #2E2E2E → 0 0% 18%
-   - Accent (Gold): #C9A24D → 42 53% 55%
-   - Background: #F6F8FA → 210 25% 97%
-   - Text: #1F2933 → 207 27% 16%
-   - Success: #1F7A5F → 163 59% 30%
-   - Destructive: #B5473A → 7 51% 47%
 */
 
 @layer base {
   :root {
     /* === ACL CORPORATE PALETTE === */
     
-    /* Background - Light Gray (never pure white) */
-    --background: 210 25% 97%;
-    --foreground: 207 27% 16%;
+    /* Foundation from ACL branding JSON */
+    --background: 48 38% 98%;
+    --foreground: 232 45% 19%;
 
-    /* Cards - Subtle off-white */
-    --card: 210 20% 99%;
-    --card-foreground: 207 27% 16%;
+    --card: 0 0% 100%;
+    --card-foreground: 232 45% 19%;
 
-    /* Popovers */
-    --popover: 210 20% 99%;
-    --popover-foreground: 207 27% 16%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 232 45% 19%;
 
-    /* Primary - ACL Corporate Blue (#0F2A44) */
-    --primary: 210 66% 16%;
+    /* ACL canonical palette */
+    --primary: 232 45% 19%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Graphite Gray (#2E2E2E) */
-    --secondary: 0 0% 18%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 47 33% 91%;
+    --secondary-foreground: 232 45% 19%;
 
-    /* Muted backgrounds */
-    --muted: 210 20% 93%;
-    --muted-foreground: 207 20% 46%;
+    --muted: 48 33% 95%;
+    --muted-foreground: 235 8% 45%;
 
-    /* Accent - ACL Gold (#C9A24D) */
-    --accent: 42 53% 55%;
-    --accent-foreground: 207 27% 16%;
+    --accent: 217 92% 24%;
+    --accent-foreground: 0 0% 100%;
 
-    /* Destructive - Sober Red (#B5473A) */
+    /* Destructive - restrained */
     --destructive: 7 51% 47%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders and inputs */
-    --border: 210 20% 88%;
-    --input: 210 20% 93%;
-    --ring: 210 66% 16%;
+    --border: 42 22% 85%;
+    --input: 48 24% 94%;
+    --ring: 217 92% 24%;
 
-    --radius: 0.5rem;
+    --radius: 0.375rem;
 
     /* === ACL CUSTOM DESIGN TOKENS === */
     
     /* Navy variants */
-    --navy: 210 66% 16%;
-    --navy-light: 210 50% 25%;
-    --navy-dark: 210 70% 12%;
+    --navy: 232 45% 19%;
+    --navy-light: 231 41% 24%;
+    --navy-dark: 231 45% 16%;
     
     /* Gold accent */
-    --gold: 42 53% 55%;
-    --gold-light: 42 53% 65%;
-    --gold-dark: 42 53% 45%;
+    --gold: 38 40% 51%;
+    --gold-light: 41 43% 62%;
+    --gold-dark: 39 43% 39%;
     
     /* Graphite */
-    --graphite: 0 0% 18%;
-    --graphite-light: 0 0% 28%;
+    --graphite: 232 45% 19%;
+    --graphite-light: 235 8% 45%;
     
     /* Success - Professional Green (#1F7A5F) */
-    --success: 163 59% 30%;
+    --success: 153 53% 46%;
     --success-foreground: 0 0% 100%;
     
     /* Warning - Amber */
@@ -88,88 +73,88 @@
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
     
-    /* === GRADIENTS === */
-    --gradient-primary: linear-gradient(135deg, hsl(210 66% 16%), hsl(210 50% 25%));
-    --gradient-gold: linear-gradient(135deg, hsl(42 53% 55%), hsl(42 53% 65%));
-    --gradient-subtle: linear-gradient(180deg, hsl(210 20% 99%), hsl(210 25% 97%));
-    --gradient-card: linear-gradient(145deg, hsl(210 20% 99%), hsl(210 20% 97%));
+    /* Keep helpers but avoid visible gradients in large surfaces */
+    --gradient-primary: linear-gradient(135deg, hsl(232 45% 19%), hsl(232 45% 19%));
+    --gradient-gold: linear-gradient(135deg, hsl(38 40% 51%), hsl(38 40% 51%));
+    --gradient-subtle: linear-gradient(180deg, hsl(48 38% 98%), hsl(48 38% 98%));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(0 0% 100%));
     
     /* === SHADOWS === */
-    --shadow-sm: 0 1px 2px 0 hsl(207 27% 16% / 0.04);
-    --shadow-md: 0 4px 6px -1px hsl(207 27% 16% / 0.08);
-    --shadow-lg: 0 10px 15px -3px hsl(207 27% 16% / 0.1);
-    --shadow-xl: 0 20px 25px -5px hsl(207 27% 16% / 0.12);
-    --shadow-gold: 0 4px 14px -2px hsl(42 53% 55% / 0.25);
+    --shadow-sm: 0 1px 2px rgba(21,22,44,.06), 0 1px 1px rgba(21,22,44,.04);
+    --shadow-md: 0 4px 16px rgba(21,22,44,.08), 0 1px 3px rgba(21,22,44,.06);
+    --shadow-lg: 0 18px 48px rgba(21,22,44,.14), 0 4px 12px rgba(21,22,44,.08);
+    --shadow-xl: 0 20px 56px rgba(21,22,44,.16), 0 4px 12px rgba(21,22,44,.08);
+    --shadow-gold: 0 4px 14px -2px hsl(38 40% 51% / 0.18);
     
     /* === TRANSITIONS === */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 
     /* === SIDEBAR (ACL Blue) === */
-    --sidebar-background: 210 66% 16%;
-    --sidebar-foreground: 210 20% 90%;
-    --sidebar-primary: 42 53% 55%;
-    --sidebar-primary-foreground: 207 27% 16%;
-    --sidebar-accent: 210 50% 22%;
+    --sidebar-background: 232 45% 19%;
+    --sidebar-foreground: 47 33% 91%;
+    --sidebar-primary: 38 40% 51%;
+    --sidebar-primary-foreground: 232 45% 19%;
+    --sidebar-accent: 231 41% 24%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 210 50% 22%;
-    --sidebar-ring: 42 53% 55%;
-    --sidebar-muted: 210 40% 30%;
-    --sidebar-muted-foreground: 210 20% 70%;
+    --sidebar-border: 231 41% 24%;
+    --sidebar-ring: 38 40% 51%;
+    --sidebar-muted: 235 8% 45%;
+    --sidebar-muted-foreground: 42 22% 85%;
 
     /* Chart colors */
-    --chart-1: 210 66% 16%;
-    --chart-2: 42 53% 55%;
-    --chart-3: 163 59% 30%;
-    --chart-4: 0 0% 18%;
+    --chart-1: 232 45% 19%;
+    --chart-2: 38 40% 51%;
+    --chart-3: 153 53% 46%;
+    --chart-4: 217 92% 24%;
     --chart-5: 7 51% 47%;
   }
 
   .dark {
     /* Dark mode - ACL Navy based */
-    --background: 210 66% 10%;
-    --foreground: 210 20% 93%;
+    --background: 232 45% 12%;
+    --foreground: 47 33% 91%;
 
-    --card: 210 50% 14%;
-    --card-foreground: 210 20% 93%;
+    --card: 232 36% 15%;
+    --card-foreground: 47 33% 91%;
 
-    --popover: 210 50% 14%;
-    --popover-foreground: 210 20% 93%;
+    --popover: 232 36% 15%;
+    --popover-foreground: 47 33% 91%;
 
-    --primary: 42 53% 55%;
-    --primary-foreground: 207 27% 16%;
+    --primary: 38 40% 51%;
+    --primary-foreground: 232 45% 19%;
 
-    --secondary: 210 40% 25%;
-    --secondary-foreground: 210 20% 93%;
+    --secondary: 231 41% 24%;
+    --secondary-foreground: 47 33% 91%;
 
-    --muted: 210 40% 20%;
-    --muted-foreground: 210 20% 60%;
+    --muted: 232 28% 19%;
+    --muted-foreground: 42 22% 85%;
 
-    --accent: 210 50% 22%;
-    --accent-foreground: 210 20% 93%;
+    --accent: 217 92% 24%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 7 51% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 40% 22%;
-    --input: 210 40% 22%;
-    --ring: 42 53% 55%;
+    --border: 232 28% 24%;
+    --input: 232 28% 24%;
+    --ring: 38 40% 51%;
 
     /* Dark mode custom tokens */
-    --navy: 210 66% 16%;
-    --navy-light: 210 50% 25%;
-    --gold: 42 53% 60%;
-    --gold-light: 42 53% 70%;
-    --success: 163 59% 40%;
+    --navy: 232 45% 19%;
+    --navy-light: 231 41% 24%;
+    --gold: 38 40% 51%;
+    --gold-light: 41 43% 62%;
+    --success: 153 53% 46%;
     
-    --sidebar-background: 210 70% 8%;
-    --sidebar-foreground: 210 20% 90%;
-    --sidebar-primary: 42 53% 55%;
+    --sidebar-background: 232 45% 10%;
+    --sidebar-foreground: 47 33% 91%;
+    --sidebar-primary: 38 40% 51%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 50% 18%;
-    --sidebar-accent-foreground: 210 20% 93%;
-    --sidebar-border: 210 50% 18%;
-    --sidebar-ring: 42 53% 55%;
+    --sidebar-accent: 231 41% 18%;
+    --sidebar-accent-foreground: 47 33% 91%;
+    --sidebar-border: 231 41% 18%;
+    --sidebar-ring: 38 40% 51%;
   }
 }
 
@@ -184,12 +169,13 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Mulish', 'Avenir', 'Avenir Next', system-ui, -apple-system, 'Segoe UI', sans-serif;
   }
   
   /* Typography hierarchy */
   h1, h2, h3, h4, h5, h6 {
-    font-weight: 600;
+    font-family: 'Libre Caslon Display', 'Big Caslon', Georgia, serif;
+    font-weight: 400;
     letter-spacing: -0.01em;
   }
   
@@ -225,7 +211,7 @@
 @layer components {
   /* === ACL CARD STYLES === */
   .card-elevated {
-    background: var(--gradient-card);
+    background: hsl(var(--card));
     box-shadow: var(--shadow-md);
     transition: var(--transition-smooth);
     border: 1px solid hsl(var(--border));
@@ -259,27 +245,220 @@
   
   /* === GRADIENTS === */
   .gradient-primary {
-    background: var(--gradient-primary);
+    background: hsl(var(--primary));
   }
   
   .gradient-gold {
-    background: var(--gradient-gold);
+    background: hsl(var(--gold));
   }
   
   .gradient-subtle {
-    background: var(--gradient-subtle);
+    background: hsl(var(--background));
   }
   
   .gradient-navy {
-    background: linear-gradient(135deg, hsl(var(--navy)), hsl(var(--navy-light)));
+    background: hsl(var(--navy));
   }
   
   /* === TEXT STYLES === */
   .text-gradient {
-    background: var(--gradient-primary);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: hsl(var(--primary));
+  }
+
+  .acl-double-rule {
+    position: relative;
+  }
+
+  .acl-double-rule::before,
+  .acl-double-rule::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    border-radius: calc(var(--radius) + 1px);
+  }
+
+  .acl-double-rule::before {
+    border: 1px solid hsl(var(--border));
+  }
+
+  .acl-double-rule::after {
+    inset: 8px;
+    border: 1px solid hsl(var(--gold) / 0.55);
+    border-radius: calc(var(--radius) - 2px);
+  }
+
+  .acl-eyebrow {
+    font-size: 0.75rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: hsl(var(--gold-dark));
+    font-weight: 700;
+  }
+
+  .acl-shell {
+    background: hsl(var(--background));
+  }
+
+  .acl-logo {
+    display: inline-flex;
+    font-family: 'Libre Caslon Display', 'Big Caslon', Georgia, serif;
+    color: hsl(var(--primary));
+  }
+
+  .acl-mono {
+    position: relative;
+    display: inline-block;
+    color: inherit;
+    flex: 0 0 auto;
+  }
+
+  .acl-mono .m-stage {
+    position: relative;
+    width: var(--m, 160px);
+    height: var(--m, 160px);
+  }
+
+  .acl-mono .ltr {
+    position: absolute;
+    font-family: 'Libre Caslon Display', 'Big Caslon', Georgia, serif;
+    font-weight: 400;
+    line-height: 1;
+    color: inherit;
+  }
+
+  .acl-mono .m-a {
+    font-size: calc(var(--m, 160px) * 0.739);
+    left: -1%;
+    top: 0;
+  }
+
+  .acl-mono .m-c {
+    font-size: calc(var(--m, 160px) * 0.913);
+    left: 20%;
+    top: 2.6%;
+    color: hsl(var(--gold-dark));
+  }
+
+  .acl-mono .m-l {
+    font-size: calc(var(--m, 160px) * 0.913);
+    left: 26%;
+    top: 10.4%;
+  }
+
+  .acl-mono .m-arc {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .acl-mono .m-arc path {
+    fill: none;
+    stroke: hsl(var(--gold));
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+
+  .acl-mono .m-arc circle {
+    fill: hsl(var(--gold));
+  }
+
+  .acl-logo--row {
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .acl-logo--row .acl-bar {
+    width: 1px;
+    align-self: stretch;
+    margin: 0.2rem 0;
+    background: hsl(var(--gold));
+  }
+
+  .acl-logo--row .acl-words {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+  }
+
+  .acl-logo--row .acl-words span {
+    font-family: 'Mulish', 'Avenir', 'Avenir Next', system-ui, sans-serif;
+    font-size: calc(var(--logo-size, 3.4rem) * 0.18);
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+    line-height: 1;
+  }
+
+  .acl-logo--compact {
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .acl-logo--mark {
+    align-items: center;
+    justify-content: center;
+  }
+
+  .acl-logo--compact .acl-tag {
+    font-family: 'Mulish', 'Avenir', 'Avenir Next', system-ui, sans-serif;
+    font-size: calc(var(--logo-size, 1.85rem) * 0.33);
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: hsl(var(--gold-light));
+  }
+
+  .acl-logo--stack {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .acl-logo--stack .acl-divider {
+    width: calc(var(--logo-size, 4.8rem) * 1.6);
+    height: 1px;
+    background: hsl(var(--gold));
+    margin: 0.35rem auto 0.45rem;
+    position: relative;
+  }
+
+  .acl-logo--stack .acl-divider::before,
+  .acl-logo--stack .acl-divider::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 4px;
+    height: 4px;
+    background: hsl(var(--gold));
+    transform: translateY(-50%) rotate(45deg);
+  }
+
+  .acl-logo--stack .acl-divider::before { left: -2px; }
+  .acl-logo--stack .acl-divider::after { right: -2px; }
+
+  .acl-logo--stack .acl-tag {
+    font-family: 'Mulish', 'Avenir', 'Avenir Next', system-ui, sans-serif;
+    font-size: calc(var(--logo-size, 4.8rem) * 0.145);
+    font-weight: 600;
+    letter-spacing: 0.30em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .on-ink .acl-logo {
+    color: hsl(var(--secondary));
+  }
+
+  .on-ink .acl-mono .m-c {
+    color: hsl(var(--gold-light));
+  }
+
+  .on-ink .acl-logo--row .acl-words span,
+  .on-ink .acl-logo--stack .acl-tag {
+    color: hsl(var(--gold-light));
   }
   
   .text-gold {

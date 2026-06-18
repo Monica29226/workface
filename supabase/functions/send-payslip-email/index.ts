@@ -199,11 +199,11 @@ serve(async (req) => {
 
     const companyName = company.display_name;
 
-    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@calderon.cr").trim();
+    const rawFromEmail = (Deno.env.get("RESEND_FROM_EMAIL") || "noreply@aclcostarica.com").trim();
     const cleanedFrom = rawFromEmail.replace(/^"+|"+$/g, "").trim();
     const emailMatchResult = cleanedFrom.match(/<([^>]+)>/);
     const pureEmail = emailMatchResult ? emailMatchResult[1] : cleanedFrom;
-    const from = `ACL Payroll CR <${pureEmail}>`;
+    const from = `ACL Web Planillas <${pureEmail}>`;
 
     // Build deductions rows
     const deductionRows = [];
@@ -409,7 +409,7 @@ serve(async (req) => {
                 Este comprobante cumple con los requisitos del Código de Trabajo de Costa Rica.
               </p>
               <p style="margin: 0; color: #94a3b8; font-size: 10px; text-align: center;">
-                Generado por ACL Workforce HUB | ${new Date().toLocaleDateString('es-CR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                Generado por ACL Web · Planillas | ${new Date().toLocaleDateString('es-CR', { day: '2-digit', month: 'long', year: 'numeric' })}
               </p>
             </td>
           </tr>
@@ -420,7 +420,7 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    const unsubscribeEmailAddr = 'unsubscribe@calderon.cr';
+    const unsubscribeEmailAddr = 'unsubscribe@aclcostarica.com';
 
     // Create email log BEFORE sending
     const { data: logEntry } = await supabase.from("email_logs").insert({

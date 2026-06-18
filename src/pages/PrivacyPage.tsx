@@ -23,7 +23,7 @@ export default function PrivacyPage() {
           </CardHeader>
           <CardContent className="space-y-4 text-sm leading-6 text-muted-foreground">
             <p>
-              ACL Workforce HUB trata datos personales y laborales para habilitar funciones de acceso, nomina,
+              ACL Web · Planillas trata datos personales y laborales para habilitar funciones de acceso, nomina,
               reportes, colillas y administracion de usuarios.
             </p>
             <p>

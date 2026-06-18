@@ -1,4 +1,4 @@
-// Shared brand styling for ACL Workforce HUB auth emails
+// Shared brand styling for ACL Web · Planillas auth emails
 export const brand = {
   navy: '#0F2A44',
   gold: '#C9A24D',
