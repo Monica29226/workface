@@ -175,6 +175,8 @@ export function EmployeeVacations() {
     [vacationRequests]
   );
 
+  const latestRequest = vacationRequests[0] || null;
+
   const daysRequested = useMemo(() => {
     if (!selectedRange.from || !selectedRange.to) return 0;
     if (requestType === "medio_dia") return 0.5;
@@ -334,21 +336,37 @@ export function EmployeeVacations() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
-            <Palmtree className="h-6 w-6 text-primary" />
+      <div className="rounded-2xl border bg-card p-6 shadow-sm">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Palmtree className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <p className="acl-eyebrow mb-2">Portal del colaborador</p>
+              <h1 className="text-2xl font-bold">Mi tiempo libre</h1>
+              <p className="text-muted-foreground">Solicita vacaciones, dias libres y consulta tu saldo disponible</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold">Mi Tiempo Libre</h1>
-            <p className="text-muted-foreground">Solicita vacaciones, dias libres y consulta tu saldo disponible</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:min-w-[440px]">
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Disponible hoy</p>
+              <p className="mt-2 text-xl font-semibold text-primary">{totalAvailableDays} dias</p>
+            </div>
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Ultima solicitud</p>
+              <p className="mt-2 font-medium">{latestRequest ? requestTypeLabels[(latestRequest.request_type as TimeOffRequestType) || "vacaciones"] : "Sin solicitudes"}</p>
+            </div>
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Estado actual</p>
+              <div className="mt-2">{latestRequest ? getStatusBadge(latestRequest.status, latestRequest.approval_stage) : <Badge variant="outline">Al dia</Badge>}</div>
+            </div>
           </div>
+          <Button onClick={() => setIsRequestDialogOpen(true)} className="gap-2" size="lg">
+            <Send className="h-4 w-4" />
+            Solicitar Tiempo Libre
+          </Button>
         </div>
-        <Button onClick={() => setIsRequestDialogOpen(true)} className="gap-2" size="lg">
-          <Send className="h-4 w-4" />
-          Solicitar Tiempo Libre
-        </Button>
       </div>
 
       {/* Summary Cards */}
@@ -467,7 +485,7 @@ export function EmployeeVacations() {
         </Card>
       )}
 
-      {/* Request History */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr,1fr]">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -558,6 +576,32 @@ export function EmployeeVacations() {
           )}
         </CardContent>
       </Card>
+      <Card className="card-elevated">
+        <CardHeader>
+          <CardTitle>Como avanza una solicitud</CardTitle>
+          <CardDescription>
+            Flujo estandar para vacaciones, dias libres y permisos.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm">
+          <div className="rounded-lg border p-3">
+            <p className="font-medium">1. Pendiente de jefe</p>
+            <p className="mt-1 text-muted-foreground">La solicitud pasa primero por su jefatura inmediata cuando existe una asignada en el sistema.</p>
+          </div>
+          <div className="rounded-lg border p-3">
+            <p className="font-medium">2. Pendiente de RRHH</p>
+            <p className="mt-1 text-muted-foreground">RRHH valida la solicitud y confirma la decision final antes de cerrar el caso.</p>
+          </div>
+          <div className="rounded-lg border p-3">
+            <p className="font-medium">3. Resultado final</p>
+            <p className="mt-1 text-muted-foreground">Si la solicitud queda aprobada, el saldo solo se descuenta al final del proceso.</p>
+          </div>
+          <div className="rounded-lg bg-muted/40 p-3 text-muted-foreground">
+            Mientras una solicitud siga pendiente, puede cancelarla desde el historial.
+          </div>
+        </CardContent>
+      </Card>
+      </div>
 
       {/* Time Off Request Dialog */}
       <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>

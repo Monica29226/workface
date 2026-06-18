@@ -244,6 +244,8 @@ export function EmployeeProfile() {
     },
   ];
 
+  const latestPayslip = payslips[0] || null;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -273,9 +275,9 @@ export function EmployeeProfile() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Company Logo */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-4">
+      <div className="rounded-2xl border bg-card p-6 shadow-sm">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-4">
           {company?.logo_url ? (
             <img 
               src={company.logo_url} 
@@ -287,20 +289,30 @@ export function EmployeeProfile() {
               <Building2 className="h-7 w-7 text-muted-foreground" />
             </div>
           )}
-          <div>
-            <h1 className="text-2xl font-bold">Mi Historial Salarial</h1>
-            <p className="text-muted-foreground">{employee.full_name} • {company?.display_name}</p>
+            <div>
+              <p className="acl-eyebrow mb-2">Portal del colaborador</p>
+              <h1 className="text-2xl font-bold">Mi historial salarial</h1>
+              <p className="text-muted-foreground">{employee.full_name} • {company?.display_name}</p>
+            </div>
           </div>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => navigate("/employee-certificates")}>
-            <FileText className="mr-2 h-4 w-4" />
-            Mis Constancias
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/employee-vacations")}>
-            <History className="mr-2 h-4 w-4" />
-            Tiempo Libre
-          </Button>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:min-w-[440px]">
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Estado</p>
+              <div className="mt-2 flex items-center gap-2">
+                <Badge variant={employee.status === "active" ? "default" : "outline"}>
+                  {employee.status === "active" ? "Activo" : employee.status}
+                </Badge>
+              </div>
+            </div>
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Última colilla</p>
+              <p className="mt-2 font-medium">{latestPayslip?.period_label || "Pendiente"}</p>
+            </div>
+            <div className="rounded-lg border bg-background px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Correo laboral</p>
+              <p className="mt-2 truncate font-medium">{employee.work_email || "Pendiente"}</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -388,7 +400,7 @@ export function EmployeeProfile() {
 
         <Card className="card-elevated">
           <CardHeader>
-            <CardTitle>Estado de tu portal</CardTitle>
+            <CardTitle>Resumen de acceso</CardTitle>
             <CardDescription>
               Resumen rapido de la informacion disponible para autoservicio.
             </CardDescription>
@@ -407,6 +419,10 @@ export function EmployeeProfile() {
             <div className="flex items-center justify-between rounded-lg border p-3">
               <span className="text-muted-foreground">Empresa</span>
               <span className="font-medium text-right">{company?.display_name || "No definida"}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-3">
+              <span className="text-muted-foreground">Constancias disponibles</span>
+              <Badge variant="outline">Laboral y salarial</Badge>
             </div>
             <div className="rounded-lg bg-muted/40 p-3 text-muted-foreground">
               Si ves algun dato incorrecto, RRHH puede corregirlo antes del siguiente envio de colillas.

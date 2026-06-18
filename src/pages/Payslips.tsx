@@ -239,6 +239,8 @@ export function Payslips() {
     };
   }, [filteredPayslips]);
 
+  const missingEmailPreview = operationalStats.missingEmail.slice(0, 4);
+
   // Get exchange rate from payslips data
   const currentExchangeRate = useMemo(() => {
     const usdPayslip = displayData.find(p => p.currency === 'USD' && p.exchangeRate > 1);
@@ -464,24 +466,23 @@ export function Payslips() {
   const getEmailStatusBadge = (emailStatus: string) => {
     switch (emailStatus) {
       case 'sent':
-        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">✉️ Enviado</Badge>;
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Enviado</Badge>;
       case 'failed':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">❌ Falló</Badge>;
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Fallo</Badge>;
       case 'no_email':
-        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">⚠️ Sin correo</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Sin correo</Badge>;
       default:
         return <Badge variant="outline">Pendiente</Badge>;
     }
   };
 
   return (
-    <div className="space-y-6">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gradient">
-            Colillas de Pago
-          </h1>
+          <p className="acl-eyebrow mb-2">Operacion RRHH</p>
+          <h1 className="text-2xl font-bold">Colillas de pago</h1>
           <p className="text-muted-foreground">
             Gestión de comprobantes de pago para {selectedCompany?.name}
           </p>
@@ -545,6 +546,53 @@ export function Payslips() {
               </div>
               <Mail className="h-10 w-10 text-blue-500/70" />
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.3fr,1fr]">
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle>Colas operativas</CardTitle>
+            <p className="text-sm text-muted-foreground">Prioridades inmediatas para envio y correccion de datos.</p>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-3">
+            <div className="rounded-lg border p-4">
+              <p className="text-sm font-medium text-muted-foreground">Listas para enviar</p>
+              <p className="mt-2 text-2xl font-semibold">{operationalStats.readyToSend.length}</p>
+              <p className="mt-2 text-sm text-muted-foreground">Colillas pendientes con correo valido y trazabilidad disponible.</p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-sm font-medium text-muted-foreground">Ya enviadas</p>
+              <p className="mt-2 text-2xl font-semibold">{operationalStats.alreadySent.length}</p>
+              <p className="mt-2 text-sm text-muted-foreground">No requieren accion adicional salvo reenvio excepcional.</p>
+            </div>
+            <div className="rounded-lg border p-4">
+              <p className="text-sm font-medium text-muted-foreground">Bloqueadas</p>
+              <p className="mt-2 text-2xl font-semibold">{operationalStats.missingEmail.length}</p>
+              <p className="mt-2 text-sm text-muted-foreground">No se pueden enviar hasta completar el correo del colaborador.</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="card-elevated">
+          <CardHeader>
+            <CardTitle>Alertas de envio</CardTitle>
+            <CardDescription>Casos a corregir antes del proximo envio masivo.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            {missingEmailPreview.length > 0 ? (
+              missingEmailPreview.map((item) => (
+                <div key={item.id} className="rounded-lg border p-3">
+                  <p className="font-medium">{item.employeeName}</p>
+                  <p className="mt-1 text-muted-foreground">{item.period}</p>
+                  <p className="mt-2 text-amber-700">Falta correo laboral para enviar esta colilla.</p>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-lg bg-muted/40 p-3 text-muted-foreground">
+                No hay bloqueos por correo en la vista actual.
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -764,6 +812,7 @@ export function Payslips() {
                             size="icon" 
                             className="h-8 w-8"
                             title="Ver colilla"
+                            disabled
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -782,6 +831,7 @@ export function Payslips() {
                             className="h-8 w-8"
                             onClick={() => handleSendEmail(payslip)}
                             title="Enviar por email"
+                            disabled={payslip.emailStatus === 'sent' || payslip.emailStatus === 'no_email' || isBulkSending}
                           >
                             <Mail className="h-4 w-4" />
                           </Button>
