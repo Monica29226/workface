@@ -29,6 +29,7 @@ interface ImportPayrollRow {
   total_to_pay?: number;
   deductions_detail?: Record<string, any>;
   notes?: string;
+  payrollType?: 'adelanto' | 'segunda' | 'completa';
 }
 
 interface ImportHistoricalPayrollDialogProps {
@@ -326,6 +327,7 @@ const tryParseHorizonteWorkbook = (
     const matchedEmployee = employees.get(cedula);
     const planillaInfo = planillaByName.get(normalizePersonName(nombre));
     const salarioBrutoUSD = toNumber(row[4]);
+    const salarioQuincenalUSD = salarioBrutoUSD / 2;
     const impuestoNetoCRC = toNumber(row[12]);
     const ccssCRC = toNumber(row[13]);
     const otrasRetencionesCRC = toNumber(row[14]);
@@ -346,33 +348,71 @@ const tryParseHorizonteWorkbook = (
       errors.push("Total a pagar no disponible");
     }
 
-    parsedRows.push({
-      cedula,
-      nombre,
-      email: matchedEmployee?.work_email || "",
-      periodo,
-      salario_bruto: salarioBrutoUSD,
-      deducciones: totalDeduccionesCRC,
-      salario_neto: totalPagarCRC || Math.round(netoUSD * exchangeRate),
-      currency: "USD",
-      isValid: errors.length === 0,
-      errors,
-      rowNumber: rowIndex + 1,
-      matchedEmployeeId: matchedEmployee?.id,
-      matchedEmployeeEmail: matchedEmployee?.work_email || undefined,
-      exchangeRate,
-      total_to_pay: totalPagarCRC || Math.round(netoUSD * exchangeRate),
-      deductions_detail: {
-        isr_neto: impuestoNetoCRC,
-        ccss_obrero: ccssCRC,
-        lpt_banco_popular: lptCRC,
-        otras_retenciones: otherDeductionsCRC,
-        source: "horizonte_excel",
-      },
-      notes: planillaInfo
-        ? `Horizonte Excel ${periodo} | adelanto CRC ${planillaInfo.advanceCRC} | segunda quincena CRC ${planillaInfo.secondCRC}`
-        : `Horizonte Excel ${periodo}`,
-    });
+    const advanceCRC = planillaInfo?.advanceCRC || 0;
+    const secondCRC = planillaInfo?.secondCRC || 0;
+    const quincenalBrutoCRC = salarioQuincenalUSD * exchangeRate;
+
+    if (advanceCRC > 0) {
+      parsedRows.push({
+        cedula,
+        nombre,
+        email: matchedEmployee?.work_email || "",
+        periodo,
+        salario_bruto: salarioQuincenalUSD,
+        deducciones: Math.max(0, quincenalBrutoCRC - advanceCRC),
+        salario_neto: advanceCRC,
+        currency: "USD",
+        isValid: errors.length === 0,
+        errors,
+        rowNumber: rowIndex + 1,
+        matchedEmployeeId: matchedEmployee?.id,
+        matchedEmployeeEmail: matchedEmployee?.work_email || undefined,
+        exchangeRate,
+        total_to_pay: advanceCRC,
+        deductions_detail: {
+          source: "horizonte_excel",
+          payroll_type: "adelanto",
+          monthly_isr_neto: impuestoNetoCRC,
+          monthly_ccss_obrero: ccssCRC,
+          lpt_banco_popular: lptCRC / 2,
+          otras_retenciones: otherDeductionsCRC / 2,
+        },
+        notes: `Horizonte Excel ${periodo} | adelanto CRC ${advanceCRC}`,
+        payrollType: "adelanto",
+      });
+    }
+
+    if (secondCRC > 0 || totalPagarCRC > 0 || netoUSD > 0) {
+      parsedRows.push({
+        cedula,
+        nombre,
+        email: matchedEmployee?.work_email || "",
+        periodo,
+        salario_bruto: salarioQuincenalUSD,
+        deducciones: Math.max(0, quincenalBrutoCRC - (secondCRC || totalPagarCRC)),
+        salario_neto: secondCRC || totalPagarCRC || Math.round(netoUSD * exchangeRate),
+        currency: "USD",
+        isValid: errors.length === 0,
+        errors,
+        rowNumber: rowIndex + 1,
+        matchedEmployeeId: matchedEmployee?.id,
+        matchedEmployeeEmail: matchedEmployee?.work_email || undefined,
+        exchangeRate,
+        total_to_pay: secondCRC || totalPagarCRC || Math.round(netoUSD * exchangeRate),
+        deductions_detail: {
+          isr_neto: impuestoNetoCRC / 2,
+          ccss_obrero: ccssCRC / 2,
+          lpt_banco_popular: lptCRC / 2,
+          otras_retenciones: otherDeductionsCRC / 2,
+          source: "horizonte_excel",
+          payroll_type: "segunda",
+        },
+        notes: planillaInfo
+          ? `Horizonte Excel ${periodo} | segunda quincena CRC ${secondCRC || totalPagarCRC}`
+          : `Horizonte Excel ${periodo} | segunda quincena`,
+        payrollType: "segunda",
+      });
+    }
   }
 
   return parsedRows.length > 0 ? parsedRows : null;
@@ -633,22 +673,32 @@ export function ImportHistoricalPayrollDialog({
     // Group by period to create batches
     const byPeriod = new Map<string, ImportPayrollRow[]>();
     validRows.forEach(row => {
-      const existing = byPeriod.get(row.periodo) || [];
+      const key = `${row.periodo}:${row.payrollType || 'completa'}`;
+      const existing = byPeriod.get(key) || [];
       existing.push(row);
-      byPeriod.set(row.periodo, existing);
+      byPeriod.set(key, existing);
     });
 
     let processed = 0;
     const totalRows = validRows.length;
 
-    for (const [periodo, rows] of byPeriod) {
+    for (const [periodKey, rows] of byPeriod) {
+      const [periodo, payrollType = 'completa'] = periodKey.split(':');
       // Create or find batch for this period
       const periodParts = periodo.split('-');
       const year = parseInt(periodParts[0]);
       const month = parseInt(periodParts[1]);
-      const periodStart = `${year}-${String(month).padStart(2, '0')}-01`;
-      const periodEnd = new Date(year, month, 0).toISOString().split('T')[0];
-      const batchId = `HIST-${companyId.substring(0, 8)}-${periodo}`;
+      const lastDayOfMonth = new Date(year, month, 0).getDate();
+      const periodStart = payrollType === 'segunda'
+        ? `${year}-${String(month).padStart(2, '0')}-16`
+        : `${year}-${String(month).padStart(2, '0')}-01`;
+      const periodEnd = payrollType === 'adelanto'
+        ? `${year}-${String(month).padStart(2, '0')}-15`
+        : payrollType === 'segunda'
+          ? `${year}-${String(month).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`
+          : new Date(year, month, 0).toISOString().split('T')[0];
+      const batchIdSuffix = payrollType === 'completa' ? periodo : `${periodo}-${payrollType}`;
+      const batchId = `HIST-${companyId.substring(0, 8)}-${batchIdSuffix}`;
 
       // Check if batch already exists
       let batchUuid: string;
@@ -670,9 +720,10 @@ export function ImportHistoricalPayrollDialog({
             batch_id: batchId,
             period_start: periodStart,
             period_end: periodEnd,
-            frequency: 'mensual',
+            frequency: payrollType === 'completa' ? 'mensual' : 'quincenal',
             status: 'aprobado',
-            base_currency: 'CRC'
+            base_currency: 'CRC',
+            payroll_type: payrollType === 'completa' ? 'completa' : payrollType,
           })
           .select('id')
           .single();

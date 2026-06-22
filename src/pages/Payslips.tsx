@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -50,6 +51,7 @@ interface PayslipData {
   period: string;
   batchId: string;
   batchUuid: string;
+  payrollType: 'adelanto' | 'segunda' | 'completa';
 }
 
 export function Payslips() {
@@ -64,6 +66,7 @@ export function Payslips() {
   const [payslips, setPayslips] = useState<PayslipData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isBulkSending, setIsBulkSending] = useState(false);
+  const [sendOnGenerate, setSendOnGenerate] = useState(false);
 
   const monthNames = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -98,7 +101,8 @@ export function Payslips() {
             batch_id,
             period_start,
             period_end,
-            status
+            status,
+            payroll_type
           ),
           employee:employees!inner(
             id,
@@ -139,6 +143,14 @@ export function Payslips() {
           emailStatus = 'sent';
         }
 
+        const payrollType = line.batch.payroll_type || 'completa';
+        const payrollTypeLabel =
+          payrollType === 'adelanto'
+            ? '1ra quincena'
+            : payrollType === 'segunda'
+              ? '2da quincena'
+              : 'Mensual';
+
         return {
           id: line.id,
           employeeId: line.employee.employee_id,
@@ -156,9 +168,10 @@ export function Payslips() {
           exchangeRate: Number(line.exchange_rate_to_base || 1),
           month,
           year,
-          period: `${monthNames[month - 1]} ${year}`,
+          period: `${monthNames[month - 1]} ${year} · ${payrollTypeLabel}`,
           batchId: line.batch.batch_id,
           batchUuid: line.batch.id,
+          payrollType,
         };
       });
 
@@ -324,7 +337,10 @@ export function Payslips() {
 
     try {
       const { data, error } = await supabase.functions.invoke('generate-payslips', {
-        body: { batchId: batch.id },
+        body: {
+          batchId: batch.id,
+          sendEmails: sendOnGenerate,
+        },
       });
 
       if (error) throw error;
@@ -513,6 +529,13 @@ export function Payslips() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <label className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+            <Checkbox
+              checked={sendOnGenerate}
+              onCheckedChange={(checked) => setSendOnGenerate(checked === true)}
+            />
+            <span>Enviar solo si todo esta en orden</span>
+          </label>
           <Button
             variant="outline"
             size="sm"

@@ -9,6 +9,7 @@ const corsHeaders = {
 interface GeneratePayslipsRequest {
   batchId: string;
   accrueVacations?: boolean;  // Flag to trigger vacation accrual
+  sendEmails?: boolean;
 }
 
 serve(async (req) => {
@@ -41,9 +42,9 @@ serve(async (req) => {
       );
     }
 
-    const { batchId, accrueVacations = true }: GeneratePayslipsRequest = await req.json();
+    const { batchId, accrueVacations = true, sendEmails = false }: GeneratePayslipsRequest = await req.json();
 
-    console.log("Generating payslips for batch:", batchId, "with vacation accrual:", accrueVacations);
+    console.log("Generating payslips for batch:", batchId, "with vacation accrual:", accrueVacations, "and sendEmails:", sendEmails);
 
     // Get batch info
     const { data: batch, error: batchError } = await supabaseClient
@@ -106,8 +107,10 @@ serve(async (req) => {
     const existingEmployeeIds = new Set(existingPayslips?.map(p => p.employee_id) || []);
 
     // Create payslip records for employees that don't have one yet
-    const newPayslips = lines
-      .filter(line => !existingEmployeeIds.has(line.employee_id))
+    const linesToAutoSend = lines
+      .filter(line => !existingEmployeeIds.has(line.employee_id));
+
+    const newPayslips = linesToAutoSend
       .map(line => ({
         batch_id: batchId,
         company_id: batch.company_id,
@@ -239,13 +242,13 @@ serve(async (req) => {
     // ── AUTO-SEND PAYSLIP EMAILS ──
     const emailResults: { employee_id: string; status: string; error?: string }[] = [];
 
-    if (newPayslips.length > 0) {
-      console.log("Auto-sending payslip emails for", lines.length, "employees");
+    if (sendEmails && newPayslips.length > 0) {
+      console.log("Auto-sending payslip emails for", linesToAutoSend.length, "employees");
 
       const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
       const authHeader = req.headers.get("Authorization") || "";
 
-      for (const line of lines) {
+      for (const line of linesToAutoSend) {
         const employee = line.employee;
 
         // Skip employees without email
@@ -332,7 +335,7 @@ serve(async (req) => {
           totalDaysAccrued: vacationAccrualResults.reduce((sum, r) => sum + r.days_accrued, 0)
         } : null,
         message: newPayslips.length > 0 
-          ? `Se generaron ${newPayslips.length} colillas y se enviaron ${emailsSent} correos${emailsFailed > 0 ? ` (${emailsFailed} fallidos)` : ''}${vacationAccrualResults.length > 0 ? ' + vacaciones acumuladas' : ''}` 
+          ? `Se generaron ${newPayslips.length} colillas${sendEmails ? ` y se enviaron ${emailsSent} correos${emailsFailed > 0 ? ` (${emailsFailed} fallidos)` : ''}` : ' sin envio automatico'}${vacationAccrualResults.length > 0 ? ' + vacaciones acumuladas' : ''}` 
           : "Todas las colillas ya fueron generadas previamente"
       }),
       {
