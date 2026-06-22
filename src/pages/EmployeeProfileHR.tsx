@@ -257,16 +257,15 @@ export function EmployeeProfileHR() {
 
       if (error) throw error;
 
-      if (data?.pdfBuffer) {
-        const blob = new Blob([new Uint8Array(data.pdfBuffer)], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `comprobante-${targetPayslip.period_label}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+      if (data?.pdfBase64) {
+        const link = document.createElement('a');
+        link.href = `data:application/pdf;base64,${data.pdfBase64}`;
+        link.download = data.fileName || `comprobante-${targetPayslip.period_label}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        throw new Error("La respuesta no incluyo un archivo descargable");
       }
 
       toast({

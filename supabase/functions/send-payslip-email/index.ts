@@ -153,6 +153,14 @@ serve(async (req) => {
 
     const employee = line.employee;
     const batch = line.batch;
+
+    if (!employee.work_email) {
+      return new Response(
+        JSON.stringify({ error: `El colaborador ${employee.full_name} no tiene correo laboral registrado` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const periodStart = new Date(batch.period_start);
     const periodEnd = new Date(batch.period_end);
     const periodLabel = periodStart.toLocaleDateString('es-CR', { month: 'long', year: 'numeric' });
@@ -196,6 +204,8 @@ serve(async (req) => {
     // Determine display currency: for Horizonte Positivo-style companies, show in USD
     const displayCurrency = isUSD ? 'USD' : 'CRC';
     const displayNetPay = isUSD ? totalToPay / exchangeRate : totalToPay;
+    const displayGrossSalary = isUSD ? grossSalary : grossSalaryCRC;
+    const displayAguinaldo = isUSD ? aguinaldo / exchangeRate : aguinaldo;
 
     const companyName = company.display_name;
 
@@ -254,7 +264,7 @@ serve(async (req) => {
           <table width="100%" cellspacing="0" cellpadding="0">
             <tr>
               <td style="color: #1e40af; font-size: 13px;">
-                💵 <strong>Salario en USD:</strong> ${formatCurrency(grossSalary / exchangeRate, 'USD')}
+                💵 <strong>Salario en USD:</strong> ${formatCurrency(grossSalary, 'USD')}
               </td>
               <td style="text-align: right; color: #1e40af; font-size: 13px;">
                 Tipo de cambio: ₡${exchangeRate.toFixed(2)}
@@ -287,7 +297,7 @@ serve(async (req) => {
             <td style="background: linear-gradient(135deg, #0F2A44, #1e3a8a); padding: 30px; text-align: center;">
               ${company.logo_url ? `<img src="${company.logo_url}" alt="${companyName}" style="max-width: 160px; height: auto; margin-bottom: 12px;" />` : ''}
               <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 700;">${companyName}</h1>
-              <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">COMPROBANTE DE PAGO</p>
+              <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">COMPROBANTE DE PAGO${isUSD ? ' EN USD' : ''}</p>
               ${company.tax_id ? `<p style="color: rgba(255,255,255,0.7); margin: 4px 0 0 0; font-size: 12px;">Cédula Jurídica: ${company.tax_id}</p>` : ''}
             </td>
           </tr>
@@ -337,8 +347,8 @@ serve(async (req) => {
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; font-size: 14px;">Salario Bruto</td>
-                  <td style="padding: 10px 16px; text-align: right; font-weight: 500; border-bottom: 1px solid #f1f5f9; font-size: 14px;">${formatCurrency(grossSalaryCRC, 'CRC')}</td>
+                  <td style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; font-size: 14px;">Salario Bruto${isUSD ? ' (USD)' : ''}</td>
+                  <td style="padding: 10px 16px; text-align: right; font-weight: 500; border-bottom: 1px solid #f1f5f9; font-size: 14px;">${formatCurrency(displayGrossSalary, displayCurrency)}${isUSD ? ` <span style="font-size: 12px; color: #64748b;">(${formatCurrency(grossSalaryCRC, 'CRC')})</span>` : ''}</td>
                 </tr>
                 ${Number(line.overtime || 0) > 0 ? `
                 <tr>
@@ -382,7 +392,7 @@ serve(async (req) => {
                       <tr>
                         <td style="padding: 12px;">
                           <p style="margin: 0 0 4px 0; color: #92400e; font-size: 11px; text-transform: uppercase;">Aguinaldo Acumulado</p>
-                          <p style="margin: 0; color: #78350f; font-weight: 700; font-size: 15px;">${formatCurrency(aguinaldo, 'CRC')}</p>
+                          <p style="margin: 0; color: #78350f; font-weight: 700; font-size: 15px;">${formatCurrency(displayAguinaldo, displayCurrency)}${isUSD ? ` <span style="font-size: 12px; color: #92400e;">(${formatCurrency(aguinaldo, 'CRC')})</span>` : ''}</p>
                         </td>
                       </tr>
                     </table>

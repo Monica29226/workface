@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.76.1";
+import { jsPDF } from "https://esm.sh/jspdf@2.5.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,7 +8,9 @@ const corsHeaders = {
 };
 
 interface GeneratePdfRequest {
-  payslipId: string;
+  payslipId?: string;
+  payrollLineId?: string;
+  companyId?: string;
 }
 
 serve(async (req) => {
@@ -35,9 +38,72 @@ serve(async (req) => {
       );
     }
 
-    const { payslipId }: GeneratePdfRequest = await req.json();
+    const { payslipId, payrollLineId, companyId }: GeneratePdfRequest = await req.json();
 
-    console.log("Generating PDF for payslip:", payslipId);
+    let resolvedPayslipId = payslipId;
+
+    if (!resolvedPayslipId && payrollLineId) {
+      const { data: payrollLineRef, error: payrollLineRefError } = await supabaseClient
+        .from("payroll_lines")
+        .select("id, employee_id, batch_id, company_id")
+        .eq("id", payrollLineId)
+        .single();
+
+      if (payrollLineRefError || !payrollLineRef) {
+        return new Response(
+          JSON.stringify({ error: "Linea de planilla no encontrada" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (companyId && payrollLineRef.company_id !== companyId) {
+        return new Response(
+          JSON.stringify({ error: "La linea de planilla no pertenece a la empresa seleccionada" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const { data: payslipByLine } = await supabaseClient
+        .from("payslips")
+        .select("id")
+        .eq("employee_id", payrollLineRef.employee_id)
+        .eq("batch_id", payrollLineRef.batch_id)
+        .maybeSingle();
+
+      if (payslipByLine?.id) {
+        resolvedPayslipId = payslipByLine.id;
+      } else {
+        const { data: insertedPayslip, error: insertPayslipError } = await supabaseClient
+          .from("payslips")
+          .insert({
+            batch_id: payrollLineRef.batch_id,
+            company_id: payrollLineRef.company_id,
+            employee_id: payrollLineRef.employee_id,
+            payslip_id: `PAY-${payrollLineId}`,
+            period_label: "Comprobante de pago",
+          })
+          .select("id")
+          .single();
+
+        if (insertPayslipError || !insertedPayslip) {
+          return new Response(
+            JSON.stringify({ error: "No se pudo preparar la colilla para descarga" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        resolvedPayslipId = insertedPayslip.id;
+      }
+    }
+
+    if (!resolvedPayslipId) {
+      return new Response(
+        JSON.stringify({ error: "Debe indicar payslipId o payrollLineId" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("Generating PDF for payslip:", resolvedPayslipId);
 
     // Get payslip with all related data including new fields
     const { data: payslip, error: payslipError } = await supabaseClient
@@ -75,7 +141,7 @@ serve(async (req) => {
           logo_url
         )
       `)
-      .eq('id', payslipId)
+      .eq('id', resolvedPayslipId)
       .single();
 
     if (payslipError || !payslip) {
@@ -151,23 +217,27 @@ serve(async (req) => {
     const isHorizontePositivo = payslip.company.id === '550e8400-e29b-41d4-a716-446655440000' || 
                                 payslip.company.display_name?.toLowerCase().includes('horizonte positivo');
 
-    // Generate HTML for PDF - use company-specific template for Horizonte Positivo
-    const html = isHorizontePositivo 
-      ? generateHorizontePositivoPayslipHTML(payslip, payrollLine, advancePayment, advanceBatchId)
-      : generatePayslipHTML(payslip, payrollLine, advancePayment, advanceBatchId);
+    const pdfBytes = generatePayslipPdf(
+      payslip,
+      payrollLine,
+      advancePayment,
+      advanceBatchId,
+      isHorizontePositivo,
+    );
 
-    // For now, return HTML (in production, use a PDF library like puppeteer or jsPDF)
-    // This is a placeholder - you'll need to integrate actual PDF generation
-    const pdfBuffer = new TextEncoder().encode(html);
+    const fileName = `colilla-${(payslip.payslip_id || payslip.employee.employee_id || resolvedPayslipId).replace(/\s+/g, "-")}.pdf`;
 
-    return new Response(pdfBuffer, {
-      status: 200,
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="colilla-${payslip.payslip_id}.pdf"`,
-      },
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        pdfBase64: uint8ToBase64(pdfBytes),
+        fileName,
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
 
   } catch (error: any) {
     console.error("Error in generate-payslip-pdf function:", error);
@@ -192,6 +262,144 @@ interface DeductionItem {
 interface DeductionsDetail {
   items?: DeductionItem[];
   total_deductions?: number;
+}
+
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+}
+
+function generatePayslipPdf(
+  payslip: any,
+  payrollLine: any,
+  advancePayment: number | null,
+  advanceBatchId: string | null,
+  isHorizontePositivo: boolean,
+): Uint8Array {
+  const doc = new jsPDF({ orientation: "p", unit: "mm", format: "a4" });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 16;
+  const contentWidth = pageWidth - margin * 2;
+  const periodStart = new Date(payslip.batch.period_start);
+  const periodEnd = new Date(payslip.batch.period_end);
+  const periodLabel = `${periodStart.toLocaleDateString("es-CR", { day: "2-digit", month: "long" })} - ${periodEnd.toLocaleDateString("es-CR", { day: "2-digit", month: "long", year: "numeric" })}`;
+  const lineCurrency = payrollLine.currency || payslip.employee.currency || "CRC";
+  const exchangeRate = Number(payrollLine.exchange_rate_to_base || 1);
+  const isUSD = lineCurrency === "USD";
+  const grossSalary = Number(payrollLine.gross_salary || 0);
+  const netPay = Number(payrollLine.total_to_pay || payrollLine.net_pay || 0);
+  const deductions = Number(payrollLine.deductions || 0);
+  const bonuses = Number(payrollLine.additional_bonuses || 0);
+  const overtime = Number(payrollLine.overtime || 0);
+  const vacationDays = Number(payrollLine.vacation_accrued_days || 0);
+  const aguinaldo = Number(payrollLine.aguinaldo_accrued || 0);
+  const grossDisplayAmount = isUSD ? grossSalary : grossSalary;
+  const deductionsDisplayAmount = isUSD ? deductions / exchangeRate : deductions;
+  const netDisplayAmount = isUSD ? netPay / exchangeRate : netPay;
+  const aguinaldoDisplayAmount = isUSD ? aguinaldo / exchangeRate : aguinaldo;
+
+  const formatAmount = (amount: number, currency = "CRC") =>
+    new Intl.NumberFormat(currency === "CRC" ? "es-CR" : "en-US", {
+      style: "currency",
+      currency: currency === "CRC" ? "CRC" : "USD",
+      minimumFractionDigits: currency === "CRC" ? 0 : 2,
+      maximumFractionDigits: currency === "CRC" ? 0 : 2,
+    }).format(currency === "CRC" ? Math.round(amount) : amount);
+
+  let y = 18;
+  doc.setDrawColor(182, 146, 79);
+  doc.rect(10, 10, pageWidth - 20, doc.internal.pageSize.getHeight() - 20);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(140, 110, 56);
+  doc.text("ACL WEB", margin, y);
+  doc.setTextColor(26, 32, 70);
+  doc.setFontSize(20);
+  doc.text("Comprobante de pago", margin, y + 8);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.text(payslip.company.display_name, margin, y + 15);
+  doc.text(`Cedula juridica: ${payslip.company.tax_id || "No registrada"}`, margin, y + 21);
+  doc.text(`Periodo: ${periodLabel}`, margin, y + 27);
+  doc.text(isHorizontePositivo ? "Formato operativo HP" : "Formato institucional ACL", pageWidth - margin, y + 27, { align: "right" });
+
+  y += 40;
+  doc.setFillColor(245, 242, 233);
+  doc.roundedRect(margin, y, contentWidth, 22, 2, 2, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("Colaborador", margin + 4, y + 7);
+  doc.text("Identificacion", margin + 78, y + 7);
+  doc.text("Contrato", margin + 132, y + 7);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(String(payslip.employee.full_name || ""), margin + 4, y + 15);
+  doc.text(String(payslip.employee.employee_id || ""), margin + 78, y + 15);
+  doc.text(String(payslip.employee.contract_type || "No registrado"), margin + 132, y + 15);
+
+  y += 32;
+  const blocks = [
+    ["Salario bruto", formatAmount(grossDisplayAmount, isUSD ? "USD" : "CRC")],
+    ["Deducciones", formatAmount(deductionsDisplayAmount, isUSD ? "USD" : "CRC")],
+    ["Total a depositar", formatAmount(netDisplayAmount, isUSD ? "USD" : "CRC")],
+  ];
+
+  blocks.forEach(([label, value], index) => {
+    const x = margin + index * ((contentWidth - 8) / 3);
+    const width = (contentWidth - 8) / 3 - 3;
+    doc.setFillColor(index === 2 ? 26 : 255, index === 2 ? 32 : 255, index === 2 ? 70 : 255);
+    doc.roundedRect(x, y, width, 22, 2, 2, "F");
+    doc.setTextColor(index === 2 ? 255 : 106, index === 2 ? 255 : 107, index === 2 ? 255 : 124);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.text(label, x + 4, y + 7);
+    doc.setTextColor(index === 2 ? 255 : 26, index === 2 ? 255 : 32, index === 2 ? 255 : 70);
+    doc.setFontSize(12);
+    doc.text(value, x + 4, y + 16);
+  });
+
+  y += 34;
+  doc.setTextColor(26, 32, 70);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.text("Detalle del periodo", margin, y);
+  y += 7;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`Horas extra: ${overtime > 0 ? formatAmount(overtime, "CRC") : "No registradas"}`, margin, y);
+  y += 6;
+  doc.text(`Bonificaciones: ${bonuses > 0 ? formatAmount(bonuses, "CRC") : "No registradas"}`, margin, y);
+  y += 6;
+  doc.text(`Aguinaldo acumulado: ${formatAmount(aguinaldoDisplayAmount, isUSD ? "USD" : "CRC")}${isUSD ? ` (${formatAmount(aguinaldo, "CRC")})` : ""}`, margin, y);
+  y += 6;
+  doc.text(`Vacaciones acumuladas: ${vacationDays.toFixed(2)} dias`, margin, y);
+  y += 6;
+  if (advancePayment != null) {
+    doc.text(`Adelanto relacionado (${advanceBatchId || "referencia"}): ${formatAmount(advancePayment, "CRC")}`, margin, y);
+    y += 6;
+  }
+  if (isUSD) {
+    doc.text(`Referencia BCCR utilizada: ₡${exchangeRate.toFixed(2)} por USD`, margin, y);
+    y += 6;
+  }
+
+  y += 8;
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(margin, y, contentWidth, 20, 2, 2, "F");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(100, 116, 139);
+  doc.text("Este comprobante resume el calculo del periodo procesado en la plataforma ACL Web · Planillas.", margin + 4, y + 7);
+  doc.text(`Generado el ${new Date().toLocaleDateString("es-CR")} para ${payslip.employee.full_name}.`, margin + 4, y + 13);
+
+  const pdfArrayBuffer = doc.output("arraybuffer");
+  return new Uint8Array(pdfArrayBuffer);
 }
 
 function generatePayslipHTML(payslip: any, payrollLine: any, advancePayment: number | null = null, advanceBatchId: string | null = null): string {

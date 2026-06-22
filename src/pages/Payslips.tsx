@@ -76,6 +76,14 @@ export function Payslips() {
     }
   }, [selectedCompany, selectedYear, selectedMonth]);
 
+  useEffect(() => {
+    if (!selectedCompany) return;
+    const prefersUsd = selectedCompany.name?.toLowerCase().includes('horizonte positivo');
+    if (prefersUsd) {
+      setSelectedCurrency('USD');
+    }
+  }, [selectedCompany]);
+
   const fetchPayslips = async () => {
     if (!selectedCompany) return;
     
@@ -216,14 +224,38 @@ export function Payslips() {
 
   const displayData = viewMode === 'yearly' ? yearlyData : filteredPayslips;
 
+  const convertAmount = (amount: number, from: 'CRC' | 'USD', to: 'CRC' | 'USD', exchangeRate: number) => {
+    if (from === to) return amount;
+    if (!exchangeRate || exchangeRate <= 1) return amount;
+    return from === 'USD' ? amount * exchangeRate : amount / exchangeRate;
+  };
+
+  const getGrossAmount = (payslip: PayslipData) =>
+    convertAmount(payslip.grossSalary, payslip.currency, selectedCurrency, payslip.exchangeRate);
+
+  const getDeductionAmount = (payslip: PayslipData) => {
+    const sourceCurrency: 'CRC' | 'USD' = payslip.currency === 'USD' && payslip.exchangeRate > 1 ? 'CRC' : payslip.currency;
+    return convertAmount(payslip.deductions, sourceCurrency, selectedCurrency, payslip.exchangeRate);
+  };
+
+  const getNetAmount = (payslip: PayslipData) => {
+    const sourceCurrency: 'CRC' | 'USD' = payslip.currency === 'USD' && payslip.exchangeRate > 1 ? 'CRC' : payslip.currency;
+    return convertAmount(payslip.netSalary, sourceCurrency, selectedCurrency, payslip.exchangeRate);
+  };
+
+  const getAguinaldoAmount = (payslip: PayslipData) => {
+    const sourceCurrency: 'CRC' | 'USD' = payslip.currency === 'USD' && payslip.exchangeRate > 1 ? 'CRC' : payslip.currency;
+    return convertAmount(payslip.aguinaldo, sourceCurrency, selectedCurrency, payslip.exchangeRate);
+  };
+
   const stats = useMemo(() => {
     const total = displayData.length;
-    const sent = displayData.filter(p => p.status === 'sent').length;
-    const pending = displayData.filter(p => p.status === 'generated').length;
-    const totalNet = displayData.reduce((sum, p) => sum + p.netSalary, 0);
+    const sent = displayData.filter((p) => p.emailStatus === 'sent').length;
+    const pending = displayData.filter((p) => p.emailStatus !== 'sent').length;
+    const totalNet = displayData.reduce((sum, p) => sum + getNetAmount(p), 0);
     
     return { total, sent, pending, totalNet };
-  }, [displayData]);
+  }, [displayData, selectedCurrency]);
 
   const operationalStats = useMemo(() => {
     const readyToSend = filteredPayslips.filter(
@@ -354,30 +386,25 @@ export function Payslips() {
     if (!selectedCompany) return;
 
     try {
-      // Find the payslip record in the database
-      const { data: payslipRecord, error: payslipError } = await supabase
-        .from('payslips')
-        .select('id')
-        .eq('employee_id', payslip.employeeRecordId)
-        .eq('company_id', selectedCompany.id)
-        .eq('batch_id', payslip.batchUuid)
-        .single();
-
-      if (payslipError || !payslipRecord) {
-        toast({
-          title: "Error",
-          description: "No se encontró la colilla en la base de datos",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Generate and download PDF
       const { data, error } = await supabase.functions.invoke('generate-payslip-pdf', {
-        body: { payslipId: payslipRecord.id },
+        body: {
+          payrollLineId: payslip.id,
+          companyId: selectedCompany.id,
+        },
       });
 
       if (error) throw error;
+
+      if (data?.pdfBase64) {
+        const link = document.createElement('a');
+        link.href = `data:application/pdf;base64,${data.pdfBase64}`;
+        link.download = data.fileName || `colilla-${payslip.employeeName.replace(/\s+/g, "_")}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        throw new Error("La respuesta no incluyo un PDF descargable");
+      }
 
       toast({
         title: "PDF generado",
@@ -453,9 +480,7 @@ export function Payslips() {
     );
   }
 
-  const formatAmount = (amount: number, currency: 'CRC' | 'USD') => {
-    return formatCurrency(amount, selectedCurrency === 'USD' && currency === 'CRC' ? 'USD' : currency);
-  };
+  const formatAmount = (amount: number) => formatCurrency(amount, selectedCurrency);
 
   const getStatusBadge = (status: string) => {
     return status === 'sent' 
@@ -788,16 +813,16 @@ export function Payslips() {
                       </TableCell>
                       <TableCell>{payslip.costCenter}</TableCell>
                       <TableCell className="text-right font-mono">
-                        {formatAmount(payslip.grossSalary, payslip.currency)}
+                        {formatAmount(getGrossAmount(payslip))}
                       </TableCell>
                       <TableCell className="text-right font-mono text-orange-600">
-                        {formatAmount(payslip.deductions, payslip.currency)}
+                        {formatAmount(getDeductionAmount(payslip))}
                       </TableCell>
                       <TableCell className="text-right font-mono font-semibold text-primary">
-                        {formatAmount(payslip.netSalary, payslip.currency)}
+                        {formatAmount(getNetAmount(payslip))}
                       </TableCell>
                       <TableCell className="text-right font-mono text-green-600">
-                        {formatAmount(payslip.aguinaldo, payslip.currency)}
+                        {formatAmount(getAguinaldoAmount(payslip))}
                       </TableCell>
                       <TableCell className="text-center">
                         {getStatusBadge(payslip.status)}

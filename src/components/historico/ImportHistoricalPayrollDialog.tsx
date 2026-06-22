@@ -24,6 +24,11 @@ interface ImportPayrollRow {
   errors: string[];
   rowNumber: number;
   matchedEmployeeId?: string;
+  matchedEmployeeEmail?: string;
+  exchangeRate?: number;
+  total_to_pay?: number;
+  deductions_detail?: Record<string, any>;
+  notes?: string;
 }
 
 interface ImportHistoricalPayrollDialogProps {
@@ -197,6 +202,182 @@ const parsePeriod = (value: any): string => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 };
 
+const isValidEmail = (value: string): boolean => {
+  if (!value) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+};
+
+const buildPeriodLabel = (periodo: string): string => {
+  const [year, month] = periodo.split('-');
+  const monthNumber = Number(month);
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Setiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
+
+  if (!monthNumber || monthNumber < 1 || monthNumber > 12) {
+    return `Periodo ${periodo}`;
+  }
+
+  return `${monthNames[monthNumber - 1]} ${year}`;
+};
+
+const normalizePersonName = (value: string): string => {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+};
+
+const toNumber = (value: any): number => {
+  if (typeof value === "number") return value;
+  if (value == null || value === "") return 0;
+  const cleaned = String(value)
+    .replace(/[₡$€£,\s]/g, "")
+    .trim();
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const extractHorizontePeriod = (sheetRows: any[][]): string => {
+  const headerText = `${sheetRows[1]?.[1] || ""} ${sheetRows[1]?.[3] || ""}`.trim();
+  const yearMatch = headerText.match(/(20\d{2})/);
+  const months: Record<string, string> = {
+    enero: "01",
+    febrero: "02",
+    marzo: "03",
+    abril: "04",
+    mayo: "05",
+    junio: "06",
+    julio: "07",
+    agosto: "08",
+    setiembre: "09",
+    septiembre: "09",
+    octubre: "10",
+    noviembre: "11",
+    diciembre: "12",
+  };
+  const monthText = normalizePersonName(sheetRows[1]?.[3] || "").toLowerCase();
+  const month = months[monthText] || `${new Date().getMonth() + 1}`.padStart(2, "0");
+  const year = yearMatch?.[1] || String(new Date().getFullYear());
+  return `${year}-${month}`;
+};
+
+const tryParseHorizonteWorkbook = (
+  workbook: XLSX.WorkBook,
+  employees: Map<string, { id: string; full_name: string; work_email: string | null }>,
+  companyName: string
+): ImportPayrollRow[] | null => {
+  const colillaSheetName = workbook.SheetNames.find((name) => normalizePersonName(name) === "COLILLA");
+  const planillaSheetName = workbook.SheetNames.find((name) => normalizePersonName(name).startsWith("PLANILLA"));
+
+  if (!colillaSheetName || !planillaSheetName) {
+    return null;
+  }
+
+  const colillaRows = XLSX.utils.sheet_to_json(workbook.Sheets[colillaSheetName], {
+    header: 1,
+    raw: true,
+    defval: null,
+  }) as any[][];
+  const planillaRows = XLSX.utils.sheet_to_json(workbook.Sheets[planillaSheetName], {
+    header: 1,
+    raw: true,
+    defval: null,
+  }) as any[][];
+
+  if (!colillaRows.length || !planillaRows.length) {
+    return null;
+  }
+
+  const periodo = extractHorizontePeriod(planillaRows);
+  const exchangeRate = toNumber(planillaRows[2]?.[3]) || 1;
+
+  const planillaByName = new Map<string, { advanceCRC: number; secondCRC: number; monthlyCRC: number; bankPopularCRC: number; otherDeductionsCRC: number; embargoCRC: number; pensionCRC: number }>();
+  for (let idx = 7; idx < planillaRows.length; idx += 3) {
+    const employeeRow = planillaRows[idx] || [];
+    const crcRow = planillaRows[idx + 1] || [];
+    const name = String(employeeRow[1] || "").trim();
+    if (!name || normalizePersonName(name).startsWith("TOTAL")) continue;
+
+    planillaByName.set(normalizePersonName(name), {
+      monthlyCRC: toNumber(crcRow[12]),
+      advanceCRC: toNumber(crcRow[14]),
+      secondCRC: toNumber(crcRow[15]),
+      bankPopularCRC: toNumber(crcRow[4]),
+      otherDeductionsCRC: toNumber(crcRow[7]),
+      pensionCRC: toNumber(crcRow[8]),
+      embargoCRC: toNumber(crcRow[10]),
+    });
+  }
+
+  const parsedRows: ImportPayrollRow[] = [];
+
+  for (let rowIndex = 2; rowIndex < colillaRows.length; rowIndex++) {
+    const row = colillaRows[rowIndex] || [];
+    const nombre = String(row[2] || "").trim();
+    const cedula = String(row[3] || "").trim();
+
+    if (!nombre || !cedula) continue;
+    if (normalizePersonName(nombre).startsWith("TRAMOS")) continue;
+
+    const matchedEmployee = employees.get(cedula);
+    const planillaInfo = planillaByName.get(normalizePersonName(nombre));
+    const salarioBrutoUSD = toNumber(row[4]);
+    const impuestoNetoCRC = toNumber(row[12]);
+    const ccssCRC = toNumber(row[13]);
+    const otrasRetencionesCRC = toNumber(row[14]);
+    const totalPagarCRC = toNumber(row[15]);
+    const netoUSD = toNumber(row[16]);
+    const lptCRC = planillaInfo?.bankPopularCRC || 0;
+    const otherDeductionsCRC = (planillaInfo?.otherDeductionsCRC || 0) + (planillaInfo?.pensionCRC || 0) + (planillaInfo?.embargoCRC || 0) + otrasRetencionesCRC;
+    const totalDeduccionesCRC = impuestoNetoCRC + ccssCRC + lptCRC + otherDeductionsCRC;
+
+    const errors: string[] = [];
+    if (!matchedEmployee) {
+      errors.push(`Empleado con cédula ${cedula} no encontrado en ${companyName}`);
+    }
+    if (salarioBrutoUSD <= 0) {
+      errors.push("Salario mensual USD no encontrado");
+    }
+    if (totalPagarCRC <= 0 && netoUSD <= 0) {
+      errors.push("Total a pagar no disponible");
+    }
+
+    parsedRows.push({
+      cedula,
+      nombre,
+      email: matchedEmployee?.work_email || "",
+      periodo,
+      salario_bruto: salarioBrutoUSD,
+      deducciones: totalDeduccionesCRC,
+      salario_neto: totalPagarCRC || Math.round(netoUSD * exchangeRate),
+      currency: "USD",
+      isValid: errors.length === 0,
+      errors,
+      rowNumber: rowIndex + 1,
+      matchedEmployeeId: matchedEmployee?.id,
+      matchedEmployeeEmail: matchedEmployee?.work_email || undefined,
+      exchangeRate,
+      total_to_pay: totalPagarCRC || Math.round(netoUSD * exchangeRate),
+      deductions_detail: {
+        isr_neto: impuestoNetoCRC,
+        ccss_obrero: ccssCRC,
+        lpt_banco_popular: lptCRC,
+        otras_retenciones: otherDeductionsCRC,
+        source: "horizonte_excel",
+      },
+      notes: planillaInfo
+        ? `Horizonte Excel ${periodo} | adelanto CRC ${planillaInfo.advanceCRC} | segunda quincena CRC ${planillaInfo.secondCRC}`
+        : `Horizonte Excel ${periodo}`,
+    });
+  }
+
+  return parsedRows.length > 0 ? parsedRows : null;
+};
+
 export function ImportHistoricalPayrollDialog({ 
   open, 
   onOpenChange, 
@@ -211,7 +392,7 @@ export function ImportHistoricalPayrollDialog({
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [employeeMap, setEmployeeMap] = useState<Map<string, { id: string; full_name: string }>>(new Map());
+  const [employeeMap, setEmployeeMap] = useState<Map<string, { id: string; full_name: string; work_email: string | null }>>(new Map());
   const [importResults, setImportResults] = useState<{ success: number; failed: number; errors: string[] }>({
     success: 0,
     failed: 0,
@@ -259,7 +440,7 @@ export function ImportHistoricalPayrollDialog({
     }
   };
 
-  const validateRow = (row: Record<string, any>, rowNumber: number, employees: Map<string, { id: string; full_name: string }>): ImportPayrollRow => {
+  const validateRow = (row: Record<string, any>, rowNumber: number, employees: Map<string, { id: string; full_name: string; work_email: string | null }>): ImportPayrollRow => {
     const errors: string[] = [];
     
     const cedula = String(row.cedula || '').trim();
@@ -278,11 +459,17 @@ export function ImportHistoricalPayrollDialog({
     
     // Try to match employee by cedula
     let matchedEmployeeId: string | undefined;
+    let matchedEmployeeEmail: string | undefined;
     const employee = employees.get(cedula);
     if (employee) {
       matchedEmployeeId = employee.id;
+      matchedEmployeeEmail = employee.work_email || undefined;
     } else {
       errors.push(`Empleado con cédula ${cedula} no encontrado en ${companyName}`);
+    }
+
+    if (email && !isValidEmail(email)) {
+      errors.push(`Correo invalido: ${email}`);
     }
     
     return {
@@ -297,14 +484,15 @@ export function ImportHistoricalPayrollDialog({
       isValid: errors.length === 0,
       errors,
       rowNumber,
-      matchedEmployeeId
+      matchedEmployeeId,
+      matchedEmployeeEmail,
     };
   };
 
-  const loadEmployees = async (): Promise<Map<string, { id: string; full_name: string }>> => {
+  const loadEmployees = async (): Promise<Map<string, { id: string; full_name: string; work_email: string | null }>> => {
     const { data, error } = await supabase
       .from('employees')
-      .select('id, employee_id, full_name')
+      .select('id, employee_id, full_name, work_email')
       .eq('company_id', companyId);
     
     if (error) {
@@ -312,9 +500,9 @@ export function ImportHistoricalPayrollDialog({
       return new Map();
     }
     
-    const map = new Map<string, { id: string; full_name: string }>();
+    const map = new Map<string, { id: string; full_name: string; work_email: string | null }>();
     (data || []).forEach(emp => {
-      map.set(emp.employee_id, { id: emp.id, full_name: emp.full_name });
+      map.set(emp.employee_id, { id: emp.id, full_name: emp.full_name, work_email: emp.work_email });
     });
     return map;
   };
@@ -372,6 +560,17 @@ export function ImportHistoricalPayrollDialog({
       const missingColumns = REQUIRED_COLUMNS.filter(col => !normalizedColumns.includes(col));
       
       if (missingColumns.length > 0) {
+        const horizonteRows = tryParseHorizonteWorkbook(workbook, employees, companyName);
+        if (horizonteRows) {
+          setParsedData(horizonteRows);
+          setStep('preview');
+          toast({
+            title: "Plantilla Horizonte detectada",
+            description: `${horizonteRows.length} colaboradores listos para importar desde el libro de planilla.`,
+          });
+          return;
+        }
+
         toast({
           title: "Columnas faltantes",
           description: `El archivo debe contener: ${missingColumns.join(', ')}. Columnas encontradas: ${originalColumns.join(', ')}`,
@@ -491,6 +690,18 @@ export function ImportHistoricalPayrollDialog({
       for (const row of rows) {
         try {
           const lineId = `HIST-${row.cedula}-${periodo}`;
+          const employeeEmail = isValidEmail(row.email) ? row.email.trim().toLowerCase() : (row.matchedEmployeeEmail || '').trim().toLowerCase();
+
+          if (isValidEmail(row.email) && (!row.matchedEmployeeEmail || row.matchedEmployeeEmail.toLowerCase() !== row.email.trim().toLowerCase())) {
+            const { error: employeeUpdateError } = await supabase
+              .from('employees')
+              .update({ work_email: row.email.trim().toLowerCase() })
+              .eq('id', row.matchedEmployeeId!);
+
+            if (employeeUpdateError) {
+              errors.push(`Fila ${row.rowNumber} (${row.nombre}): no se pudo actualizar el correo del empleado`);
+            }
+          }
           
           // Check if line already exists
           const { data: existingLine } = await supabase
@@ -509,6 +720,12 @@ export function ImportHistoricalPayrollDialog({
                 deductions: row.deducciones,
                 net_pay: row.salario_neto,
                 currency: row.currency as 'CRC' | 'USD' | 'EUR' | 'GBP',
+                exchange_rate_to_base: row.exchangeRate || 1,
+                total_to_pay: row.total_to_pay || row.salario_neto,
+                deductions_detail: row.deductions_detail || {},
+                lpt_banco_popular: Number(row.deductions_detail?.lpt_banco_popular || 0),
+                additional_deductions: Number(row.deductions_detail?.otras_retenciones || 0),
+                notes: row.notes || null,
               })
               .eq('id', existingLine.id);
 
@@ -531,6 +748,12 @@ export function ImportHistoricalPayrollDialog({
                 deductions: row.deducciones,
                 net_pay: row.salario_neto,
                 currency: row.currency as 'CRC' | 'USD' | 'EUR' | 'GBP',
+                exchange_rate_to_base: row.exchangeRate || 1,
+                total_to_pay: row.total_to_pay || row.salario_neto,
+                deductions_detail: row.deductions_detail || {},
+                lpt_banco_popular: Number(row.deductions_detail?.lpt_banco_popular || 0),
+                additional_deductions: Number(row.deductions_detail?.otras_retenciones || 0),
+                notes: row.notes || null,
               });
 
             if (insertError) {
@@ -538,6 +761,38 @@ export function ImportHistoricalPayrollDialog({
               errors.push(`Fila ${row.rowNumber} (${row.nombre}): ${insertError.message}`);
             } else {
               success++;
+            }
+          }
+
+          if (employeeEmail) {
+            const payslipPayload = {
+              batch_id: batchUuid,
+              company_id: companyId,
+              employee_id: row.matchedEmployeeId!,
+              employee_email: employeeEmail,
+              payslip_id: `PAY-${lineId}`,
+              period_label: buildPeriodLabel(periodo),
+            };
+
+            const { data: existingPayslip } = await supabase
+              .from('payslips')
+              .select('id')
+              .eq('batch_id', batchUuid)
+              .eq('employee_id', row.matchedEmployeeId!)
+              .maybeSingle();
+
+            if (existingPayslip?.id) {
+              await supabase
+                .from('payslips')
+                .update({
+                  employee_email: employeeEmail,
+                  period_label: buildPeriodLabel(periodo),
+                })
+                .eq('id', existingPayslip.id);
+            } else {
+              await supabase
+                .from('payslips')
+                .insert(payslipPayload);
             }
           }
         } catch (err: any) {
