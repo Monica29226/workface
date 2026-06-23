@@ -525,18 +525,6 @@ export function PayrollProcess() {
                           <XCircle className="h-4 w-4" />
                           Desaprobar
                         </Button>
-                        <Button onClick={handleAuthorize} disabled={isProcessing} className="gap-2 bg-amber-600 hover:bg-amber-700">
-                          {isProcessing ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <CheckCircle className="h-4 w-4" />
-                          )}
-                          Autorizar Envío
-                        </Button>
-                      </>
-                    )}
-                    {currentBatch.status === 'autorizado' && (
-                      <>
                         <Button onClick={handleGeneratePayslips} disabled={isProcessing} className="gap-2">
                           {isProcessing ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -546,6 +534,16 @@ export function PayrollProcess() {
                           Generar Colillas
                         </Button>
                       </>
+                    )}
+                    {currentBatch.status === 'enviado' && (
+                      <Button onClick={handleGeneratePayslips} disabled={isProcessing} variant="outline" className="gap-2">
+                        {isProcessing ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <FileText className="h-4 w-4" />
+                        )}
+                        Regenerar Colillas
+                      </Button>
                     )}
                   </div>
                 )}
