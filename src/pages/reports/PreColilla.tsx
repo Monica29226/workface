@@ -13,6 +13,11 @@ import { Loader2, Eye, Search, FileText, Download, Send, Minus, Building2, User,
 import { formatNumber } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { ACLLogo } from "@/components/branding/ACLLogo";
+import {
+  calculatePayrollDeductions,
+  type PayrollCompanyParams,
+  type ISRBreakdown,
+} from "@/lib/payrollDeductions";
 
 // Format CRC without decimals
 const formatCRC = (amount: number): string => {
