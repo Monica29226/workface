@@ -1501,6 +1501,7 @@ export type Database = {
           manager_decision_by: string | null
           manager_notes: string | null
           reason: string | null
+          request_type: string
           review_notes: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -1523,6 +1524,7 @@ export type Database = {
           manager_decision_by?: string | null
           manager_notes?: string | null
           reason?: string | null
+          request_type?: string
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -1545,6 +1547,7 @@ export type Database = {
           manager_decision_by?: string | null
           manager_notes?: string | null
           reason?: string | null
+          request_type?: string
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -1670,6 +1673,7 @@ export type Database = {
     }
     Functions: {
       can_access_salary_data: { Args: { _user_id: string }; Returns: boolean }
+      cancel_vacation_request: { Args: { p_request_id: string }; Returns: Json }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -1701,6 +1705,10 @@ export type Database = {
         }
         Returns: number
       }
+      process_vacation_request_approval: {
+        Args: { p_action: string; p_notes?: string; p_request_id: string }
+        Returns: Json
+      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
@@ -1708,6 +1716,10 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      recalculate_vacation_accruals: {
+        Args: { p_company_id: string; p_employee_id?: string; p_year?: number }
+        Returns: number
       }
       user_belongs_to_company: {
         Args: { _company_id: string; _user_id: string }
