@@ -819,8 +819,8 @@ export function PreNomina() {
                       )}
                       <TableHead className="text-right">Hrs Extra (1.5x)</TableHead>
                       <TableHead className="text-right">Hrs Dobles (2x)</TableHead>
-                      <TableHead className="text-right">CCSS</TableHead>
-                      <TableHead className="text-right">B. Popular</TableHead>
+                      <TableHead className="text-right">CCSS + B. Popular</TableHead>
+
                       <TableHead className="text-right">ISR</TableHead>
                       <TableHead className="text-right">Préstamos</TableHead>
                       <TableHead className="text-right">Otras Ded.</TableHead>
