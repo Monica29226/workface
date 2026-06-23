@@ -17,11 +17,9 @@ const Dashboard = lazy(() => import("@/pages/Dashboard").then(m => ({ default: m
 const Employees = lazy(() => import("@/pages/Employees").then(m => ({ default: m.Employees })));
 const Projects = lazy(() => import("@/pages/Projects"));
 const Contracts = lazy(() => import("@/pages/Contracts").then(m => ({ default: m.Contracts })));
-const Timesheets = lazy(() => import("@/pages/Timesheets").then(m => ({ default: m.Timesheets })));
 const PayrollProcess = lazy(() => import("@/pages/PayrollProcess").then(m => ({ default: m.PayrollProcess })));
 const Payslips = lazy(() => import("@/pages/Payslips").then(m => ({ default: m.Payslips })));
 const Liquidations = lazy(() => import("@/pages/Liquidations").then(m => ({ default: m.Liquidations })));
-const HorasProyecto = lazy(() => import("@/pages/HorasProyecto").then(m => ({ default: m.HorasProyecto })));
 const Historico = lazy(() => import("@/pages/settings/Historico").then(m => ({ default: m.Historico })));
 const Parameters = lazy(() => import("@/pages/settings/Parameters").then(m => ({ default: m.Parameters })));
 const PayslipSettings = lazy(() => import("@/pages/settings/PayslipSettings").then(m => ({ default: m.PayslipSettings })));
@@ -93,12 +91,9 @@ const App = () => (
                     <Route path="/employees" element={<Employees />} />
                     <Route path="/projects" element={<Projects />} />
                     <Route path="/contracts" element={<Contracts />} />
-                    <Route path="/timesheets" element={<Timesheets />} />
                     <Route path="/payroll-process" element={<PayrollProcess />} />
                     <Route path="/payslips" element={<Payslips />} />
                     <Route path="/cost-centers" element={<CostCenters />} />
-                    <Route path="/liquidaciones" element={<Liquidations />} />
-                    <Route path="/horas-proyecto" element={<HorasProyecto />} />
                     <Route path="/liquidations" element={<Liquidations />} />
                     <Route path="/reports/vacations" element={<VacationReport />} />
                     <Route path="/reports/pre-nomina" element={<PreNomina />} />
@@ -115,7 +110,6 @@ const App = () => (
                     <Route path="/email-bitacora" element={<EmailBitacora />} />
                     <Route path="/settings/parameters" element={<Parameters />} />
                     <Route path="/settings/payslip" element={<PayslipSettings />} />
-                    <Route path="/settings/admin" element={<div className="p-6 text-center text-muted-foreground">Administración - En desarrollo</div>} />
                     <Route path="/company-selector" element={<CompanySelector />} />
                   </Route>
                   <Route path="/404" element={<NotFound />} />

@@ -713,7 +713,7 @@ export function ImportHistoricalPayrollDialog({
         batchUuid = existingBatch.id;
       } else {
         // Create new batch
-        const { data: newBatch, error: batchError } = await supabase
+        const { data: newBatch, error: batchError } = await (supabase as any)
           .from('payroll_batches')
           .insert({
             company_id: companyId,
