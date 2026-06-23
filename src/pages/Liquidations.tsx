@@ -371,9 +371,10 @@ export function Liquidations() {
                   <span class="value">${resultado.añosTrabajados} años, ${resultado.mesesTrabajados % 12} meses</span>
                 </div>
                 <div class="data-row">
-                  <span class="label">Salario Base:</span>
-                  <span class="value">${formatCurrency(selectedEmployeeData.base_salary, 'CRC')}</span>
+                  <span class="label">${salaryInfo && !salaryInfo.usedFallback ? `Salario promedio (últimos ${salaryInfo.monthsUsed} mes${salaryInfo.monthsUsed === 1 ? '' : 'es'}):` : 'Salario base (sin historial de planilla):'}</span>
+                  <span class="value">${formatCurrency(salaryInfo?.amount ?? selectedEmployeeData.base_salary, 'CRC')}</span>
                 </div>
+
               </div>
             </div>
           </div>
