@@ -919,7 +919,6 @@ export function PreColilla() {
     const statusConfig: Record<string, { labelKey: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
       calculado: { labelKey: "status.calculated", variant: "secondary" },
       aprobado: { labelKey: "status.approved", variant: "default" },
-      autorizado: { labelKey: "status.authorized", variant: "outline" },
       enviado: { labelKey: "status.sent", variant: "outline" },
     };
     const config = statusConfig[status] || { labelKey: status, variant: "secondary" as const };
