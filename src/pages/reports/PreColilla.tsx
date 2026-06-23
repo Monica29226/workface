@@ -225,7 +225,7 @@ function EditableEmployeeCard({
   // Calculate real-time deductions
   const calculations = useMemo(() => {
     return calculateDeductions(grossSalary, values.adelanto, line.deductions_detail, companyParams);
-  }, [grossSalary, values.adelanto, line.deductions_detail]);
+  }, [grossSalary, values.adelanto, line.deductions_detail, companyParams]);
   
   const handleBaseSalaryChange = (value: string) => {
     const numValue = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
