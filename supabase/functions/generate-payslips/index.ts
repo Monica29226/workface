@@ -144,7 +144,7 @@ serve(async (req) => {
     let vacationAccrualResults: any[] = [];
     if (accrueVacations && newPayslips.length > 0) {
       console.log("Recalculating vacation accruals for company:", batch.company_id);
-      const { data: processed, error: rpcError } = await supabaseAdmin.rpc(
+      const { data: processed, error: rpcError } = await supabaseClient.rpc(
         'recalculate_vacation_accruals',
         { p_company_id: batch.company_id, p_year: periodYear }
       );
