@@ -286,8 +286,8 @@ export function Liquidations() {
         <body>
           <div class="header">
             <div>
-              <div class="company-logo">Horizonte +</div>
-              <div class="company-name">${selectedCompany?.name || 'Empresa'}</div>
+              <div class="company-logo">${selectedCompany?.name || 'Empresa'}</div>
+              <div class="company-name">${selectedCompany?.legal_name || selectedCompany?.name || ''}</div>
             </div>
             <div class="document-info">
               <div class="document-title">LIQUIDACIÓN LABORAL</div>
