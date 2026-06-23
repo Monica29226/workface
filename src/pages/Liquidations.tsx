@@ -43,6 +43,11 @@ export function Liquidations() {
   const [preavisoTrabajado, setPreavisoTrabajado] = useState(false);
   const [resultado, setResultado] = useState<ResultadoLiquidacion | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  // Tipo de cambio de referencia CRC→USD. Si la empresa tiene moneda base USD se usa 1.
+  const EXCHANGE_RATE_REFERENCE = 510.27;
+  const usdRate = selectedCompany?.base_currency === 'USD' ? 1 : EXCHANGE_RATE_REFERENCE;
 
   useEffect(() => {
     if (selectedCompany) {
@@ -72,7 +77,7 @@ export function Liquidations() {
     }
   };
 
-  const handleCalcularLiquidacion = () => {
+  const handleCalcularLiquidacion = async () => {
     const empleado = employees.find(e => e.id === selectedEmployee);
     if (!empleado || !fechaSalida) {
       toast({
@@ -95,16 +100,33 @@ export function Liquidations() {
       return;
     }
 
+    // Obtener saldo real de vacaciones pendientes del año en curso
+    let diasVacacionesPendientes = 0;
+    try {
+      const { data: vacRows } = await (supabase as any)
+        .from('employee_vacations')
+        .select('days_pending')
+        .eq('employee_id', empleado.id)
+        .eq('year', fechaSalidaDate.getFullYear());
+      diasVacacionesPendientes = (vacRows || []).reduce(
+        (sum: number, r: any) => sum + Number(r.days_pending || 0),
+        0
+      );
+    } catch (err) {
+      console.error('No se pudo leer saldo de vacaciones, se usará proporcional:', err);
+    }
+
     const result = calcularLiquidacion({
       fechaIngreso,
       fechaSalida: fechaSalidaDate,
       salarioPromedio: empleado.base_salary,
       motivoSalida,
-      preavisoTrabajado
+      preavisoTrabajado,
+      diasVacacionesPendientes: diasVacacionesPendientes > 0 ? diasVacacionesPendientes : undefined,
     });
 
     setResultado(result);
-    
+
     toast({
       title: "Liquidación calculada",
       description: "El cálculo se ha realizado exitosamente",
@@ -264,8 +286,8 @@ export function Liquidations() {
         <body>
           <div class="header">
             <div>
-              <div class="company-logo">Horizonte +</div>
-              <div class="company-name">${selectedCompany?.name || 'Empresa'}</div>
+              <div class="company-logo">${selectedCompany?.name || 'Empresa'}</div>
+              <div class="company-name">${selectedCompany?.legal_name || selectedCompany?.name || ''}</div>
             </div>
             <div class="document-info">
               <div class="document-title">LIQUIDACIÓN LABORAL</div>
@@ -372,10 +394,12 @@ export function Liquidations() {
             <h2 style="margin-top: 0; color: #0B2B4C;">Monto Total de Liquidación</h2>
             <div class="final-amount">${formatCurrency(resultado.total, 'CRC')}</div>
             <p style="color: #666; margin-top: 20px;">
-              (${new Intl.NumberFormat('es-CR', { 
-                style: 'currency', 
-                currency: 'USD' 
-              }).format(resultado.total / 510.27)})
+              (${new Intl.NumberFormat('es-CR', {
+                style: 'currency',
+                currency: 'USD'
+              }).format(resultado.total / usdRate)})
+              <br/>
+              <small style="font-size:11px;color:#888;">Tipo de cambio de referencia: ${usdRate.toFixed(2)} CRC/USD</small>
             </p>
           </div>
 
@@ -514,13 +538,13 @@ export function Liquidations() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="despido_sin_responsabilidad">
-                    Despido sin responsabilidad patronal (con cesantía)
+                    Despido con responsabilidad patronal (sin justa causa) — SÍ paga cesantía
                   </SelectItem>
                   <SelectItem value="despido_con_responsabilidad">
-                    Despido con justa causa (sin cesantía)
+                    Despido con justa causa (falta del trabajador) — NO paga cesantía
                   </SelectItem>
                   <SelectItem value="renuncia">
-                    Renuncia voluntaria
+                    Renuncia voluntaria — NO paga cesantía
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -583,7 +607,7 @@ export function Liquidations() {
                       {formatCurrency(resultado.total, 'CRC')}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      ≈ {formatCurrency(resultado.total / 510.27, 'USD')}
+                      ≈ {formatCurrency(resultado.total / usdRate, 'USD')}
                     </div>
                   </div>
                 </div>
@@ -655,13 +679,85 @@ export function Liquidations() {
               <Download className="h-4 w-4" />
               Generar PDF
             </Button>
-            <Button 
+            <Button
               variant="outline"
               className="flex-1 gap-2"
               size="lg"
+              disabled={isSendingEmail || !selectedEmployeeData?.work_email}
+              onClick={async () => {
+                if (!selectedEmployeeData || !resultado) return;
+                if (!selectedEmployeeData.work_email) {
+                  toast({
+                    title: "Sin correo",
+                    description: "El colaborador no tiene correo registrado",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                setIsSendingEmail(true);
+                try {
+                  const row = (concept: string, detail: string, amount: number) => `
+                    <tr>
+                      <td style="padding:8px;border-bottom:1px solid #eee"><strong>${concept}</strong><br/><span style="color:#666;font-size:12px">${detail}</span></td>
+                      <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">${formatCurrency(amount, 'CRC')}</td>
+                    </tr>`;
+                  const html = `
+                    <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#0B2B4C">
+                      <h2 style="color:#0B2B4C">Liquidación Laboral</h2>
+                      <p>Hola <strong>${selectedEmployeeData.full_name}</strong>,</p>
+                      <p>Adjuntamos el detalle de su liquidación calculado según el Código de Trabajo de Costa Rica:</p>
+                      <table style="width:100%;border-collapse:collapse;margin-top:12px">
+                        <thead>
+                          <tr style="background:#0B2B4C;color:#fff">
+                            <th style="padding:10px;text-align:left">Concepto</th>
+                            <th style="padding:10px;text-align:right">Monto</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${row('Preaviso', resultado.detalles.preaviso, resultado.preaviso)}
+                          ${row('Cesantía', resultado.detalles.cesantia, resultado.cesantia)}
+                          ${row('Vacaciones', resultado.detalles.vacaciones, resultado.vacaciones)}
+                          ${row('Aguinaldo', resultado.detalles.aguinaldo, resultado.aguinaldo)}
+                          <tr style="background:#F5EFE6">
+                            <td style="padding:10px"><strong>TOTAL A PAGAR</strong></td>
+                            <td style="padding:10px;text-align:right;font-family:monospace;font-size:16px"><strong>${formatCurrency(resultado.total, 'CRC')}</strong></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <p style="margin-top:16px;font-size:12px;color:#666">
+                        Equivalente referencial: ${formatCurrency(resultado.total / usdRate, 'USD')} (TC ${usdRate.toFixed(2)} CRC/USD)
+                      </p>
+                      <p style="margin-top:20px;font-size:12px;color:#888">
+                        ${selectedCompany?.name || ''} · Documento informativo basado en la metodología MTSS.
+                      </p>
+                    </div>`;
+
+                  const { error } = await supabase.functions.invoke('send-email', {
+                    body: {
+                      to: [selectedEmployeeData.work_email],
+                      subject: `Liquidación Laboral - ${selectedEmployeeData.full_name}`,
+                      html,
+                      companyId: selectedCompany?.id,
+                    },
+                  });
+                  if (error) throw error;
+                  toast({
+                    title: "Correo enviado",
+                    description: `Liquidación enviada a ${selectedEmployeeData.work_email}`,
+                  });
+                } catch (err: any) {
+                  toast({
+                    title: "Error al enviar",
+                    description: err?.message ?? "No se pudo enviar el correo",
+                    variant: "destructive",
+                  });
+                } finally {
+                  setIsSendingEmail(false);
+                }
+              }}
             >
               <Mail className="h-4 w-4" />
-              Enviar por Correo
+              {isSendingEmail ? "Enviando..." : "Enviar por Correo"}
             </Button>
           </div>
         </>
