@@ -662,6 +662,7 @@ export type Database = {
           job_title: string | null
           loan_amount: number | null
           loan_monthly_deduction: number | null
+          manager_id: string | null
           status: Database["public"]["Enums"]["employee_status"]
           updated_at: string
           user_id: string | null
@@ -684,6 +685,7 @@ export type Database = {
           job_title?: string | null
           loan_amount?: number | null
           loan_monthly_deduction?: number | null
+          manager_id?: string | null
           status?: Database["public"]["Enums"]["employee_status"]
           updated_at?: string
           user_id?: string | null
@@ -706,6 +708,7 @@ export type Database = {
           job_title?: string | null
           loan_amount?: number | null
           loan_monthly_deduction?: number | null
+          manager_id?: string | null
           status?: Database["public"]["Enums"]["employee_status"]
           updated_at?: string
           user_id?: string | null
@@ -1484,12 +1487,19 @@ export type Database = {
       }
       vacation_requests: {
         Row: {
+          approval_stage: string | null
           company_id: string
           created_at: string
           days_requested: number
           employee_id: string
           end_date: string
+          hr_decision_at: string | null
+          hr_decision_by: string | null
+          hr_notes: string | null
           id: string
+          manager_decision_at: string | null
+          manager_decision_by: string | null
+          manager_notes: string | null
           reason: string | null
           review_notes: string | null
           reviewed_at: string | null
@@ -1499,12 +1509,19 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approval_stage?: string | null
           company_id: string
           created_at?: string
           days_requested: number
           employee_id: string
           end_date: string
+          hr_decision_at?: string | null
+          hr_decision_by?: string | null
+          hr_notes?: string | null
           id?: string
+          manager_decision_at?: string | null
+          manager_decision_by?: string | null
+          manager_notes?: string | null
           reason?: string | null
           review_notes?: string | null
           reviewed_at?: string | null
@@ -1514,12 +1531,19 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approval_stage?: string | null
           company_id?: string
           created_at?: string
           days_requested?: number
           employee_id?: string
           end_date?: string
+          hr_decision_at?: string | null
+          hr_decision_by?: string | null
+          hr_notes?: string | null
           id?: string
+          manager_decision_at?: string | null
+          manager_decision_by?: string | null
+          manager_notes?: string | null
           reason?: string | null
           review_notes?: string | null
           reviewed_at?: string | null
