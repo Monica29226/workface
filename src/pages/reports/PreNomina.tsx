@@ -16,48 +16,32 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { LivePayrollPreview } from "@/components/payroll/LivePayrollPreview";
+import { calculatePayrollDeductions, type PayrollCompanyParams } from "@/lib/payrollDeductions";
 
-// CCSS rate for standard companies
-const CCSS_RATE = 0.1083;
-
-// ISR 2026 brackets calculation
-function calculateISR(baseImponible: number): number {
-  let isr = 0;
-  if (baseImponible > 4727000) {
-    isr += (baseImponible - 4727000) * 0.25;
-    baseImponible = 4727000;
-  }
-  if (baseImponible > 2364000) {
-    isr += (baseImponible - 2364000) * 0.20;
-    baseImponible = 2364000;
-  }
-  if (baseImponible > 1347000) {
-    isr += (baseImponible - 1347000) * 0.15;
-    baseImponible = 1347000;
-  }
-  if (baseImponible > 918000) {
-    isr += (baseImponible - 918000) * 0.10;
-  }
-  return Math.round(isr);
+// Fallback de cálculo en tiempo real — usa la fórmula canónica compartida.
+// Solo se usa cuando la línea aún NO tiene deducciones guardadas (detail.ccss_obrero = 0).
+// Para líneas ya calculadas, se muestran los valores guardados sin recalcular.
+function calculateRealTimeDeductions(
+  grossSalaryCRC: number,
+  existingDetail: DeductionsDetail | null,
+  params: PayrollCompanyParams | null | undefined,
+): { ccss: number; isr: number; loans: number; total: number } {
+  const loanDeduction = existingDetail?.loan_deduction || 0;
+  const calc = calculatePayrollDeductions({
+    grossSalary: grossSalaryCRC,
+    params: params ?? null,
+    loanDeduction,
+  });
+  // CCSS aquí YA incluye Banco Popular obrero (1%) — el parámetro
+  // ccss_obrero_total (10.67%) lo trae empacado. No se cobra por separado.
+  return {
+    ccss: calc.ccssObrero + calc.magisterio + calc.polizaVida,
+    isr: calc.isr,
+    loans: calc.loan,
+    total: calc.ccssObrero + calc.magisterio + calc.polizaVida + calc.isr + calc.loan,
+  };
 }
 
-// Calculate real-time deductions based on gross salary
-function calculateRealTimeDeductions(grossSalaryCRC: number, existingDetail: DeductionsDetail | null): {
-  ccss: number;
-  isr: number;
-  bancoPopular: number;
-  loans: number;
-  total: number;
-} {
-  const ccss = Math.round(grossSalaryCRC * CCSS_RATE);
-  const baseParaISR = grossSalaryCRC - ccss;
-  const isr = calculateISR(baseParaISR);
-  const bancoPopular = Math.round(grossSalaryCRC * 0.01);
-  const loans = existingDetail?.loan_deduction || 0;
-  const total = ccss + isr + bancoPopular + loans;
-  
-  return { ccss, isr, bancoPopular, loans, total };
-}
 
 interface DeductionsDetail {
   ccss_obrero?: number;
@@ -458,11 +442,10 @@ export function PreNomina() {
           ? { 
               ccss: detail.ccss_obrero || 0, 
               isr: detail.isr_neto || 0, 
-              bancoPopular: detail.banco_popular || Number(line.lpt_banco_popular) || 0,
               loans: detail.loan_deduction || 0,
               total: Number(line.deductions) || 0
             }
-          : calculateRealTimeDeductions(grossSalaryCRC, detail);
+          : calculateRealTimeDeductions(grossSalaryCRC, detail, companyParams);
         
         const netPayCRC = grossSalaryCRC - realTimeDeductions.total - Number(line.additional_deductions || 0);
         const netPayUSD = netPayCRC / exchangeRate;
@@ -474,7 +457,6 @@ export function PreNomina() {
           mixedOvertimeHours: acc.mixedOvertimeHours + mixedOvertimeHours,
           ccss: acc.ccss + realTimeDeductions.ccss,
           isr: acc.isr + realTimeDeductions.isr,
-          bancoPopular: acc.bancoPopular + realTimeDeductions.bancoPopular,
           loans: acc.loans + realTimeDeductions.loans,
           bonuses: acc.bonuses + Number(line.additional_bonuses || 0),
           otherDeductions: acc.otherDeductions + Number(line.additional_deductions || 0),
@@ -490,7 +472,6 @@ export function PreNomina() {
         mixedOvertimeHours: 0,
         ccss: 0,
         isr: 0,
-        bancoPopular: 0,
         loans: 0,
         bonuses: 0,
         otherDeductions: 0,
@@ -498,6 +479,7 @@ export function PreNomina() {
         netPayCRC: 0,
         netPayUSD: 0,
       }
+
     );
   }, [payrollLines, getValue, exchangeRate]);
 
@@ -786,18 +768,14 @@ export function PreNomina() {
               <CardTitle className="text-base">Resumen de Deducciones</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                 <div>
-                  <div className="text-muted-foreground">CCSS ({companyParams?.ccss_obrero_total || 10.83}%)</div>
+                  <div className="text-muted-foreground">CCSS + B. Popular ({companyParams?.ccss_obrero_total || 10.67}%)</div>
                   <div className="font-semibold text-destructive">₡{formatNumber(Math.round(totals?.ccss || 0))}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">ISR</div>
                   <div className="font-semibold text-destructive">₡{formatNumber(Math.round(totals?.isr || 0))}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Banco Popular (1%)</div>
-                  <div className="font-semibold text-destructive">₡{formatNumber(Math.round(totals?.bancoPopular || 0))}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Préstamos</div>
@@ -812,6 +790,7 @@ export function PreNomina() {
                   <div className="font-semibold text-destructive">₡{formatNumber(Math.round(totals?.otherDeductions || 0))}</div>
                 </div>
               </div>
+
             </CardContent>
           </Card>
 
@@ -840,8 +819,8 @@ export function PreNomina() {
                       )}
                       <TableHead className="text-right">Hrs Extra (1.5x)</TableHead>
                       <TableHead className="text-right">Hrs Dobles (2x)</TableHead>
-                      <TableHead className="text-right">CCSS</TableHead>
-                      <TableHead className="text-right">B. Popular</TableHead>
+                      <TableHead className="text-right">CCSS + B. Popular</TableHead>
+
                       <TableHead className="text-right">ISR</TableHead>
                       <TableHead className="text-right">Préstamos</TableHead>
                       <TableHead className="text-right">Otras Ded.</TableHead>
@@ -868,13 +847,13 @@ export function PreNomina() {
                       const hasStoredDeductions = (detail.ccss_obrero || 0) > 0;
                       const calculatedDed = hasStoredDeductions 
                         ? { 
-                            ccss: detail.ccss_obrero || 0, 
+                            ccss: (detail.ccss_obrero || 0) + (detail.banco_popular || Number(line.lpt_banco_popular) || 0),
                             isr: detail.isr_neto || 0, 
-                            bancoPopular: detail.banco_popular || Number(line.lpt_banco_popular) || 0,
                             loans: detail.loan_deduction || 0,
                             total: Number(line.deductions) || 0
                           }
-                        : calculateRealTimeDeductions(grossSalaryCRC, detail);
+                        : calculateRealTimeDeductions(grossSalaryCRC, detail, companyParams);
+
                       
                       const otrasDeduciones = Number(line.additional_deductions || 0);
                       const totalDeductions = calculatedDed.total + otrasDeduciones;
@@ -969,9 +948,8 @@ export function PreNomina() {
                           <TableCell className="text-right font-mono text-destructive">
                             ₡{formatNumber(Math.round(calculatedDed.ccss))}
                           </TableCell>
-                          <TableCell className="text-right font-mono text-destructive">
-                            ₡{formatNumber(Math.round(calculatedDed.bancoPopular))}
-                          </TableCell>
+
+
                           <TableCell className="text-right font-mono text-destructive">
                             ₡{formatNumber(Math.round(calculatedDed.isr))}
                           </TableCell>
@@ -1039,9 +1017,8 @@ export function PreNomina() {
                       <TableCell className="text-right font-mono text-destructive">
                         ₡{formatNumber(Math.round(totals?.ccss || 0))}
                       </TableCell>
-                      <TableCell className="text-right font-mono text-destructive">
-                        ₡{formatNumber(Math.round(totals?.bancoPopular || 0))}
-                      </TableCell>
+
+
                       <TableCell className="text-right font-mono text-destructive">
                         ₡{formatNumber(Math.round(totals?.isr || 0))}
                       </TableCell>
