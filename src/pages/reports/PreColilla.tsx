@@ -468,10 +468,16 @@ function EditableEmployeeCard({
           {/* Gross Salary Total */}
           <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg border-2 border-dashed">
             <Badge variant="secondary" className="text-xs font-normal">{t('payroll.gross')}</Badge>
-            <span className="font-mono text-lg font-bold text-foreground tabular-nums">
-              {formatAmount(grossSalary)}
-            </span>
+            <div className="flex flex-col items-end">
+              <span className="font-mono text-lg font-bold text-foreground tabular-nums">
+                {formatAmount(grossSalary)}
+              </span>
+              {isUSD && (
+                <span className="font-mono text-[10px] text-muted-foreground">≈ {formatAmountCRCEquivalent(grossSalary)}</span>
+              )}
+            </div>
           </div>
+
 
           {/* Adelanto de Salario - Editable Field */}
           <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${isEditing ? 'bg-amber-50 border border-amber-200' : 'bg-amber-50/50'}`}>
