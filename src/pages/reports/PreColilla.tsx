@@ -119,9 +119,12 @@ function calculateDoubleHoursAmount(baseSalary: number, horasDobles: number): nu
 // Calculate deductions based on gross salary with ISR breakdown
 interface DeductionsCalc {
   ccss: number;
+  ccssLabel: string;
   isr: number;
   isrBreakdown: ISRBreakdown;
   otros: number;
+  magisterio: number;
+  polizaVida: number;
   totalDeductions: number;
   netPay: number;
   faltaPorPagar: number;
