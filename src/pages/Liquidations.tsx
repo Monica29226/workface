@@ -43,6 +43,11 @@ export function Liquidations() {
   const [preavisoTrabajado, setPreavisoTrabajado] = useState(false);
   const [resultado, setResultado] = useState<ResultadoLiquidacion | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  // Tipo de cambio de referencia CRC→USD. Si la empresa tiene moneda base USD se usa 1.
+  const EXCHANGE_RATE_REFERENCE = 510.27;
+  const usdRate = selectedCompany?.base_currency === 'USD' ? 1 : EXCHANGE_RATE_REFERENCE;
 
   useEffect(() => {
     if (selectedCompany) {
