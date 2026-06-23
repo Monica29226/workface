@@ -29,65 +29,9 @@ const formatUSD = (amount: number): string => {
   return `$${Math.round(amount).toLocaleString('en-US')}`;
 };
 
-// Check if company is Horizonte Positivo (uses USD)
-const isHorizontePositivo = (companyName: string | undefined): boolean => {
-  if (!companyName) return false;
-  return /horizonte\s*positivo/i.test(companyName);
-};
-
-// CCSS rate for standard companies
-const CCSS_RATE = 0.1083;
-
-// ISR 2026 brackets - returns breakdown per bracket
-interface ISRBreakdown {
-  total: number;
-  isr_10: number;
-  isr_15: number;
-  isr_20: number;
-  isr_25: number;
-}
-
-const calculateISRWithBreakdown = (baseImponible: number): ISRBreakdown => {
-  let remaining = baseImponible;
-  let isr_10 = 0;
-  let isr_15 = 0;
-  let isr_20 = 0;
-  let isr_25 = 0;
-
-  // Bracket 25%: > ₡4,727,000
-  if (remaining > 4727000) {
-    isr_25 = (remaining - 4727000) * 0.25;
-    remaining = 4727000;
-  }
-  // Bracket 20%: ₡2,364,000 - ₡4,727,000
-  if (remaining > 2364000) {
-    isr_20 = (remaining - 2364000) * 0.20;
-    remaining = 2364000;
-  }
-  // Bracket 15%: ₡1,347,000 - ₡2,364,000
-  if (remaining > 1347000) {
-    isr_15 = (remaining - 1347000) * 0.15;
-    remaining = 1347000;
-  }
-  // Bracket 10%: ₡918,000 - ₡1,347,000
-  if (remaining > 918000) {
-    isr_10 = (remaining - 918000) * 0.10;
-  }
-  // 0% for first ₡918,000
-
-  return {
-    total: Math.round(isr_10 + isr_15 + isr_20 + isr_25),
-    isr_10: Math.round(isr_10),
-    isr_15: Math.round(isr_15),
-    isr_20: Math.round(isr_20),
-    isr_25: Math.round(isr_25),
-  };
-};
-
-// Legacy function for backward compatibility
-const calculateISR = (baseImponible: number): number => {
-  return calculateISRWithBreakdown(baseImponible).total;
-};
+// NOTE: la fórmula canónica de deducciones vive en src/lib/payrollDeductions.ts
+// (CCSS sobre BRUTO usando ccss_obrero_total, ISR sobre BRUTO).
+// NO duplicar tarifas hardcodeadas aquí.
 
 interface DeductionsDetail {
   ccss_obrero?: number;
