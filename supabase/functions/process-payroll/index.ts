@@ -206,7 +206,7 @@ serve(async (req) => {
       magisterio_rate: companyParams?.magisterio_rate || 0,
       poliza_vida_fija: companyParams?.poliza_vida_fija || 0,
       ccss_obrero_education: companyParams?.ccss_obrero_education || 6.70,
-      ccss_obrero_total: companyParams?.ccss_obrero_total || 10.83,
+      ccss_obrero_total: companyParams?.ccss_obrero_total || 10.67,
       ccss_patronal_total: companyParams?.ccss_patronal_total || 26.67,
       ina_rate: companyParams?.ina_rate || 1.50,
       imas_rate: companyParams?.imas_rate || 0.50,
