@@ -127,20 +127,37 @@ interface DeductionsCalc {
   faltaPorPagar: number;
 }
 
-function calculateDeductions(grossSalary: number, adelanto: number, originalDetail: DeductionsDetail | null): DeductionsCalc {
-  const baseImponible = grossSalary;
-  const ccss = Math.round(baseImponible * CCSS_RATE);
-  const baseParaISR = baseImponible - ccss;
-  const isrBreakdown = calculateISRWithBreakdown(baseParaISR);
-  
-  // Include other deductions from original detail (loans, etc.)
-  const otros = originalDetail?.loan_deduction || 0;
-  
-  const totalDeductions = ccss + isrBreakdown.total + otros;
-  const netPay = grossSalary - totalDeductions;
+function calculateDeductions(
+  grossSalary: number,
+  adelanto: number,
+  originalDetail: DeductionsDetail | null,
+  companyParams: PayrollCompanyParams | null,
+): DeductionsCalc {
+  const loan = Number(originalDetail?.loan_deduction || 0);
+  const calc = calculatePayrollDeductions({
+    grossSalary,
+    params: companyParams,
+    loanDeduction: loan,
+  });
+
+  // "otros" engloba todo lo que no es CCSS/ISR (préstamos, magisterio, póliza)
+  const otros = calc.magisterio + calc.polizaVida + calc.loan;
+  const totalDeductions = calc.totalDeducciones;
+  const netPay = calc.netPay;
   const faltaPorPagar = netPay - adelanto;
-  
-  return { ccss, isr: isrBreakdown.total, isrBreakdown, otros, totalDeductions, netPay, faltaPorPagar };
+
+  return {
+    ccss: calc.ccssObrero,
+    ccssLabel: calc.ccssLabel,
+    isr: calc.isr,
+    isrBreakdown: calc.isrBreakdown,
+    otros,
+    magisterio: calc.magisterio,
+    polizaVida: calc.polizaVida,
+    totalDeductions,
+    netPay,
+    faltaPorPagar,
+  };
 }
 
 // Editable Employee Card Component
