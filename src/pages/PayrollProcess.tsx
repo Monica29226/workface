@@ -277,19 +277,6 @@ export function PayrollProcess() {
       });
 
 
-    setIsProcessing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-payslips', {
-        body: { batchId: selectedBatch },
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Colillas generadas",
-        description: data.message,
-      });
-
       fetchBatches();
     } catch (error: any) {
       console.error('Error generating payslips:', error);
