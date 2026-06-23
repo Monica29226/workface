@@ -231,20 +231,27 @@ export function calcularCesantia(params: LiquidacionParams): {
 }
 
 /**
- * Calcula vacaciones proporcionales
- * 1 día de vacaciones por cada mes trabajado (mínimo 50 semanas)
+ * Calcula vacaciones a pagar al liquidar.
+ *
+ * Prioridad:
+ *  1. Si se proveen `diasVacacionesPendientes` (saldo real de employee_vacations),
+ *     se paga ese saldo pendiente.
+ *  2. Caso contrario, se calcula proporcional por meses del ÚLTIMO PERIODO de
+ *     vacaciones (últimos 12 meses, o desde la fecha de ingreso si es más reciente).
+ *
+ * Requiere mínimo 50 semanas de servicio para tener derecho.
  */
 export function calcularVacaciones(params: LiquidacionParams): {
   monto: number;
   dias: number;
   detalle: string;
 } {
-  const { fechaIngreso, fechaSalida, salarioPromedio } = params;
-  
+  const { fechaIngreso, fechaSalida, salarioPromedio, diasVacacionesPendientes } = params;
+
   const tiempo = calcularTiempoTrabajado(fechaIngreso, fechaSalida);
   const semanas = Math.floor(tiempo.dias / 7);
-  
-  // Se requiere mínimo 50 semanas laboradas para tener derecho a vacaciones
+  const salarioDiario = salarioPromedio / 30;
+
   if (semanas < 50) {
     return {
       monto: 0,
@@ -252,47 +259,71 @@ export function calcularVacaciones(params: LiquidacionParams): {
       detalle: 'No aplica (menos de 50 semanas laboradas)'
     };
   }
-  
-  // 1 día de vacaciones por cada mes trabajado
-  const mesesCompletos = tiempo.mesesTotales;
-  const diasVacaciones = mesesCompletos;
-  
-  const salarioDiario = salarioPromedio / 30;
-  const monto = salarioDiario * diasVacaciones;
-  
+
+  // 1) Usar saldo pendiente real si está disponible
+  if (typeof diasVacacionesPendientes === 'number' && diasVacacionesPendientes > 0) {
+    const dias = Math.round(diasVacacionesPendientes * 100) / 100;
+    return {
+      monto: salarioDiario * dias,
+      dias,
+      detalle: `${dias} días pendientes (saldo no disfrutado del año en curso)`
+    };
+  }
+
+  // 2) Proporcional por meses del último periodo (últimos 12 meses)
+  const inicioUltimoPeriodo = new Date(
+    fechaSalida.getFullYear() - 1,
+    fechaSalida.getMonth(),
+    fechaSalida.getDate()
+  );
+  const fechaInicial = fechaIngreso > inicioUltimoPeriodo ? fechaIngreso : inicioUltimoPeriodo;
+  const tiempoPeriodo = calcularTiempoTrabajado(fechaInicial, fechaSalida);
+  const mesesPeriodo = Math.min(tiempoPeriodo.mesesTotales, 12);
+  const diasVacaciones = mesesPeriodo; // 1 día por mes del último periodo
+
   return {
-    monto,
+    monto: salarioDiario * diasVacaciones,
     dias: diasVacaciones,
-    detalle: `${diasVacaciones} días (1 día x ${mesesCompletos} meses)`
+    detalle: `${diasVacaciones} días proporcionales (1 día × ${mesesPeriodo} meses del último periodo)`
   };
 }
 
 /**
- * Calcula aguinaldo proporcional
- * 1/12 del salario por cada mes trabajado en el año
+ * Calcula aguinaldo proporcional según Ley 2412.
+ *
+ * En Costa Rica el periodo de aguinaldo va del 1 de DICIEMBRE del año anterior
+ * al 30 de NOVIEMBRE del año en curso. Al liquidar, se cuenta desde el inicio
+ * de ese periodo (o la fecha de ingreso si es más reciente) hasta la fecha de
+ * salida.
+ *
+ * Monto = (salario promedio mensual / 12) × meses dentro del periodo.
  */
 export function calcularAguinaldo(params: LiquidacionParams): {
   monto: number;
   detalle: string;
 } {
   const { fechaIngreso, fechaSalida, salarioPromedio } = params;
-  
-  // Calcular meses trabajados en el año actual de la fecha de salida
+
+  // Periodo de aguinaldo: 1-dic del año anterior a la fecha de salida hasta la fecha de salida.
+  // Si la salida es en diciembre, el periodo arranca el 1-dic del MISMO año.
   const añoSalida = fechaSalida.getFullYear();
-  const inicioAño = new Date(añoSalida, 0, 1);
-  
-  // Fecha inicial: la mayor entre fecha de ingreso e inicio del año
-  const fechaInicial = fechaIngreso > inicioAño ? fechaIngreso : inicioAño;
-  
+  const mesSalida = fechaSalida.getMonth(); // 0 = enero
+  const añoInicioPeriodo = mesSalida === 11 ? añoSalida : añoSalida - 1;
+  const inicioPeriodo = new Date(añoInicioPeriodo, 11, 1); // 1 de diciembre
+
+  // Si el empleado ingresó después del 1-dic, ese es el punto de partida.
+  const fechaInicial = fechaIngreso > inicioPeriodo ? fechaIngreso : inicioPeriodo;
+
   const tiempo = calcularTiempoTrabajado(fechaInicial, fechaSalida);
   const meses = Math.min(tiempo.mesesTotales, 12);
-  
-  // Aguinaldo = (salario promedio / 12) * meses trabajados en el año
+
   const monto = (salarioPromedio / 12) * meses;
-  
+  const inicioStr = inicioPeriodo.toLocaleDateString('es-CR');
+  const finStr = fechaSalida.toLocaleDateString('es-CR');
+
   return {
     monto,
-    detalle: `Proporcional por ${meses} meses del año ${añoSalida}`
+    detalle: `Proporcional por ${meses} meses (periodo ${inicioStr} → ${finStr})`
   };
 }
 
