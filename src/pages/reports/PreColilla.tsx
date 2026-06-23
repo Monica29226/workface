@@ -606,7 +606,8 @@ function PayrollDetailModal({
   periodLabel,
   onDownloadPDF,
   isDownloading,
-  t
+  t,
+  companyParams,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -616,18 +617,21 @@ function PayrollDetailModal({
   onDownloadPDF: () => void;
   isDownloading: boolean;
   t: (key: string) => string;
+  companyParams: PayrollCompanyParams | null;
 }) {
   if (!line) return null;
 
   const detail = line.deductions_detail || {};
   const adelanto = Number(line.additional_deductions) || 0;
-  const calculations = calculateDeductions(Number(line.gross_salary), adelanto, detail);
+  const calculations = calculateDeductions(Number(line.gross_salary), adelanto, detail, companyParams);
 
-  // Build deductions list from detail with translations
+  // Build deductions list from canonical breakdown
   const deductionItems = [
-    { code: 'ccss', label: 'CCSS (10.83%)', amount: calculations.ccss },
+    { code: 'ccss', label: calculations.ccssLabel, amount: calculations.ccss },
+    ...(calculations.magisterio > 0 ? [{ code: 'magisterio', label: 'Magisterio', amount: calculations.magisterio }] : []),
+    ...(calculations.polizaVida > 0 ? [{ code: 'poliza', label: 'Póliza de Vida', amount: calculations.polizaVida }] : []),
     ...(calculations.isr > 0 ? [{ code: 'isr', label: 'ISR', amount: calculations.isr }] : []),
-    ...(calculations.otros > 0 ? [{ code: 'otros', label: 'Préstamos', amount: calculations.otros }] : []),
+    ...((detail.loan_deduction || 0) > 0 ? [{ code: 'loan', label: 'Préstamos', amount: Number(detail.loan_deduction) }] : []),
   ].filter(item => item.amount > 0);
 
   return (
