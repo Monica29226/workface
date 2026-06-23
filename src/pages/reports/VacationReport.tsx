@@ -171,10 +171,40 @@ export function VacationReport() {
             Control de días acumulados, disfrutados y pendientes
           </p>
         </div>
-        <Button variant="outline">
-          <FileSpreadsheet className="h-4 w-4 mr-2" />
-          Exportar Excel
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              if (!selectedCompany?.id) return;
+              try {
+                const { data, error } = await (supabase.rpc as any)("recalculate_vacation_accruals", {
+                  p_company_id: selectedCompany.id,
+                  p_year: selectedYear,
+                  p_employee_id: null,
+                });
+                if (error) throw error;
+                toast({
+                  title: "Saldos recalculados",
+                  description: `${data ?? 0} colaboradores actualizados.`,
+                });
+                loadVacationData();
+              } catch (err: any) {
+                toast({
+                  title: "Error al recalcular",
+                  description: err?.message ?? "No se pudo recalcular",
+                  variant: "destructive",
+                });
+              }
+            }}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Recalcular saldos
+          </Button>
+          <Button variant="outline">
+            <FileSpreadsheet className="h-4 w-4 mr-2" />
+            Exportar Excel
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
