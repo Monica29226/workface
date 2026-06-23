@@ -768,18 +768,14 @@ export function PreNomina() {
               <CardTitle className="text-base">Resumen de Deducciones</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                 <div>
-                  <div className="text-muted-foreground">CCSS ({companyParams?.ccss_obrero_total || 10.83}%)</div>
+                  <div className="text-muted-foreground">CCSS + B. Popular ({companyParams?.ccss_obrero_total || 10.67}%)</div>
                   <div className="font-semibold text-destructive">₡{formatNumber(Math.round(totals?.ccss || 0))}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">ISR</div>
                   <div className="font-semibold text-destructive">₡{formatNumber(Math.round(totals?.isr || 0))}</div>
-                </div>
-                <div>
-                  <div className="text-muted-foreground">Banco Popular (1%)</div>
-                  <div className="font-semibold text-destructive">₡{formatNumber(Math.round(totals?.bancoPopular || 0))}</div>
                 </div>
                 <div>
                   <div className="text-muted-foreground">Préstamos</div>
@@ -794,6 +790,7 @@ export function PreNomina() {
                   <div className="font-semibold text-destructive">₡{formatNumber(Math.round(totals?.otherDeductions || 0))}</div>
                 </div>
               </div>
+
             </CardContent>
           </Card>
 
