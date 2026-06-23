@@ -553,6 +553,17 @@ export function Liquidations() {
                     <span className="text-muted-foreground">Salario Base:</span>
                     <p className="font-medium">{formatCurrency(selectedEmployeeData.base_salary, 'CRC')}</p>
                   </div>
+                  {salaryInfo && (
+                    <div className="col-span-2">
+                      <span className="text-muted-foreground">
+                        {salaryInfo.usedFallback
+                          ? 'Salario usado en cálculo (sin historial de planilla):'
+                          : `Salario promedio usado (últimos ${salaryInfo.monthsUsed} mes${salaryInfo.monthsUsed === 1 ? '' : 'es'}):`}
+                      </span>
+                      <p className="font-semibold text-primary">{formatCurrency(salaryInfo.amount, 'CRC')}</p>
+                    </div>
+                  )}
+
                 </div>
               </div>
 
