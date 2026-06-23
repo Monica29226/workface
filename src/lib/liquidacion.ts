@@ -144,16 +144,19 @@ export function calcularCesantia(params: LiquidacionParams): {
   desglose?: { año: number; dias: number; monto: number }[];
 } {
   const { fechaIngreso, fechaSalida, salarioPromedio, motivoSalida } = params;
-  
-  // La cesantía aplica en despido CON responsabilidad patronal (sin justa causa del trabajador)
-  // El nombre del motivo es confuso pero "despido_sin_responsabilidad" significa despido donde 
-  // el TRABAJADOR no tiene responsabilidad (o sea, despido sin justa causa = con responsabilidad patronal)
+
+  // La cesantía SOLO se paga cuando hay responsabilidad patronal, es decir,
+  // cuando el despido es SIN justa causa del trabajador.
+  // En este sistema ese caso se modela con el valor 'despido_sin_responsabilidad'
+  // (significa: el trabajador NO tiene responsabilidad → SÍ hay responsabilidad patronal).
+  // - 'despido_con_responsabilidad' = despido con justa causa (falta del trabajador) → NO paga
+  // - 'renuncia' = renuncia voluntaria → NO paga
   if (motivoSalida !== 'despido_sin_responsabilidad') {
     return {
       monto: 0,
       dias: 0,
-      detalle: motivoSalida === 'renuncia' 
-        ? 'No aplica (renuncia voluntaria)' 
+      detalle: motivoSalida === 'renuncia'
+        ? 'No aplica (renuncia voluntaria)'
         : 'No aplica (despido con justa causa)'
     };
   }
