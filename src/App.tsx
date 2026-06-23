@@ -91,12 +91,9 @@ const App = () => (
                     <Route path="/employees" element={<Employees />} />
                     <Route path="/projects" element={<Projects />} />
                     <Route path="/contracts" element={<Contracts />} />
-                    <Route path="/timesheets" element={<Timesheets />} />
                     <Route path="/payroll-process" element={<PayrollProcess />} />
                     <Route path="/payslips" element={<Payslips />} />
                     <Route path="/cost-centers" element={<CostCenters />} />
-                    <Route path="/liquidaciones" element={<Liquidations />} />
-                    <Route path="/horas-proyecto" element={<HorasProyecto />} />
                     <Route path="/liquidations" element={<Liquidations />} />
                     <Route path="/reports/vacations" element={<VacationReport />} />
                     <Route path="/reports/pre-nomina" element={<PreNomina />} />
@@ -113,7 +110,6 @@ const App = () => (
                     <Route path="/email-bitacora" element={<EmailBitacora />} />
                     <Route path="/settings/parameters" element={<Parameters />} />
                     <Route path="/settings/payslip" element={<PayslipSettings />} />
-                    <Route path="/settings/admin" element={<div className="p-6 text-center text-muted-foreground">Administración - En desarrollo</div>} />
                     <Route path="/company-selector" element={<CompanySelector />} />
                   </Route>
                   <Route path="/404" element={<NotFound />} />
