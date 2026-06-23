@@ -842,7 +842,7 @@ export function PreColilla() {
         .from("payroll_batches")
         .select("*")
         .eq("company_id", selectedCompany.id)
-        .in("status", ["aprobado", "autorizado", "calculado"])
+        .in("status", ["aprobado", "calculado", "enviado"])
         .order("period_end", { ascending: false });
 
       if (error) throw error;
