@@ -1101,10 +1101,10 @@ export function PreColilla() {
             </SelectContent>
           </Select>
 
-          {currentBatch?.status === 'autorizado' && (
+          {currentBatch?.status === 'aprobado' && (
             <Button onClick={handleApproveAndSend} className="gap-2 bg-green-600 hover:bg-green-700 w-full sm:w-auto">
               <Send className="h-4 w-4" />
-              {t('common.send_payslips')}
+              Generar y enviar colillas
             </Button>
           )}
         </div>
