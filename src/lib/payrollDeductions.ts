@@ -40,19 +40,23 @@ export interface PayrollCompanyParams {
 }
 
 export interface ISRBreakdown {
-  total: number;
+  total: number;       // ISR neto (después de crédito fiscal) — alias de isr_neto
   isr_10: number;
   isr_15: number;
   isr_20: number;
   isr_25: number;
+  isr_bruto: number;   // antes del crédito fiscal
+  isr_credito: number; // crédito fiscal aplicado
+  isr_neto: number;    // = max(0, isr_bruto - isr_credito)
 }
 
 export interface DeductionLineItem {
   code: string;
   label: string;
-  rate?: number;     // porcentaje (ej. 10.67)
-  amount: number;    // monto en CRC
+  rate?: number;
+  amount: number;
 }
+
 
 export interface DeductionsResult {
   baseImponible: number;
@@ -75,9 +79,10 @@ export interface DeductionsInput {
   params: PayrollCompanyParams | null | undefined;
   loanDeduction?: number;     // préstamos del periodo
   additionalDeductions?: number; // otros descuentos puntuales
+  taxCredit?: number;         // crédito fiscal mensual (CRC) — hijos + cónyuge
 }
 
-function calcISR(base: number, p: PayrollCompanyParams): ISRBreakdown {
+function calcISR(base: number, p: PayrollCompanyParams, taxCredit: number): ISRBreakdown {
   const b1 = Number(p.renta_bracket_1_limit ?? 918000);
   const b2 = Number(p.renta_bracket_2_limit ?? 1347000);
   const b3 = Number(p.renta_bracket_3_limit ?? 2364000);
@@ -93,27 +98,35 @@ function calcISR(base: number, p: PayrollCompanyParams): ISRBreakdown {
   if (base > b3) isr_20 = (Math.min(base, b4) - b3) * r4;
   if (base > b4) isr_25 = (base - b4) * r5;
 
+  const bruto = Math.round(isr_10 + isr_15 + isr_20 + isr_25);
+  const credito = Math.min(Math.max(0, Math.round(taxCredit)), bruto);
+  const neto = Math.max(0, bruto - credito);
+
   return {
     isr_10: Math.round(isr_10),
     isr_15: Math.round(isr_15),
     isr_20: Math.round(isr_20),
     isr_25: Math.round(isr_25),
-    total: Math.round(isr_10 + isr_15 + isr_20 + isr_25),
+    isr_bruto: bruto,
+    isr_credito: credito,
+    isr_neto: neto,
+    total: neto,
   };
 }
 
 /**
  * Función canónica única. NO usar otra fórmula en el frontend.
+ * ISR neto = max(0, ISR por tramos − crédito fiscal mensual).
  */
 export function calculatePayrollDeductions(input: DeductionsInput): DeductionsResult {
   const gross = Math.max(0, Number(input.grossSalary) || 0);
   const loan = Math.max(0, Number(input.loanDeduction) || 0);
   const additional = Math.max(0, Number(input.additionalDeductions) || 0);
+  const taxCredit = Math.max(0, Number(input.taxCredit) || 0);
   const p: PayrollCompanyParams = input.params ?? {};
 
   const isEducation = !!p.is_education_sector;
 
-  // CCSS obrero
   const ccssRate = isEducation
     ? Number(p.ccss_obrero_education ?? 6.7)
     : Number(p.ccss_obrero_total ?? 10.67);
@@ -122,14 +135,13 @@ export function calculatePayrollDeductions(input: DeductionsInput): DeductionsRe
     ? `CCSS Educación (${ccssRate}%)`
     : `CCSS + B. Popular (${ccssRate}%)`;
 
-  // Magisterio + Póliza (solo educación)
   const magisterioRate = isEducation ? Number(p.magisterio_rate ?? 0) : 0;
   const magisterio = Math.round(gross * (magisterioRate / 100));
   const polizaVida = isEducation ? Number(p.poliza_vida_fija ?? 0) : 0;
 
-  // ISR — sobre el BRUTO
-  const isrBreakdown = calcISR(gross, p);
-  const isr = isrBreakdown.total;
+  // ISR — sobre el BRUTO, con crédito fiscal aplicado
+  const isrBreakdown = calcISR(gross, p, taxCredit);
+  const isr = isrBreakdown.isr_neto;
 
   const items: DeductionLineItem[] = [
     { code: 'ccss_obrero', label: ccssLabel, rate: ccssRate, amount: ccssObrero },
@@ -159,3 +171,4 @@ export function calculatePayrollDeductions(input: DeductionsInput): DeductionsRe
     netPay,
   };
 }
+

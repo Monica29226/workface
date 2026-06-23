@@ -1,0 +1,2 @@
+ALTER TABLE public.employees ADD COLUMN IF NOT EXISTS tax_credit_monthly numeric NOT NULL DEFAULT 0;
+COMMENT ON COLUMN public.employees.tax_credit_monthly IS 'Crédito fiscal mensual (Costa Rica). Hijos ₡1,750 c/u + cónyuge ₡2,650. Se resta del ISR calculado por tramos (no baja de 0).';

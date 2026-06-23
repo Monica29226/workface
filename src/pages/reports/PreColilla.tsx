@@ -80,7 +80,9 @@ interface PayrollLine {
     employee_id: string;
     work_email: string;
     hire_date: string;
+    tax_credit_monthly?: number;
   };
+
   cost_center?: {
     name: string;
     code: string;
@@ -135,15 +137,16 @@ function calculateDeductions(
   adelanto: number,
   originalDetail: DeductionsDetail | null,
   companyParams: PayrollCompanyParams | null,
+  taxCredit: number = 0,
 ): DeductionsCalc {
   const loan = Number(originalDetail?.loan_deduction || 0);
   const calc = calculatePayrollDeductions({
     grossSalary,
     params: companyParams,
     loanDeduction: loan,
+    taxCredit,
   });
 
-  // "otros" engloba todo lo que no es CCSS/ISR (préstamos, magisterio, póliza)
   const otros = calc.magisterio + calc.polizaVida + calc.loan;
   const totalDeductions = calc.totalDeducciones;
   const netPay = calc.netPay;
@@ -162,6 +165,7 @@ function calculateDeductions(
     faltaPorPagar,
   };
 }
+
 
 // Editable Employee Card Component
 function EditableEmployeeCard({ 
@@ -183,16 +187,17 @@ function EditableEmployeeCard({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   
-  // Currency formatter based on company type
+  // Dual-currency renderer: USD principal + CRC equivalente debajo (estilo Excel HP)
   const formatAmount = (amountCRC: number): string => {
     if (isUSD && exchangeRate > 0) {
       return formatUSD(amountCRC / exchangeRate);
     }
     return formatCRC(amountCRC);
   };
-  
-  // Get currency symbol
+  const formatAmountCRCEquivalent = (amountCRC: number): string => formatCRC(amountCRC);
+
   const currencySymbol = isUSD ? '$' : '₡';
+
   
   // Get existing overtime and double hours amounts
   const existingOvertimeAmount = Number(line.overtime_hours || 0) > 0 
@@ -224,7 +229,7 @@ function EditableEmployeeCard({
   
   // Calculate real-time deductions
   const calculations = useMemo(() => {
-    return calculateDeductions(grossSalary, values.adelanto, line.deductions_detail, companyParams);
+    return calculateDeductions(grossSalary, values.adelanto, line.deductions_detail, companyParams, Number(line.employee?.tax_credit_monthly || 0));
   }, [grossSalary, values.adelanto, line.deductions_detail, companyParams]);
   
   const handleBaseSalaryChange = (value: string) => {
@@ -380,10 +385,16 @@ function EditableEmployeeCard({
                 />
               </div>
             ) : (
-              <span className="font-mono text-base font-medium text-foreground tabular-nums">
-                {formatAmount(values.baseSalary)}
-              </span>
+              <div className="flex flex-col items-end">
+                <span className="font-mono text-base font-medium text-foreground tabular-nums">
+                  {formatAmount(values.baseSalary)}
+                </span>
+                {isUSD && (
+                  <span className="font-mono text-[10px] text-muted-foreground">≈ {formatAmountCRCEquivalent(values.baseSalary)}</span>
+                )}
+              </div>
             )}
+
           </div>
 
           {/* Horas Extra 1.5× - Editable Field */}
@@ -457,10 +468,16 @@ function EditableEmployeeCard({
           {/* Gross Salary Total */}
           <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg border-2 border-dashed">
             <Badge variant="secondary" className="text-xs font-normal">{t('payroll.gross')}</Badge>
-            <span className="font-mono text-lg font-bold text-foreground tabular-nums">
-              {formatAmount(grossSalary)}
-            </span>
+            <div className="flex flex-col items-end">
+              <span className="font-mono text-lg font-bold text-foreground tabular-nums">
+                {formatAmount(grossSalary)}
+              </span>
+              {isUSD && (
+                <span className="font-mono text-[10px] text-muted-foreground">≈ {formatAmountCRCEquivalent(grossSalary)}</span>
+              )}
+            </div>
           </div>
+
 
           {/* Adelanto de Salario - Editable Field */}
           <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${isEditing ? 'bg-amber-50 border border-amber-200' : 'bg-amber-50/50'}`}>
@@ -498,9 +515,10 @@ function EditableEmployeeCard({
           {/* Deductions Breakdown with ISR Tramos */}
           <div className="bg-destructive/5 rounded-lg p-3 space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">CCSS (10.83%)</span>
+              <span className="text-muted-foreground">{calculations.ccssLabel}</span>
               <span className="font-mono text-destructive">-{formatAmount(calculations.ccss)}</span>
             </div>
+
             
             {/* ISR Breakdown by Brackets */}
             {calculations.isr > 0 && (
@@ -546,18 +564,28 @@ function EditableEmployeeCard({
               <Badge variant="outline" className="text-xs font-normal text-destructive border-destructive/20">
                 Total Deducciones
               </Badge>
-              <span className="font-mono text-base font-medium text-destructive tabular-nums">
-                -{formatAmount(calculations.totalDeductions)}
-              </span>
+              <div className="flex flex-col items-end">
+                <span className="font-mono text-base font-medium text-destructive tabular-nums">
+                  -{formatAmount(calculations.totalDeductions)}
+                </span>
+                {isUSD && (
+                  <span className="font-mono text-[10px] text-muted-foreground">≈ -{formatAmountCRCEquivalent(calculations.totalDeductions)}</span>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Net Pay */}
           <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg border">
             <Badge variant="secondary" className="text-xs font-normal">Total a Recibir</Badge>
-            <span className="font-mono text-lg font-semibold text-foreground tabular-nums">
-              {formatAmount(calculations.netPay)}
-            </span>
+            <div className="flex flex-col items-end">
+              <span className="font-mono text-lg font-semibold text-foreground tabular-nums">
+                {formatAmount(calculations.netPay)}
+              </span>
+              {isUSD && (
+                <span className="font-mono text-[10px] text-muted-foreground">≈ {formatAmountCRCEquivalent(calculations.netPay)}</span>
+              )}
+            </div>
           </div>
 
           {/* Adelanto Recibido Display */}
@@ -578,11 +606,17 @@ function EditableEmployeeCard({
               <Badge className="text-xs font-bold bg-white/20 text-white hover:bg-white/20">
                 = FALTA POR PAGAR
               </Badge>
-              <span className="font-mono text-xl font-bold text-white tabular-nums">
-                {formatAmount(calculations.faltaPorPagar)}
-              </span>
+              <div className="flex flex-col items-end">
+                <span className="font-mono text-xl font-bold text-white tabular-nums">
+                  {formatAmount(calculations.faltaPorPagar)}
+                </span>
+                {isUSD && (
+                  <span className="font-mono text-[10px] text-white/70">≈ {formatAmountCRCEquivalent(calculations.faltaPorPagar)}</span>
+                )}
+              </div>
             </div>
           </div>
+
         </div>
 
         {/* Real-time calculation indicator */}
@@ -623,7 +657,7 @@ function PayrollDetailModal({
 
   const detail = line.deductions_detail || {};
   const adelanto = Number(line.additional_deductions) || 0;
-  const calculations = calculateDeductions(Number(line.gross_salary), adelanto, detail, companyParams);
+  const calculations = calculateDeductions(Number(line.gross_salary), adelanto, detail, companyParams, Number(line.employee?.tax_credit_monthly || 0));
 
   // Build deductions list from canonical breakdown
   const deductionItems = [
@@ -843,8 +877,9 @@ export function PreColilla() {
         .from("payroll_lines")
         .select(`
           *,
-          employee:employees!inner(id, employee_id, full_name, work_email, hire_date),
+          employee:employees!inner(id, employee_id, full_name, work_email, hire_date, tax_credit_monthly),
           cost_center:cost_centers(name, code)
+
         `)
         .eq("batch_id", selectedBatchId)
         .order("employee(full_name)");
@@ -1042,7 +1077,7 @@ export function PreColilla() {
     if (!payrollLines) return { gross: 0, deductions: 0, net: 0, adelantos: 0, faltaPorPagar: 0 };
     return payrollLines.reduce((acc, line) => {
       const adelanto = Number(line.additional_deductions) || 0;
-      const calc = calculateDeductions(Number(line.gross_salary), adelanto, line.deductions_detail, companyParams);
+      const calc = calculateDeductions(Number(line.gross_salary), adelanto, line.deductions_detail, companyParams, Number(line.employee?.tax_credit_monthly || 0));
       return {
         gross: acc.gross + Number(line.gross_salary),
         deductions: acc.deductions + calc.totalDeductions,

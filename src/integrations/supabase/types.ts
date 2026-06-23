@@ -664,6 +664,7 @@ export type Database = {
           loan_monthly_deduction: number | null
           manager_id: string | null
           status: Database["public"]["Enums"]["employee_status"]
+          tax_credit_monthly: number
           updated_at: string
           user_id: string | null
           vac_balance_days: number | null
@@ -687,6 +688,7 @@ export type Database = {
           loan_monthly_deduction?: number | null
           manager_id?: string | null
           status?: Database["public"]["Enums"]["employee_status"]
+          tax_credit_monthly?: number
           updated_at?: string
           user_id?: string | null
           vac_balance_days?: number | null
@@ -710,6 +712,7 @@ export type Database = {
           loan_monthly_deduction?: number | null
           manager_id?: string | null
           status?: Database["public"]["Enums"]["employee_status"]
+          tax_credit_monthly?: number
           updated_at?: string
           user_id?: string | null
           vac_balance_days?: number | null

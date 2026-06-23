@@ -65,6 +65,8 @@ export function CreatePayrollBatchForm({
   // Other options
   const [copyFromPrevious, setCopyFromPrevious] = useState(false);
   const [previousBatchId, setPreviousBatchId] = useState("");
+  const [manualExchangeRate, setManualExchangeRate] = useState<string>("");
+
   
   const months = [
     "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -141,6 +143,7 @@ export function CreatePayrollBatchForm({
       const payrollType = selectedQuincena === 'primera' ? 'adelanto' : 
                           selectedQuincena === 'segunda' ? 'segunda' : 'completa';
       
+      const manualTC = manualExchangeRate ? parseFloat(manualExchangeRate) : 0;
       const { data, error } = await supabase.functions.invoke('process-payroll', {
         body: {
           companyId,
@@ -149,8 +152,10 @@ export function CreatePayrollBatchForm({
           frequency: 'quincenal',
           payrollType,
           copyFromBatchId: copyFromPrevious ? previousBatchId : undefined,
+          manualExchangeRate: manualTC > 0 ? manualTC : undefined,
         },
       });
+
 
       if (error) throw error;
 
@@ -369,9 +374,22 @@ export function CreatePayrollBatchForm({
           <Alert className="bg-blue-50 border-blue-200">
             <AlertCircle className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-900">
-              El sistema toma automaticamente el tipo de cambio de venta del Banco Central de Costa Rica para la fecha final del periodo.
+              Por defecto se usa el tipo de cambio de venta del BCCR para la fecha final del periodo.
+              Si necesita fijarlo manualmente (por ej. para que coincida con el Excel), ingréselo aquí.
             </AlertDescription>
           </Alert>
+          <div className="grid grid-cols-[1fr_auto] gap-2 items-center max-w-sm">
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Ej. 456.62 (opcional)"
+              value={manualExchangeRate}
+              onChange={(e) => setManualExchangeRate(e.target.value)}
+            />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">CRC / USD</span>
+          </div>
+
         </div>
 
         {/* Copy from previous (optional) */}

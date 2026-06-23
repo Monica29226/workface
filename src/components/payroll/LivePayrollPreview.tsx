@@ -21,6 +21,7 @@ interface LivePayrollPreviewProps {
   currentDeductions: DeductionsDetail | null;
   loanDeduction?: number;
   additionalDeductions?: number;
+  taxCredit?: number;
   payrollType?: string;
   isVisible: boolean;
 }
@@ -34,6 +35,7 @@ export function LivePayrollPreview({
   currentDeductions,
   loanDeduction = 0,
   additionalDeductions = 0,
+  taxCredit = 0,
   payrollType,
   isVisible,
 }: LivePayrollPreviewProps) {
@@ -45,21 +47,20 @@ export function LivePayrollPreview({
     const isCRC = currency === 'CRC';
     const baseImponibleCRC = isCRC ? newGross : newGross * exchangeRate;
 
-    // ÚNICA fuente de verdad — ver src/lib/payrollDeductions.ts
     const calc = calculatePayrollDeductions({
       grossSalary: baseImponibleCRC,
       params: companyParams,
       loanDeduction,
-      additionalDeductions: 0, // additional ya se suma aparte abajo
+      additionalDeductions: 0,
+      taxCredit,
     });
 
-    // Quincenal: 50% de deducciones del mes (póliza fija no se divide)
     const isBiweekly = payrollType === 'adelanto' || payrollType === 'segunda';
     const m = isBiweekly ? 0.5 : 1;
 
     const ccssObrero = calc.ccssObrero * m;
     const magisterio = calc.magisterio * m;
-    const polizaVida = calc.polizaVida; // fija
+    const polizaVida = calc.polizaVida;
     const isr = calc.isr * m;
     const loan = loanDeduction * m;
 
@@ -73,13 +74,16 @@ export function LivePayrollPreview({
       magisterio,
       polizaVida,
       isrNeto: isr,
+      isrBruto: calc.isrBreakdown.isr_bruto * m,
+      isrCredito: calc.isrBreakdown.isr_credito * m,
       totalDeductions,
       netPay,
       netPayUSD: exchangeRate > 0 ? netPay / exchangeRate : 0,
       grossDiff: newGross - currentGross,
       isIncrease: newGross > currentGross,
     };
-  }, [newGross, currentGross, exchangeRate, companyParams, currency, currentDeductions, loanDeduction, additionalDeductions, payrollType]);
+  }, [newGross, currentGross, exchangeRate, companyParams, currency, currentDeductions, loanDeduction, additionalDeductions, taxCredit, payrollType]);
+
 
   if (!isVisible || !preview) {
     return null;
@@ -122,9 +126,15 @@ export function LivePayrollPreview({
             </div>
           )}
           <div className="flex justify-between text-destructive">
-            <span>ISR:</span>
+            <span>ISR{preview.isrCredito > 0 ? ' (neto)' : ''}:</span>
             <span className="font-mono">₡{formatNumber(preview.isrNeto)}</span>
           </div>
+          {preview.isrCredito > 0 && (
+            <div className="flex justify-between text-[10px] text-muted-foreground pl-2">
+              <span>(ISR bruto ₡{formatNumber(preview.isrBruto)} − crédito ₡{formatNumber(preview.isrCredito)})</span>
+            </div>
+          )}
+
           <div className="flex justify-between font-semibold text-destructive pt-1 border-t">
             <span>Total Ded.:</span>
             <span className="font-mono">₡{formatNumber(preview.totalDeductions)}</span>
