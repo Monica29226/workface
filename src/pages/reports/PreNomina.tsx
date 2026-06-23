@@ -847,13 +847,13 @@ export function PreNomina() {
                       const hasStoredDeductions = (detail.ccss_obrero || 0) > 0;
                       const calculatedDed = hasStoredDeductions 
                         ? { 
-                            ccss: detail.ccss_obrero || 0, 
+                            ccss: (detail.ccss_obrero || 0) + (detail.banco_popular || Number(line.lpt_banco_popular) || 0),
                             isr: detail.isr_neto || 0, 
-                            bancoPopular: detail.banco_popular || Number(line.lpt_banco_popular) || 0,
                             loans: detail.loan_deduction || 0,
                             total: Number(line.deductions) || 0
                           }
-                        : calculateRealTimeDeductions(grossSalaryCRC, detail);
+                        : calculateRealTimeDeductions(grossSalaryCRC, detail, companyParams);
+
                       
                       const otrasDeduciones = Number(line.additional_deductions || 0);
                       const totalDeductions = calculatedDed.total + otrasDeduciones;
