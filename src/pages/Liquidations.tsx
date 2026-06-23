@@ -607,7 +607,7 @@ export function Liquidations() {
                       {formatCurrency(resultado.total, 'CRC')}
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      ≈ {formatCurrency(resultado.total / 510.27, 'USD')}
+                      ≈ {formatCurrency(resultado.total / usdRate, 'USD')}
                     </div>
                   </div>
                 </div>
