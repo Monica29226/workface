@@ -118,10 +118,49 @@ export function Liquidations() {
       console.error('No se pudo leer saldo de vacaciones, se usará proporcional:', err);
     }
 
+    // Calcular salario promedio mensual de los últimos 6 meses calendario
+    // (Código de Trabajo CR: liquidación se calcula sobre salario promedio ordinario).
+    let salarioPromedio = empleado.base_salary;
+    let monthsUsed = 0;
+    let usedFallback = true;
+    try {
+      const seisMesesAtras = new Date(fechaSalidaDate);
+      seisMesesAtras.setMonth(seisMesesAtras.getMonth() - 6);
+
+      const { data: lines } = await (supabase as any)
+        .from('payroll_lines')
+        .select('gross_salary, currency, exchange_rate_to_base, payroll_batches!inner(period_start, period_end, company_id)')
+        .eq('employee_id', empleado.id)
+        .eq('payroll_batches.company_id', selectedCompany?.id)
+        .gte('payroll_batches.period_start', seisMesesAtras.toISOString().slice(0, 10))
+        .lt('payroll_batches.period_start', fechaSalidaDate.toISOString().slice(0, 10));
+
+      // Agrupar por YYYY-MM y sumar gross_salary en CRC
+      const byMonth = new Map<string, number>();
+      for (const l of lines || []) {
+        const pStart: string = l.payroll_batches?.period_start;
+        if (!pStart) continue;
+        const ym = pStart.slice(0, 7);
+        const tc = Number(l.exchange_rate_to_base) || 1;
+        const grossCRC = l.currency === 'USD' ? Number(l.gross_salary) * tc : Number(l.gross_salary);
+        byMonth.set(ym, (byMonth.get(ym) || 0) + grossCRC);
+      }
+
+      if (byMonth.size > 0) {
+        const totals = Array.from(byMonth.values());
+        salarioPromedio = totals.reduce((a, b) => a + b, 0) / totals.length;
+        monthsUsed = totals.length;
+        usedFallback = false;
+      }
+    } catch (err) {
+      console.error('No se pudo calcular promedio salarial; se usa base_salary:', err);
+    }
+    setSalaryInfo({ amount: salarioPromedio, monthsUsed, usedFallback });
+
     const result = calcularLiquidacion({
       fechaIngreso,
       fechaSalida: fechaSalidaDate,
-      salarioPromedio: empleado.base_salary,
+      salarioPromedio,
       motivoSalida,
       preavisoTrabajado,
       diasVacacionesPendientes: diasVacacionesPendientes > 0 ? diasVacacionesPendientes : undefined,
@@ -131,9 +170,12 @@ export function Liquidations() {
 
     toast({
       title: "Liquidación calculada",
-      description: "El cálculo se ha realizado exitosamente",
+      description: usedFallback
+        ? "Sin historial de planilla; se usó el salario base."
+        : `Promedio de ${monthsUsed} mes(es) de planilla.`,
     });
   };
+
 
   const selectedEmployeeData = employees.find(e => e.id === selectedEmployee);
 
