@@ -679,13 +679,85 @@ export function Liquidations() {
               <Download className="h-4 w-4" />
               Generar PDF
             </Button>
-            <Button 
+            <Button
               variant="outline"
               className="flex-1 gap-2"
               size="lg"
+              disabled={isSendingEmail || !selectedEmployeeData?.work_email}
+              onClick={async () => {
+                if (!selectedEmployeeData || !resultado) return;
+                if (!selectedEmployeeData.work_email) {
+                  toast({
+                    title: "Sin correo",
+                    description: "El colaborador no tiene correo registrado",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                setIsSendingEmail(true);
+                try {
+                  const row = (concept: string, detail: string, amount: number) => `
+                    <tr>
+                      <td style="padding:8px;border-bottom:1px solid #eee"><strong>${concept}</strong><br/><span style="color:#666;font-size:12px">${detail}</span></td>
+                      <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;font-family:monospace">${formatCurrency(amount, 'CRC')}</td>
+                    </tr>`;
+                  const html = `
+                    <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#0B2B4C">
+                      <h2 style="color:#0B2B4C">Liquidación Laboral</h2>
+                      <p>Hola <strong>${selectedEmployeeData.full_name}</strong>,</p>
+                      <p>Adjuntamos el detalle de su liquidación calculado según el Código de Trabajo de Costa Rica:</p>
+                      <table style="width:100%;border-collapse:collapse;margin-top:12px">
+                        <thead>
+                          <tr style="background:#0B2B4C;color:#fff">
+                            <th style="padding:10px;text-align:left">Concepto</th>
+                            <th style="padding:10px;text-align:right">Monto</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${row('Preaviso', resultado.detalles.preaviso, resultado.preaviso)}
+                          ${row('Cesantía', resultado.detalles.cesantia, resultado.cesantia)}
+                          ${row('Vacaciones', resultado.detalles.vacaciones, resultado.vacaciones)}
+                          ${row('Aguinaldo', resultado.detalles.aguinaldo, resultado.aguinaldo)}
+                          <tr style="background:#F5EFE6">
+                            <td style="padding:10px"><strong>TOTAL A PAGAR</strong></td>
+                            <td style="padding:10px;text-align:right;font-family:monospace;font-size:16px"><strong>${formatCurrency(resultado.total, 'CRC')}</strong></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <p style="margin-top:16px;font-size:12px;color:#666">
+                        Equivalente referencial: ${formatCurrency(resultado.total / usdRate, 'USD')} (TC ${usdRate.toFixed(2)} CRC/USD)
+                      </p>
+                      <p style="margin-top:20px;font-size:12px;color:#888">
+                        ${selectedCompany?.name || ''} · Documento informativo basado en la metodología MTSS.
+                      </p>
+                    </div>`;
+
+                  const { error } = await supabase.functions.invoke('send-email', {
+                    body: {
+                      to: [selectedEmployeeData.work_email],
+                      subject: `Liquidación Laboral - ${selectedEmployeeData.full_name}`,
+                      html,
+                      companyId: selectedCompany?.id,
+                    },
+                  });
+                  if (error) throw error;
+                  toast({
+                    title: "Correo enviado",
+                    description: `Liquidación enviada a ${selectedEmployeeData.work_email}`,
+                  });
+                } catch (err: any) {
+                  toast({
+                    title: "Error al enviar",
+                    description: err?.message ?? "No se pudo enviar el correo",
+                    variant: "destructive",
+                  });
+                } finally {
+                  setIsSendingEmail(false);
+                }
+              }}
             >
               <Mail className="h-4 w-4" />
-              Enviar por Correo
+              {isSendingEmail ? "Enviando..." : "Enviar por Correo"}
             </Button>
           </div>
         </>
