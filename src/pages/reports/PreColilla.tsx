@@ -170,7 +170,8 @@ function EditableEmployeeCard({
   isSaving,
   t,
   isUSD,
-  exchangeRate
+  exchangeRate,
+  companyParams,
 }: { 
   line: PayrollLine;
   onSave: (lineId: string, grossSalary: number, adelanto: number, deductions: number, netPay: number, overtimeHours: number, overtimeAmount: number, doubleHours: number, doubleAmount: number) => void;
@@ -178,6 +179,7 @@ function EditableEmployeeCard({
   t: (key: string) => string;
   isUSD: boolean;
   exchangeRate: number;
+  companyParams: PayrollCompanyParams | null;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   
