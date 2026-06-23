@@ -250,14 +250,14 @@ export function PayrollProcess() {
     }
   };
 
-  const handleAuthorize = async () => {
+  const handleGeneratePayslips = async () => {
     if (!selectedBatch) return;
 
     const currentBatch = batches.find(b => b.id === selectedBatch);
-    if (currentBatch?.status !== 'aprobado') {
+    if (currentBatch?.status !== 'aprobado' && currentBatch?.status !== 'enviado') {
       toast({
         title: "Planilla no aprobada",
-        description: "Debes aprobar la planilla antes de autorizarla",
+        description: "Debes aprobar la planilla antes de generar colillas. Flujo: Calculado → Aprobado → Enviado",
         variant: "destructive",
       });
       return;
@@ -265,45 +265,17 @@ export function PayrollProcess() {
 
     setIsProcessing(true);
     try {
-      // Use type assertion since 'autorizado' was just added to the enum
-      const { error } = await supabase
-        .from('payroll_batches')
-        .update({ status: 'autorizado' as any })
-        .eq('id', selectedBatch);
+      const { data, error } = await supabase.functions.invoke('generate-payslips', {
+        body: { batchId: selectedBatch },
+      });
 
       if (error) throw error;
 
       toast({
-        title: "✓ Planilla autorizada",
-        description: "Ahora puedes generar y enviar las colillas de pago",
+        title: "Colillas generadas",
+        description: data.message,
       });
 
-      fetchBatches();
-      fetchPayrollLines();
-    } catch (error) {
-      console.error('Error authorizing batch:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo autorizar la planilla",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleGeneratePayslips = async () => {
-    if (!selectedBatch) return;
-
-    const currentBatch = batches.find(b => b.id === selectedBatch);
-    if (currentBatch?.status !== 'autorizado') {
-      toast({
-        title: "Planilla no autorizada",
-        description: "Debes autorizar la planilla antes de generar colillas. Flujo: Calculado → Aprobado → Autorizado → Enviado",
-        variant: "destructive",
-      });
-      return;
-    }
 
     setIsProcessing(true);
     try {
