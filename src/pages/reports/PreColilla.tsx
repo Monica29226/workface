@@ -1047,7 +1047,7 @@ export function PreColilla() {
     if (!payrollLines) return { gross: 0, deductions: 0, net: 0, adelantos: 0, faltaPorPagar: 0 };
     return payrollLines.reduce((acc, line) => {
       const adelanto = Number(line.additional_deductions) || 0;
-      const calc = calculateDeductions(Number(line.gross_salary), adelanto, line.deductions_detail, companyParams);
+      const calc = calculateDeductions(Number(line.gross_salary), adelanto, line.deductions_detail, companyParams, Number(line.employee?.tax_credit_monthly || 0));
       return {
         gross: acc.gross + Number(line.gross_salary),
         deductions: acc.deductions + calc.totalDeductions,
