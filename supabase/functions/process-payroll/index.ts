@@ -14,9 +14,11 @@ interface ProcessPayrollRequest {
   periodStart: string;
   periodEnd: string;
   frequency: 'mensual' | 'quincenal' | 'semanal';
-  payrollType?: 'adelanto' | 'segunda' | 'completa';  // For biweekly: adelanto=1st half, segunda=2nd half
+  payrollType?: 'adelanto' | 'segunda' | 'completa';
   copyFromBatchId?: string;
+  manualExchangeRate?: number; // si viene, se usa en vez del BCCR
 }
+
 
 interface CompanyParameters {
   is_education_sector: boolean;
@@ -122,7 +124,8 @@ serve(async (req) => {
       );
     }
 
-    const { companyId, periodStart, periodEnd, frequency, payrollType = 'completa', copyFromBatchId }: ProcessPayrollRequest = await req.json();
+    const { companyId, periodStart, periodEnd, frequency, payrollType = 'completa', copyFromBatchId, manualExchangeRate }: ProcessPayrollRequest = await req.json();
+
     
     // Biweekly payroll: adelanto = 50% net with 50% deductions, segunda = remaining 50%
     const isBiweekly = frequency === 'quincenal';
@@ -290,25 +293,29 @@ serve(async (req) => {
     // ========================================
     const hasUSDEmployees = employees.some(e => e.currency === 'USD');
     let bccrExchangeRate: number | null = null;
-    
-    if (hasUSDEmployees) {
-      console.log('USD employees detected, fetching BCCR exchange rate...');
 
-      // Fetch BCCR rate using period_end date (most recent date in period)
-      const bccrResult = await fetchBCCRExchangeRate(periodEnd);
-      if (bccrResult) {
-        bccrExchangeRate = bccrResult.venta;
-        console.log(`Using BCCR exchange rate: ${bccrExchangeRate} for date ${periodEnd}`);
+    if (hasUSDEmployees) {
+      if (manualExchangeRate && manualExchangeRate > 0) {
+        bccrExchangeRate = Number(manualExchangeRate);
+        console.log(`Using MANUAL exchange rate: ${bccrExchangeRate} CRC/USD`);
       } else {
-        console.error('Could not fetch BCCR rate for USD payroll processing');
-        return new Response(
-          JSON.stringify({
-            error: "No se pudo obtener el tipo de cambio del BCCR para este periodo. La planilla con salarios en USD no puede procesarse sin ese dato oficial."
-          }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        console.log('USD employees detected, fetching BCCR exchange rate...');
+        const bccrResult = await fetchBCCRExchangeRate(periodEnd);
+        if (bccrResult) {
+          bccrExchangeRate = bccrResult.venta;
+          console.log(`Using BCCR exchange rate: ${bccrExchangeRate} for date ${periodEnd}`);
+        } else {
+          console.error('Could not fetch BCCR rate for USD payroll processing');
+          return new Response(
+            JSON.stringify({
+              error: "No se pudo obtener el tipo de cambio del BCCR para este periodo. Indique un tipo de cambio manual o reintente."
+            }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
     }
+
 
     // ========================================
     // DEDUCTION CALCULATION FUNCTIONS
@@ -482,7 +489,12 @@ serve(async (req) => {
       const ccssResult = calculateCCSS(monthlyGrossSalary);
       const magisterioResult = calculateMagisterio(monthlyGrossSalary);
       const polizaVida = calculatePolizaVida();
-      const incomeTax = calculateIncomeTax(monthlyGrossSalary);
+      const incomeTaxBruto = calculateIncomeTax(monthlyGrossSalary);
+      // Crédito fiscal mensual (hijos + cónyuge). Reduce el ISR sin bajar de 0.
+      const monthlyTaxCredit = Math.max(0, Number(employee.tax_credit_monthly || 0));
+      const incomeTaxNetoMonthly = Math.max(0, incomeTaxBruto - monthlyTaxCredit);
+      // 'incomeTax' (variable canónica) ahora es el ISR neto mensual (después del crédito)
+      const incomeTax = incomeTaxNetoMonthly;
       
       // Get loan deduction from employee record (already monthly, apply half for biweekly)
       const monthlyLoanDeduction = Number(employee.loan_monthly_deduction || 0);
@@ -503,7 +515,9 @@ serve(async (req) => {
       const ccssAmount = ccssResult.amount * deductionMultiplier;
       const magisterioAmount = magisterioResult.amount * deductionMultiplier;
       const polizaAmount = polizaVida * deductionMultiplier;
-      const rentaAmount = incomeTax * deductionMultiplier;
+      const rentaBrutoAmount = incomeTaxBruto * deductionMultiplier;
+      const taxCreditAmount = Math.min(monthlyTaxCredit, incomeTaxBruto) * deductionMultiplier;
+      const rentaAmount = incomeTax * deductionMultiplier; // ISR neto
       
       // CCSS Obrero - Always present
       if (ccssAmount > 0) {
@@ -539,7 +553,7 @@ serve(async (req) => {
         });
       }
       
-      // Income Tax (halved for biweekly)
+      // Income Tax NETO (after tax credit, halved for biweekly)
       if (rentaAmount > 0) {
         deductionItems.push({
           code: 'RENTA',
@@ -573,13 +587,26 @@ serve(async (req) => {
       const totalDeductions = ccssAmount + magisterioAmount + polizaAmount + rentaAmount + loanDeduction + additionalDeductions;
       
       // Build the deductions_detail JSON
-      const deductionsDetail: DeductionsDetail = {
+      const deductionsDetail: any = {
         items: deductionItems,
         total_deductions: totalDeductions,
         payroll_type: payrollType,
         is_biweekly: isBiweekly,
-        deduction_multiplier: deductionMultiplier
+        deduction_multiplier: deductionMultiplier,
+        // ISR transparency
+        isr_bruto: rentaBrutoAmount,
+        isr_credito: taxCreditAmount,
+        isr_neto: rentaAmount,
+        tax_credit_monthly: monthlyTaxCredit,
+        // Estandariza nombres usados por el frontend
+        ccss_obrero: ccssAmount,
+        ccss_rate: ccssResult.rate * 100,
+        magisterio: magisterioAmount,
+        poliza_vida: polizaAmount,
+        loan_deduction: loanDeduction,
+        base_imponible_crc: monthlyGrossSalary,
       };
+
       
       // ========================================
       // NET PAY = GROSS - ALL DEDUCTIONS

@@ -80,7 +80,9 @@ interface PayrollLine {
     employee_id: string;
     work_email: string;
     hire_date: string;
+    tax_credit_monthly?: number;
   };
+
   cost_center?: {
     name: string;
     code: string;
@@ -135,15 +137,16 @@ function calculateDeductions(
   adelanto: number,
   originalDetail: DeductionsDetail | null,
   companyParams: PayrollCompanyParams | null,
+  taxCredit: number = 0,
 ): DeductionsCalc {
   const loan = Number(originalDetail?.loan_deduction || 0);
   const calc = calculatePayrollDeductions({
     grossSalary,
     params: companyParams,
     loanDeduction: loan,
+    taxCredit,
   });
 
-  // "otros" engloba todo lo que no es CCSS/ISR (préstamos, magisterio, póliza)
   const otros = calc.magisterio + calc.polizaVida + calc.loan;
   const totalDeductions = calc.totalDeducciones;
   const netPay = calc.netPay;
@@ -162,6 +165,7 @@ function calculateDeductions(
     faltaPorPagar,
   };
 }
+
 
 // Editable Employee Card Component
 function EditableEmployeeCard({ 
@@ -224,7 +228,7 @@ function EditableEmployeeCard({
   
   // Calculate real-time deductions
   const calculations = useMemo(() => {
-    return calculateDeductions(grossSalary, values.adelanto, line.deductions_detail, companyParams);
+    return calculateDeductions(grossSalary, values.adelanto, line.deductions_detail, companyParams, Number(line.employee?.tax_credit_monthly || 0));
   }, [grossSalary, values.adelanto, line.deductions_detail, companyParams]);
   
   const handleBaseSalaryChange = (value: string) => {
@@ -623,7 +627,7 @@ function PayrollDetailModal({
 
   const detail = line.deductions_detail || {};
   const adelanto = Number(line.additional_deductions) || 0;
-  const calculations = calculateDeductions(Number(line.gross_salary), adelanto, detail, companyParams);
+  const calculations = calculateDeductions(Number(line.gross_salary), adelanto, detail, companyParams, Number(line.employee?.tax_credit_monthly || 0));
 
   // Build deductions list from canonical breakdown
   const deductionItems = [
@@ -843,8 +847,9 @@ export function PreColilla() {
         .from("payroll_lines")
         .select(`
           *,
-          employee:employees!inner(id, employee_id, full_name, work_email, hire_date),
+          employee:employees!inner(id, employee_id, full_name, work_email, hire_date, tax_credit_monthly),
           cost_center:cost_centers(name, code)
+
         `)
         .eq("batch_id", selectedBatchId)
         .order("employee(full_name)");
