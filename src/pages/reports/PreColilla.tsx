@@ -13,6 +13,11 @@ import { Loader2, Eye, Search, FileText, Download, Send, Minus, Building2, User,
 import { formatNumber } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { ACLLogo } from "@/components/branding/ACLLogo";
+import {
+  calculatePayrollDeductions,
+  type PayrollCompanyParams,
+  type ISRBreakdown,
+} from "@/lib/payrollDeductions";
 
 // Format CRC without decimals
 const formatCRC = (amount: number): string => {
@@ -24,65 +29,9 @@ const formatUSD = (amount: number): string => {
   return `$${Math.round(amount).toLocaleString('en-US')}`;
 };
 
-// Check if company is Horizonte Positivo (uses USD)
-const isHorizontePositivo = (companyName: string | undefined): boolean => {
-  if (!companyName) return false;
-  return /horizonte\s*positivo/i.test(companyName);
-};
-
-// CCSS rate for standard companies
-const CCSS_RATE = 0.1083;
-
-// ISR 2026 brackets - returns breakdown per bracket
-interface ISRBreakdown {
-  total: number;
-  isr_10: number;
-  isr_15: number;
-  isr_20: number;
-  isr_25: number;
-}
-
-const calculateISRWithBreakdown = (baseImponible: number): ISRBreakdown => {
-  let remaining = baseImponible;
-  let isr_10 = 0;
-  let isr_15 = 0;
-  let isr_20 = 0;
-  let isr_25 = 0;
-
-  // Bracket 25%: > ₡4,727,000
-  if (remaining > 4727000) {
-    isr_25 = (remaining - 4727000) * 0.25;
-    remaining = 4727000;
-  }
-  // Bracket 20%: ₡2,364,000 - ₡4,727,000
-  if (remaining > 2364000) {
-    isr_20 = (remaining - 2364000) * 0.20;
-    remaining = 2364000;
-  }
-  // Bracket 15%: ₡1,347,000 - ₡2,364,000
-  if (remaining > 1347000) {
-    isr_15 = (remaining - 1347000) * 0.15;
-    remaining = 1347000;
-  }
-  // Bracket 10%: ₡918,000 - ₡1,347,000
-  if (remaining > 918000) {
-    isr_10 = (remaining - 918000) * 0.10;
-  }
-  // 0% for first ₡918,000
-
-  return {
-    total: Math.round(isr_10 + isr_15 + isr_20 + isr_25),
-    isr_10: Math.round(isr_10),
-    isr_15: Math.round(isr_15),
-    isr_20: Math.round(isr_20),
-    isr_25: Math.round(isr_25),
-  };
-};
-
-// Legacy function for backward compatibility
-const calculateISR = (baseImponible: number): number => {
-  return calculateISRWithBreakdown(baseImponible).total;
-};
+// NOTE: la fórmula canónica de deducciones vive en src/lib/payrollDeductions.ts
+// (CCSS sobre BRUTO usando ccss_obrero_total, ISR sobre BRUTO).
+// NO duplicar tarifas hardcodeadas aquí.
 
 interface DeductionsDetail {
   ccss_obrero?: number;
@@ -170,28 +119,48 @@ function calculateDoubleHoursAmount(baseSalary: number, horasDobles: number): nu
 // Calculate deductions based on gross salary with ISR breakdown
 interface DeductionsCalc {
   ccss: number;
+  ccssLabel: string;
   isr: number;
   isrBreakdown: ISRBreakdown;
   otros: number;
+  magisterio: number;
+  polizaVida: number;
   totalDeductions: number;
   netPay: number;
   faltaPorPagar: number;
 }
 
-function calculateDeductions(grossSalary: number, adelanto: number, originalDetail: DeductionsDetail | null): DeductionsCalc {
-  const baseImponible = grossSalary;
-  const ccss = Math.round(baseImponible * CCSS_RATE);
-  const baseParaISR = baseImponible - ccss;
-  const isrBreakdown = calculateISRWithBreakdown(baseParaISR);
-  
-  // Include other deductions from original detail (loans, etc.)
-  const otros = originalDetail?.loan_deduction || 0;
-  
-  const totalDeductions = ccss + isrBreakdown.total + otros;
-  const netPay = grossSalary - totalDeductions;
+function calculateDeductions(
+  grossSalary: number,
+  adelanto: number,
+  originalDetail: DeductionsDetail | null,
+  companyParams: PayrollCompanyParams | null,
+): DeductionsCalc {
+  const loan = Number(originalDetail?.loan_deduction || 0);
+  const calc = calculatePayrollDeductions({
+    grossSalary,
+    params: companyParams,
+    loanDeduction: loan,
+  });
+
+  // "otros" engloba todo lo que no es CCSS/ISR (préstamos, magisterio, póliza)
+  const otros = calc.magisterio + calc.polizaVida + calc.loan;
+  const totalDeductions = calc.totalDeducciones;
+  const netPay = calc.netPay;
   const faltaPorPagar = netPay - adelanto;
-  
-  return { ccss, isr: isrBreakdown.total, isrBreakdown, otros, totalDeductions, netPay, faltaPorPagar };
+
+  return {
+    ccss: calc.ccssObrero,
+    ccssLabel: calc.ccssLabel,
+    isr: calc.isr,
+    isrBreakdown: calc.isrBreakdown,
+    otros,
+    magisterio: calc.magisterio,
+    polizaVida: calc.polizaVida,
+    totalDeductions,
+    netPay,
+    faltaPorPagar,
+  };
 }
 
 // Editable Employee Card Component
@@ -201,7 +170,8 @@ function EditableEmployeeCard({
   isSaving,
   t,
   isUSD,
-  exchangeRate
+  exchangeRate,
+  companyParams,
 }: { 
   line: PayrollLine;
   onSave: (lineId: string, grossSalary: number, adelanto: number, deductions: number, netPay: number, overtimeHours: number, overtimeAmount: number, doubleHours: number, doubleAmount: number) => void;
@@ -209,6 +179,7 @@ function EditableEmployeeCard({
   t: (key: string) => string;
   isUSD: boolean;
   exchangeRate: number;
+  companyParams: PayrollCompanyParams | null;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   
@@ -253,8 +224,8 @@ function EditableEmployeeCard({
   
   // Calculate real-time deductions
   const calculations = useMemo(() => {
-    return calculateDeductions(grossSalary, values.adelanto, line.deductions_detail);
-  }, [grossSalary, values.adelanto, line.deductions_detail]);
+    return calculateDeductions(grossSalary, values.adelanto, line.deductions_detail, companyParams);
+  }, [grossSalary, values.adelanto, line.deductions_detail, companyParams]);
   
   const handleBaseSalaryChange = (value: string) => {
     const numValue = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
@@ -635,7 +606,8 @@ function PayrollDetailModal({
   periodLabel,
   onDownloadPDF,
   isDownloading,
-  t
+  t,
+  companyParams,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -645,18 +617,21 @@ function PayrollDetailModal({
   onDownloadPDF: () => void;
   isDownloading: boolean;
   t: (key: string) => string;
+  companyParams: PayrollCompanyParams | null;
 }) {
   if (!line) return null;
 
   const detail = line.deductions_detail || {};
   const adelanto = Number(line.additional_deductions) || 0;
-  const calculations = calculateDeductions(Number(line.gross_salary), adelanto, detail);
+  const calculations = calculateDeductions(Number(line.gross_salary), adelanto, detail, companyParams);
 
-  // Build deductions list from detail with translations
+  // Build deductions list from canonical breakdown
   const deductionItems = [
-    { code: 'ccss', label: 'CCSS (10.83%)', amount: calculations.ccss },
+    { code: 'ccss', label: calculations.ccssLabel, amount: calculations.ccss },
+    ...(calculations.magisterio > 0 ? [{ code: 'magisterio', label: 'Magisterio', amount: calculations.magisterio }] : []),
+    ...(calculations.polizaVida > 0 ? [{ code: 'poliza', label: 'Póliza de Vida', amount: calculations.polizaVida }] : []),
     ...(calculations.isr > 0 ? [{ code: 'isr', label: 'ISR', amount: calculations.isr }] : []),
-    ...(calculations.otros > 0 ? [{ code: 'otros', label: 'Préstamos', amount: calculations.otros }] : []),
+    ...((detail.loan_deduction || 0) > 0 ? [{ code: 'loan', label: 'Préstamos', amount: Number(detail.loan_deduction) }] : []),
   ].filter(item => item.amount > 0);
 
   return (
@@ -882,10 +857,26 @@ export function PreColilla() {
 
   const currentBatch = batches?.find(b => b.id === selectedBatchId);
 
-  // Detect if company is Horizonte Positivo (uses USD)
+  // Fetch company_parameters — fuente única de tarifas
+  const { data: companyParams } = useQuery({
+    queryKey: ["companyParamsPreColilla", selectedCompany?.id],
+    queryFn: async () => {
+      if (!selectedCompany?.id) return null;
+      const { data, error } = await supabase
+        .from("company_parameters")
+        .select("*")
+        .eq("company_id", selectedCompany.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as PayrollCompanyParams | null;
+    },
+    enabled: !!selectedCompany?.id,
+  });
+
+  // Moneda de visualización: por base_currency de la empresa (NO por nombre)
   const isUSD = useMemo(() => {
-    return isHorizontePositivo(selectedCompany?.name);
-  }, [selectedCompany?.name]);
+    return (selectedCompany?.base_currency || 'CRC').toUpperCase() === 'USD';
+  }, [selectedCompany?.base_currency]);
 
   // Get exchange rate from first payroll line or default
   const exchangeRate = useMemo(() => {
@@ -1051,7 +1042,7 @@ export function PreColilla() {
     if (!payrollLines) return { gross: 0, deductions: 0, net: 0, adelantos: 0, faltaPorPagar: 0 };
     return payrollLines.reduce((acc, line) => {
       const adelanto = Number(line.additional_deductions) || 0;
-      const calc = calculateDeductions(Number(line.gross_salary), adelanto, line.deductions_detail);
+      const calc = calculateDeductions(Number(line.gross_salary), adelanto, line.deductions_detail, companyParams);
       return {
         gross: acc.gross + Number(line.gross_salary),
         deductions: acc.deductions + calc.totalDeductions,
@@ -1060,7 +1051,7 @@ export function PreColilla() {
         faltaPorPagar: acc.faltaPorPagar + calc.faltaPorPagar,
       };
     }, { gross: 0, deductions: 0, net: 0, adelantos: 0, faltaPorPagar: 0 });
-  }, [payrollLines]);
+  }, [payrollLines, companyParams]);
 
   return (
     <div className="space-y-6">
@@ -1192,6 +1183,7 @@ export function PreColilla() {
                 t={t}
                 isUSD={isUSD}
                 exchangeRate={exchangeRate}
+                companyParams={companyParams ?? null}
               />
             ))}
           </div>
@@ -1217,6 +1209,7 @@ export function PreColilla() {
         onDownloadPDF={handleDownloadPDF}
         isDownloading={isDownloading}
         t={t}
+        companyParams={companyParams ?? null}
       />
     </div>
   );
