@@ -538,13 +538,13 @@ export function Liquidations() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="despido_sin_responsabilidad">
-                    Despido sin responsabilidad patronal (con cesantía)
+                    Despido con responsabilidad patronal (sin justa causa) — SÍ paga cesantía
                   </SelectItem>
                   <SelectItem value="despido_con_responsabilidad">
-                    Despido con justa causa (sin cesantía)
+                    Despido con justa causa (falta del trabajador) — NO paga cesantía
                   </SelectItem>
                   <SelectItem value="renuncia">
-                    Renuncia voluntaria
+                    Renuncia voluntaria — NO paga cesantía
                   </SelectItem>
                 </SelectContent>
               </Select>
