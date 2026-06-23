@@ -322,7 +322,7 @@ serve(async (req) => {
         const rate = params.ccss_obrero_education / 100;
         return { amount: salary * rate, rate };
       }
-      // Standard: use company rate (default 10.83%)
+      // Standard: ccss_obrero_total YA INCLUYE Banco Popular obrero 1% (default 10.67%)
       const rate = params.ccss_obrero_total / 100;
       return { amount: salary * rate, rate };
     };
