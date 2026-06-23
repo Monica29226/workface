@@ -1183,6 +1183,7 @@ export function PreColilla() {
                 t={t}
                 isUSD={isUSD}
                 exchangeRate={exchangeRate}
+                companyParams={companyParams ?? null}
               />
             ))}
           </div>
