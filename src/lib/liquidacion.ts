@@ -9,6 +9,8 @@ export interface LiquidacionParams {
   salarioPromedio: number;
   motivoSalida: 'despido_con_responsabilidad' | 'despido_sin_responsabilidad' | 'renuncia';
   preavisoTrabajado: boolean;
+  /** Días de vacaciones pendientes no disfrutados (saldo real del empleado). Si se provee, se usa en lugar del cálculo proporcional. */
+  diasVacacionesPendientes?: number;
 }
 
 export interface ResultadoLiquidacion {
