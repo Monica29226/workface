@@ -394,10 +394,12 @@ export function Liquidations() {
             <h2 style="margin-top: 0; color: #0B2B4C;">Monto Total de Liquidación</h2>
             <div class="final-amount">${formatCurrency(resultado.total, 'CRC')}</div>
             <p style="color: #666; margin-top: 20px;">
-              (${new Intl.NumberFormat('es-CR', { 
-                style: 'currency', 
-                currency: 'USD' 
-              }).format(resultado.total / 510.27)})
+              (${new Intl.NumberFormat('es-CR', {
+                style: 'currency',
+                currency: 'USD'
+              }).format(resultado.total / usdRate)})
+              <br/>
+              <small style="font-size:11px;color:#888;">Tipo de cambio de referencia: ${usdRate.toFixed(2)} CRC/USD</small>
             </p>
           </div>
 
