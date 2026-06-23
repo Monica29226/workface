@@ -140,93 +140,20 @@ serve(async (req) => {
       console.log("All payslips already exist for this batch");
     }
 
-    // Accrue vacations if flag is set and this is first time generating payslips
+    // Accrue vacations via single source of truth (recalculate_vacation_accruals)
     let vacationAccrualResults: any[] = [];
     if (accrueVacations && newPayslips.length > 0) {
-      console.log("Processing vacation accrual for", lines.length, "employees");
-      
-      // Get company parameters
-      const { data: params } = await supabaseAdmin
-        .from('company_parameters')
-        .select('vacation_monthly_accrual, vacation_expiry_months')
-        .eq('company_id', batch.company_id)
-        .single();
-
-      const monthlyAccrual = Number(params?.vacation_monthly_accrual || 1);
-      const expiryMonths = Number(params?.vacation_expiry_months || 12);
-      const now = new Date();
-
-      for (const line of lines) {
-        const employee = line.employee;
-        const vacationDaysToAccrue = Number(line.vacation_accrued_days || monthlyAccrual);
-        const dailyRate = Number(employee.base_salary || 0) / 30;
-        const accrualStartDate = employee.hire_date || batch.period_start;
-        const expiryDate = new Date(accrualStartDate);
-        expiryDate.setMonth(expiryDate.getMonth() + expiryMonths);
-
-        // Check if vacation record exists for this year
-        const { data: existingVacation } = await supabaseAdmin
-          .from('employee_vacations')
-          .select('*')
-          .eq('employee_id', employee.id)
-          .eq('year', periodYear)
-          .maybeSingle();
-
-        if (existingVacation) {
-          const newDaysAccrued = Number(existingVacation.days_accrued) + vacationDaysToAccrue;
-          const daysPending = newDaysAccrued - Number(existingVacation.days_taken);
-
-          await supabaseAdmin
-            .from('employee_vacations')
-            .update({
-              days_accrued: newDaysAccrued,
-              days_pending: daysPending,
-              daily_rate: dailyRate,
-              pending_amount: daysPending * dailyRate,
-              expiry_date: expiryDate.toISOString().split('T')[0],
-              updated_at: now.toISOString(),
-              notes: `Acumulado ${vacationDaysToAccrue} días en ${batch.batch_id}`
-            })
-            .eq('id', existingVacation.id);
-
-          vacationAccrualResults.push({
-            employee_id: employee.employee_id,
-            days_accrued: vacationDaysToAccrue,
-            action: 'updated'
-          });
-        } else {
-          await supabaseAdmin
-            .from('employee_vacations')
-            .insert({
-              employee_id: employee.id,
-              company_id: batch.company_id,
-              year: periodYear,
-              days_accrued: vacationDaysToAccrue,
-              days_taken: 0,
-              days_pending: vacationDaysToAccrue,
-              daily_rate: dailyRate,
-              pending_amount: vacationDaysToAccrue * dailyRate,
-              accrual_start_date: accrualStartDate,
-              expiry_date: expiryDate.toISOString().split('T')[0],
-              notes: `Inicio de acumulación ${periodYear}`
-            });
-
-          vacationAccrualResults.push({
-            employee_id: employee.employee_id,
-            days_accrued: vacationDaysToAccrue,
-            action: 'created'
-          });
-        }
-
-        // Update employee's vac_balance_days
-        const currentBalance = Number(employee.vac_balance_days || 0);
-        await supabaseAdmin
-          .from('employees')
-          .update({ vac_balance_days: currentBalance + vacationDaysToAccrue })
-          .eq('id', employee.id);
+      console.log("Recalculating vacation accruals for company:", batch.company_id);
+      const { data: processed, error: rpcError } = await supabaseClient.rpc(
+        'recalculate_vacation_accruals',
+        { p_company_id: batch.company_id, p_year: periodYear }
+      );
+      if (rpcError) {
+        console.error("Vacation accrual RPC error:", rpcError);
+      } else {
+        vacationAccrualResults = Array(Number(processed) || 0).fill({ action: 'recalculated' });
+        console.log(`Recalculated vacation accruals for ${processed} employees`);
       }
-
-      console.log(`Processed vacation accrual for ${vacationAccrualResults.length} employees`);
     }
 
     // Update batch status to 'enviado' after payslips are generated

@@ -294,10 +294,10 @@ export function AppSidebar() {
         return workflowStatus.borrador;
       case 2: // Pre-Nómina - show calculated batches ready for review
         return workflowStatus.calculado;
-      case 3: // Pre-Colilla - show approved batches ready for authorization
+      case 3: // Pre-Colilla - show calculated batches ready for review
+        return workflowStatus.calculado;
+      case 4: // Enviar Colillas - show approved batches ready to generate payslips
         return workflowStatus.aprobado;
-      case 4: // Enviar Colillas - show authorized batches ready to send
-        return workflowStatus.autorizado;
       default:
         return 0;
     }

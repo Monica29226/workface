@@ -842,7 +842,7 @@ export function PreColilla() {
         .from("payroll_batches")
         .select("*")
         .eq("company_id", selectedCompany.id)
-        .in("status", ["aprobado", "autorizado", "calculado"])
+        .in("status", ["aprobado", "calculado", "enviado"])
         .order("period_end", { ascending: false });
 
       if (error) throw error;
@@ -919,7 +919,6 @@ export function PreColilla() {
     const statusConfig: Record<string, { labelKey: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
       calculado: { labelKey: "status.calculated", variant: "secondary" },
       aprobado: { labelKey: "status.approved", variant: "default" },
-      autorizado: { labelKey: "status.authorized", variant: "outline" },
       enviado: { labelKey: "status.sent", variant: "outline" },
     };
     const config = statusConfig[status] || { labelKey: status, variant: "secondary" as const };
@@ -995,21 +994,17 @@ export function PreColilla() {
   const handleApproveAndSend = async () => {
     if (!selectedBatchId) return;
 
-    const currentStatus = currentBatch?.status;
-    
-    if (currentStatus !== 'autorizado') {
+    if (currentBatch?.status !== 'aprobado') {
       toast({
-        title: "Batch no autorizado",
-        description: "El batch debe estar en estado 'Autorizado' para enviar colillas.",
+        title: "Planilla no aprobada",
+        description: "El lote debe estar en estado 'Aprobado' para generar colillas.",
         variant: "destructive",
       });
       return;
     }
 
-    toast({
-      title: "Funcionalidad pendiente",
-      description: "La generación y envío de colillas se ejecuta desde la página de Colillas de Pago",
-    });
+    // Redirect to /payslips where generation is triggered
+    window.location.href = '/payslips';
   };
 
   const handleDownloadPDF = async () => {
@@ -1106,10 +1101,10 @@ export function PreColilla() {
             </SelectContent>
           </Select>
 
-          {currentBatch?.status === 'autorizado' && (
+          {currentBatch?.status === 'aprobado' && (
             <Button onClick={handleApproveAndSend} className="gap-2 bg-green-600 hover:bg-green-700 w-full sm:w-auto">
               <Send className="h-4 w-4" />
-              {t('common.send_payslips')}
+              Generar y enviar colillas
             </Button>
           )}
         </div>

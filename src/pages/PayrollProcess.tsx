@@ -250,56 +250,14 @@ export function PayrollProcess() {
     }
   };
 
-  const handleAuthorize = async () => {
-    if (!selectedBatch) return;
-
-    const currentBatch = batches.find(b => b.id === selectedBatch);
-    if (currentBatch?.status !== 'aprobado') {
-      toast({
-        title: "Planilla no aprobada",
-        description: "Debes aprobar la planilla antes de autorizarla",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsProcessing(true);
-    try {
-      // Use type assertion since 'autorizado' was just added to the enum
-      const { error } = await supabase
-        .from('payroll_batches')
-        .update({ status: 'autorizado' as any })
-        .eq('id', selectedBatch);
-
-      if (error) throw error;
-
-      toast({
-        title: "✓ Planilla autorizada",
-        description: "Ahora puedes generar y enviar las colillas de pago",
-      });
-
-      fetchBatches();
-      fetchPayrollLines();
-    } catch (error) {
-      console.error('Error authorizing batch:', error);
-      toast({
-        title: "Error",
-        description: "No se pudo autorizar la planilla",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const handleGeneratePayslips = async () => {
     if (!selectedBatch) return;
 
     const currentBatch = batches.find(b => b.id === selectedBatch);
-    if (currentBatch?.status !== 'autorizado') {
+    if (currentBatch?.status !== 'aprobado' && currentBatch?.status !== 'enviado') {
       toast({
-        title: "Planilla no autorizada",
-        description: "Debes autorizar la planilla antes de generar colillas. Flujo: Calculado → Aprobado → Autorizado → Enviado",
+        title: "Planilla no aprobada",
+        description: "Debes aprobar la planilla antes de generar colillas. Flujo: Calculado → Aprobado → Enviado",
         variant: "destructive",
       });
       return;
@@ -317,6 +275,7 @@ export function PayrollProcess() {
         title: "Colillas generadas",
         description: data.message,
       });
+
 
       fetchBatches();
     } catch (error: any) {
@@ -566,18 +525,6 @@ export function PayrollProcess() {
                           <XCircle className="h-4 w-4" />
                           Desaprobar
                         </Button>
-                        <Button onClick={handleAuthorize} disabled={isProcessing} className="gap-2 bg-amber-600 hover:bg-amber-700">
-                          {isProcessing ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <CheckCircle className="h-4 w-4" />
-                          )}
-                          Autorizar Envío
-                        </Button>
-                      </>
-                    )}
-                    {currentBatch.status === 'autorizado' && (
-                      <>
                         <Button onClick={handleGeneratePayslips} disabled={isProcessing} className="gap-2">
                           {isProcessing ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -587,6 +534,16 @@ export function PayrollProcess() {
                           Generar Colillas
                         </Button>
                       </>
+                    )}
+                    {currentBatch.status === 'enviado' && (
+                      <Button onClick={handleGeneratePayslips} disabled={isProcessing} variant="outline" className="gap-2">
+                        {isProcessing ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <FileText className="h-4 w-4" />
+                        )}
+                        Regenerar Colillas
+                      </Button>
                     )}
                   </div>
                 )}
