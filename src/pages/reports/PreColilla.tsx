@@ -385,10 +385,16 @@ function EditableEmployeeCard({
                 />
               </div>
             ) : (
-              <span className="font-mono text-base font-medium text-foreground tabular-nums">
-                {formatAmount(values.baseSalary)}
-              </span>
+              <div className="flex flex-col items-end">
+                <span className="font-mono text-base font-medium text-foreground tabular-nums">
+                  {formatAmount(values.baseSalary)}
+                </span>
+                {isUSD && (
+                  <span className="font-mono text-[10px] text-muted-foreground">≈ {formatAmountCRCEquivalent(values.baseSalary)}</span>
+                )}
+              </div>
             )}
+
           </div>
 
           {/* Horas Extra 1.5× - Editable Field */}
