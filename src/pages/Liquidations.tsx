@@ -42,8 +42,10 @@ export function Liquidations() {
   const [motivoSalida, setMotivoSalida] = useState<'despido_con_responsabilidad' | 'despido_sin_responsabilidad' | 'renuncia'>('despido_sin_responsabilidad');
   const [preavisoTrabajado, setPreavisoTrabajado] = useState(false);
   const [resultado, setResultado] = useState<ResultadoLiquidacion | null>(null);
+  const [salaryInfo, setSalaryInfo] = useState<{ amount: number; monthsUsed: number; usedFallback: boolean } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+
 
   // Tipo de cambio de referencia CRC→USD. Si la empresa tiene moneda base USD se usa 1.
   const EXCHANGE_RATE_REFERENCE = 510.27;
