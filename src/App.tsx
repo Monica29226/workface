@@ -17,11 +17,9 @@ const Dashboard = lazy(() => import("@/pages/Dashboard").then(m => ({ default: m
 const Employees = lazy(() => import("@/pages/Employees").then(m => ({ default: m.Employees })));
 const Projects = lazy(() => import("@/pages/Projects"));
 const Contracts = lazy(() => import("@/pages/Contracts").then(m => ({ default: m.Contracts })));
-const Timesheets = lazy(() => import("@/pages/Timesheets").then(m => ({ default: m.Timesheets })));
 const PayrollProcess = lazy(() => import("@/pages/PayrollProcess").then(m => ({ default: m.PayrollProcess })));
 const Payslips = lazy(() => import("@/pages/Payslips").then(m => ({ default: m.Payslips })));
 const Liquidations = lazy(() => import("@/pages/Liquidations").then(m => ({ default: m.Liquidations })));
-const HorasProyecto = lazy(() => import("@/pages/HorasProyecto").then(m => ({ default: m.HorasProyecto })));
 const Historico = lazy(() => import("@/pages/settings/Historico").then(m => ({ default: m.Historico })));
 const Parameters = lazy(() => import("@/pages/settings/Parameters").then(m => ({ default: m.Parameters })));
 const PayslipSettings = lazy(() => import("@/pages/settings/PayslipSettings").then(m => ({ default: m.PayslipSettings })));
