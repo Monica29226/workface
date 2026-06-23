@@ -187,16 +187,17 @@ function EditableEmployeeCard({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   
-  // Currency formatter based on company type
+  // Dual-currency renderer: USD principal + CRC equivalente debajo (estilo Excel HP)
   const formatAmount = (amountCRC: number): string => {
     if (isUSD && exchangeRate > 0) {
       return formatUSD(amountCRC / exchangeRate);
     }
     return formatCRC(amountCRC);
   };
-  
-  // Get currency symbol
+  const formatAmountCRCEquivalent = (amountCRC: number): string => formatCRC(amountCRC);
+
   const currencySymbol = isUSD ? '$' : '₡';
+
   
   // Get existing overtime and double hours amounts
   const existingOvertimeAmount = Number(line.overtime_hours || 0) > 0 
