@@ -994,21 +994,17 @@ export function PreColilla() {
   const handleApproveAndSend = async () => {
     if (!selectedBatchId) return;
 
-    const currentStatus = currentBatch?.status;
-    
-    if (currentStatus !== 'autorizado') {
+    if (currentBatch?.status !== 'aprobado') {
       toast({
-        title: "Batch no autorizado",
-        description: "El batch debe estar en estado 'Autorizado' para enviar colillas.",
+        title: "Planilla no aprobada",
+        description: "El lote debe estar en estado 'Aprobado' para generar colillas.",
         variant: "destructive",
       });
       return;
     }
 
-    toast({
-      title: "Funcionalidad pendiente",
-      description: "La generación y envío de colillas se ejecuta desde la página de Colillas de Pago",
-    });
+    // Redirect to /payslips where generation is triggered
+    window.location.href = '/payslips';
   };
 
   const handleDownloadPDF = async () => {
