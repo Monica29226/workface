@@ -442,11 +442,10 @@ export function PreNomina() {
           ? { 
               ccss: detail.ccss_obrero || 0, 
               isr: detail.isr_neto || 0, 
-              bancoPopular: detail.banco_popular || Number(line.lpt_banco_popular) || 0,
               loans: detail.loan_deduction || 0,
               total: Number(line.deductions) || 0
             }
-          : calculateRealTimeDeductions(grossSalaryCRC, detail);
+          : calculateRealTimeDeductions(grossSalaryCRC, detail, companyParams);
         
         const netPayCRC = grossSalaryCRC - realTimeDeductions.total - Number(line.additional_deductions || 0);
         const netPayUSD = netPayCRC / exchangeRate;
@@ -458,7 +457,6 @@ export function PreNomina() {
           mixedOvertimeHours: acc.mixedOvertimeHours + mixedOvertimeHours,
           ccss: acc.ccss + realTimeDeductions.ccss,
           isr: acc.isr + realTimeDeductions.isr,
-          bancoPopular: acc.bancoPopular + realTimeDeductions.bancoPopular,
           loans: acc.loans + realTimeDeductions.loans,
           bonuses: acc.bonuses + Number(line.additional_bonuses || 0),
           otherDeductions: acc.otherDeductions + Number(line.additional_deductions || 0),
@@ -474,7 +472,6 @@ export function PreNomina() {
         mixedOvertimeHours: 0,
         ccss: 0,
         isr: 0,
-        bancoPopular: 0,
         loans: 0,
         bonuses: 0,
         otherDeductions: 0,
@@ -482,6 +479,7 @@ export function PreNomina() {
         netPayCRC: 0,
         netPayUSD: 0,
       }
+
     );
   }, [payrollLines, getValue, exchangeRate]);
 
