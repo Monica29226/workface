@@ -77,7 +77,7 @@ export function Liquidations() {
     }
   };
 
-  const handleCalcularLiquidacion = () => {
+  const handleCalcularLiquidacion = async () => {
     const empleado = employees.find(e => e.id === selectedEmployee);
     if (!empleado || !fechaSalida) {
       toast({
@@ -100,16 +100,33 @@ export function Liquidations() {
       return;
     }
 
+    // Obtener saldo real de vacaciones pendientes del año en curso
+    let diasVacacionesPendientes = 0;
+    try {
+      const { data: vacRows } = await (supabase as any)
+        .from('employee_vacations')
+        .select('days_pending')
+        .eq('employee_id', empleado.id)
+        .eq('year', fechaSalidaDate.getFullYear());
+      diasVacacionesPendientes = (vacRows || []).reduce(
+        (sum: number, r: any) => sum + Number(r.days_pending || 0),
+        0
+      );
+    } catch (err) {
+      console.error('No se pudo leer saldo de vacaciones, se usará proporcional:', err);
+    }
+
     const result = calcularLiquidacion({
       fechaIngreso,
       fechaSalida: fechaSalidaDate,
       salarioPromedio: empleado.base_salary,
       motivoSalida,
-      preavisoTrabajado
+      preavisoTrabajado,
+      diasVacacionesPendientes: diasVacacionesPendientes > 0 ? diasVacacionesPendientes : undefined,
     });
 
     setResultado(result);
-    
+
     toast({
       title: "Liquidación calculada",
       description: "El cálculo se ha realizado exitosamente",
