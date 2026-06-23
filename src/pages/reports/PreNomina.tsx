@@ -16,48 +16,32 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { LivePayrollPreview } from "@/components/payroll/LivePayrollPreview";
+import { calculatePayrollDeductions, type PayrollCompanyParams } from "@/lib/payrollDeductions";
 
-// CCSS rate for standard companies
-const CCSS_RATE = 0.1083;
-
-// ISR 2026 brackets calculation
-function calculateISR(baseImponible: number): number {
-  let isr = 0;
-  if (baseImponible > 4727000) {
-    isr += (baseImponible - 4727000) * 0.25;
-    baseImponible = 4727000;
-  }
-  if (baseImponible > 2364000) {
-    isr += (baseImponible - 2364000) * 0.20;
-    baseImponible = 2364000;
-  }
-  if (baseImponible > 1347000) {
-    isr += (baseImponible - 1347000) * 0.15;
-    baseImponible = 1347000;
-  }
-  if (baseImponible > 918000) {
-    isr += (baseImponible - 918000) * 0.10;
-  }
-  return Math.round(isr);
+// Fallback de cálculo en tiempo real — usa la fórmula canónica compartida.
+// Solo se usa cuando la línea aún NO tiene deducciones guardadas (detail.ccss_obrero = 0).
+// Para líneas ya calculadas, se muestran los valores guardados sin recalcular.
+function calculateRealTimeDeductions(
+  grossSalaryCRC: number,
+  existingDetail: DeductionsDetail | null,
+  params: PayrollCompanyParams | null | undefined,
+): { ccss: number; isr: number; loans: number; total: number } {
+  const loanDeduction = existingDetail?.loan_deduction || 0;
+  const calc = calculatePayrollDeductions({
+    grossSalary: grossSalaryCRC,
+    params: params ?? null,
+    loanDeduction,
+  });
+  // CCSS aquí YA incluye Banco Popular obrero (1%) — el parámetro
+  // ccss_obrero_total (10.67%) lo trae empacado. No se cobra por separado.
+  return {
+    ccss: calc.ccssObrero + calc.magisterio + calc.polizaVida,
+    isr: calc.isr,
+    loans: calc.loan,
+    total: calc.ccssObrero + calc.magisterio + calc.polizaVida + calc.isr + calc.loan,
+  };
 }
 
-// Calculate real-time deductions based on gross salary
-function calculateRealTimeDeductions(grossSalaryCRC: number, existingDetail: DeductionsDetail | null): {
-  ccss: number;
-  isr: number;
-  bancoPopular: number;
-  loans: number;
-  total: number;
-} {
-  const ccss = Math.round(grossSalaryCRC * CCSS_RATE);
-  const baseParaISR = grossSalaryCRC - ccss;
-  const isr = calculateISR(baseParaISR);
-  const bancoPopular = Math.round(grossSalaryCRC * 0.01);
-  const loans = existingDetail?.loan_deduction || 0;
-  const total = ccss + isr + bancoPopular + loans;
-  
-  return { ccss, isr, bancoPopular, loans, total };
-}
 
 interface DeductionsDetail {
   ccss_obrero?: number;
