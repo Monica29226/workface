@@ -564,18 +564,28 @@ function EditableEmployeeCard({
               <Badge variant="outline" className="text-xs font-normal text-destructive border-destructive/20">
                 Total Deducciones
               </Badge>
-              <span className="font-mono text-base font-medium text-destructive tabular-nums">
-                -{formatAmount(calculations.totalDeductions)}
-              </span>
+              <div className="flex flex-col items-end">
+                <span className="font-mono text-base font-medium text-destructive tabular-nums">
+                  -{formatAmount(calculations.totalDeductions)}
+                </span>
+                {isUSD && (
+                  <span className="font-mono text-[10px] text-muted-foreground">≈ -{formatAmountCRCEquivalent(calculations.totalDeductions)}</span>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Net Pay */}
           <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg border">
             <Badge variant="secondary" className="text-xs font-normal">Total a Recibir</Badge>
-            <span className="font-mono text-lg font-semibold text-foreground tabular-nums">
-              {formatAmount(calculations.netPay)}
-            </span>
+            <div className="flex flex-col items-end">
+              <span className="font-mono text-lg font-semibold text-foreground tabular-nums">
+                {formatAmount(calculations.netPay)}
+              </span>
+              {isUSD && (
+                <span className="font-mono text-[10px] text-muted-foreground">≈ {formatAmountCRCEquivalent(calculations.netPay)}</span>
+              )}
+            </div>
           </div>
 
           {/* Adelanto Recibido Display */}
@@ -596,11 +606,17 @@ function EditableEmployeeCard({
               <Badge className="text-xs font-bold bg-white/20 text-white hover:bg-white/20">
                 = FALTA POR PAGAR
               </Badge>
-              <span className="font-mono text-xl font-bold text-white tabular-nums">
-                {formatAmount(calculations.faltaPorPagar)}
-              </span>
+              <div className="flex flex-col items-end">
+                <span className="font-mono text-xl font-bold text-white tabular-nums">
+                  {formatAmount(calculations.faltaPorPagar)}
+                </span>
+                {isUSD && (
+                  <span className="font-mono text-[10px] text-white/70">≈ {formatAmountCRCEquivalent(calculations.faltaPorPagar)}</span>
+                )}
+              </div>
             </div>
           </div>
+
         </div>
 
         {/* Real-time calculation indicator */}
