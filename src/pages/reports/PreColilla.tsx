@@ -1209,6 +1209,7 @@ export function PreColilla() {
         onDownloadPDF={handleDownloadPDF}
         isDownloading={isDownloading}
         t={t}
+        companyParams={companyParams ?? null}
       />
     </div>
   );
