@@ -851,10 +851,26 @@ export function PreColilla() {
 
   const currentBatch = batches?.find(b => b.id === selectedBatchId);
 
-  // Detect if company is Horizonte Positivo (uses USD)
+  // Fetch company_parameters — fuente única de tarifas
+  const { data: companyParams } = useQuery({
+    queryKey: ["companyParamsPreColilla", selectedCompany?.id],
+    queryFn: async () => {
+      if (!selectedCompany?.id) return null;
+      const { data, error } = await supabase
+        .from("company_parameters")
+        .select("*")
+        .eq("company_id", selectedCompany.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as PayrollCompanyParams | null;
+    },
+    enabled: !!selectedCompany?.id,
+  });
+
+  // Moneda de visualización: por base_currency de la empresa (NO por nombre)
   const isUSD = useMemo(() => {
-    return isHorizontePositivo(selectedCompany?.name);
-  }, [selectedCompany?.name]);
+    return (selectedCompany?.base_currency || 'CRC').toUpperCase() === 'USD';
+  }, [selectedCompany?.base_currency]);
 
   // Get exchange rate from first payroll line or default
   const exchangeRate = useMemo(() => {
