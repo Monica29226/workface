@@ -948,9 +948,8 @@ export function PreNomina() {
                           <TableCell className="text-right font-mono text-destructive">
                             ₡{formatNumber(Math.round(calculatedDed.ccss))}
                           </TableCell>
-                          <TableCell className="text-right font-mono text-destructive">
-                            ₡{formatNumber(Math.round(calculatedDed.bancoPopular))}
-                          </TableCell>
+
+
                           <TableCell className="text-right font-mono text-destructive">
                             ₡{formatNumber(Math.round(calculatedDed.isr))}
                           </TableCell>
