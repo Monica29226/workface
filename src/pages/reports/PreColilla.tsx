@@ -515,9 +515,10 @@ function EditableEmployeeCard({
           {/* Deductions Breakdown with ISR Tramos */}
           <div className="bg-destructive/5 rounded-lg p-3 space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">CCSS (10.83%)</span>
+              <span className="text-muted-foreground">{calculations.ccssLabel}</span>
               <span className="font-mono text-destructive">-{formatAmount(calculations.ccss)}</span>
             </div>
+
             
             {/* ISR Breakdown by Brackets */}
             {calculations.isr > 0 && (
