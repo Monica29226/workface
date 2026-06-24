@@ -633,7 +633,11 @@ serve(async (req) => {
         company_id: companyId,
         employee_id: employee.id,
         line_id: `LINE-${employee.employee_id}-${batchId}`,
-        gross_salary: grossSalary,
+        // gross_salary se almacena en la MONEDA ORIGINAL del empleado.
+        // El resto del sistema multiplica gross_salary * exchange_rate_to_base
+        // para obtener colones, por lo que guardar el valor ya convertido
+        // causaba doble conversión. El valor en CRC queda en deductions_detail.base_imponible_crc.
+        gross_salary: employeeExchangeRate > 0 ? grossSalary / employeeExchangeRate : grossSalary,
         overtime: 0,
         project_hours_amount: projectHoursAmount,
         deductions: totalDeductions,
