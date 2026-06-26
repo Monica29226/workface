@@ -41,7 +41,44 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // === AUTH GUARD ===
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'No authorization header' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user: callerUser }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !callerUser) {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { to, subject, html, from, attachments, companyId, templateId }: SendEmailRequest = await req.json();
+
+    // Verify company access OR admin role
+    const { data: callerRoles } = await supabase
+      .from('user_roles').select('role').eq('user_id', callerUser.id);
+    const isGlobalAdmin = callerRoles?.some((r: any) =>
+      ['admin', 'ACL_SuperAdmin', 'ACL_PayrollSpecialist'].includes(r.role)
+    );
+    if (!isGlobalAdmin) {
+      if (!companyId) {
+        return new Response(JSON.stringify({ error: 'companyId required' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { data: access } = await supabase
+        .from('company_users').select('id')
+        .eq('user_id', callerUser.id).eq('company_id', companyId).maybeSingle();
+      if (!access) {
+        return new Response(JSON.stringify({ error: 'Forbidden: no access to company' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     console.log('Sending email to:', to);
     console.log('Subject:', subject);

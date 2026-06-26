@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
@@ -7,60 +8,68 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // === AUTH GUARD ===
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'No authorization header' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user: callerUser }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !callerUser) {
+      return new Response(JSON.stringify({ error: 'Invalid token' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Only admins can send test emails
+    const { data: callerRoles } = await supabase
+      .from('user_roles').select('role').eq('user_id', callerUser.id);
+    const isAdmin = callerRoles?.some((r: any) =>
+      ['admin', 'ACL_SuperAdmin'].includes(r.role)
+    );
+    if (!isAdmin) {
+      return new Response(JSON.stringify({ error: 'Forbidden: admin role required' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     const fromEmail = Deno.env.get('RESEND_FROM_EMAIL');
 
-    console.log('=== RESEND CONFIGURATION DEBUG ===');
-    console.log('RESEND_API_KEY configured:', !!resendApiKey);
-    console.log('RESEND_API_KEY length:', resendApiKey?.length || 0);
-    console.log('RESEND_FROM_EMAIL:', fromEmail || 'NOT SET');
-
     if (!resendApiKey) {
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'RESEND_API_KEY is not configured',
-          debug: {
-            api_key_exists: false,
-            from_email: fromEmail || 'NOT SET',
-          }
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        JSON.stringify({ success: false, error: 'RESEND_API_KEY is not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const resend = new Resend(resendApiKey);
-    
-    // Parse request body for optional test email recipient
-    let testEmail = 'eberneiser@gmail.com'; // default test recipient
+
+    let testEmail = callerUser.email || 'eberneiser@gmail.com';
     try {
       const body = await req.json();
-      if (body.to) {
-        testEmail = body.to;
-      }
-    } catch {
-      // Use default if no body
-    }
+      if (body.to) testEmail = body.to;
+    } catch { /* use default */ }
 
     const rawFrom = (fromEmail || 'noreply@aclcostarica.com').trim();
     const cleanedFrom = rawFrom.replace(/^"+|"+$/g, '').trim();
-    const emailMatchResult = cleanedFrom.match(/<([^>]+)>/);
-    const pureEmailAddr = emailMatchResult ? emailMatchResult[1] : cleanedFrom;
+    const m = cleanedFrom.match(/<([^>]+)>/);
+    const pureEmailAddr = m ? m[1] : cleanedFrom;
     const from = `ACL Web Planillas <${pureEmailAddr}>`;
 
-    console.log('Attempting to send test email to:', testEmail);
-    console.log('Using FROM:', from);
+    console.log('Sending test email to:', testEmail);
 
-    // Test email sending
     const { data, error } = await resend.emails.send({
       from,
       to: [testEmail],
@@ -68,38 +77,18 @@ serve(async (req) => {
       html: `
         <h1>Email de Prueba - ACL Web Planillas</h1>
         <p>Este es un email de prueba del sistema ACL Web · Planillas.</p>
-        <p>Si recibes este email, la configuración de Resend está funcionando correctamente.</p>
-        <p><strong>Portal:</strong> <a href="https://aclcostarica.com">https://aclcostarica.com</a></p>
-        <hr>
-        <p><strong>Configuración:</strong></p>
-        <ul>
-          <li>From: ${fromEmail || 'noreply@aclcostarica.com'}</li>
-          <li>Timestamp: ${new Date().toISOString()}</li>
-        </ul>
+        <p>Si recibes este email, la configuración está funcionando correctamente.</p>
+        <p>Timestamp: ${new Date().toISOString()}</p>
       `,
     });
 
     if (error) {
-      console.error('Resend API Error:', error);
+      console.error('Resend API Error:', error.message);
       return new Response(
-        JSON.stringify({
-          success: false,
-          error: error.message || 'Failed to send email',
-          resend_error: error,
-          debug: {
-            api_key_exists: true,
-            api_key_prefix: resendApiKey.substring(0, 8) + '...',
-            from_email: fromEmail || 'onboarding@resend.dev',
-          }
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
+        JSON.stringify({ success: false, error: error.message || 'Failed to send email' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    console.log('Email sent successfully:', data);
 
     return new Response(
       JSON.stringify({
@@ -107,29 +96,14 @@ serve(async (req) => {
         message: 'Test email sent successfully',
         email_id: data?.id,
         sent_to: testEmail,
-        from: fromEmail || 'onboarding@resend.dev',
-        debug: {
-          api_key_exists: true,
-          from_email_configured: !!fromEmail,
-        }
       }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
   } catch (error: any) {
-    console.error('Error in test-email function:', error);
+    console.error('Error in test-email function:', error?.message);
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message || 'Internal server error',
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      JSON.stringify({ success: false, error: error.message || 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

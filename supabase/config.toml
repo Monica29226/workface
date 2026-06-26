@@ -12,7 +12,7 @@ project_id = "eployozkxxqalgmfrylw"
   [functions.delete-user]
     verify_jwt = false
   [functions.facial-recognition]
-    verify_jwt = false
+    verify_jwt = true
   [functions.generate-payslip-pdf]
     verify_jwt = true
   [functions.generate-payslips]
@@ -32,14 +32,14 @@ project_id = "eployozkxxqalgmfrylw"
   [functions.resend-credentials]
     verify_jwt = true
   [functions.send-bulk-emails]
-    verify_jwt = false
+    verify_jwt = true
   [functions.send-email]
-    verify_jwt = false
+    verify_jwt = true
   [functions.send-invitation]
     verify_jwt = true
   [functions.send-payslip-email]
-    verify_jwt = false
+    verify_jwt = true
   [functions.test-email]
-    verify_jwt = false
+    verify_jwt = true
   [functions.update-payroll-line]
     verify_jwt = true
