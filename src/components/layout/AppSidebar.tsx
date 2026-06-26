@@ -168,6 +168,13 @@ const hrNavigationItems: NavigationItem[] = [
     group: 'reports',
     roles: HR_ROLES
   },
+  {
+    title: 'Reporte Aguinaldo',
+    url: '/reports/aguinaldo',
+    icon: Calculator,
+    group: 'reports',
+    roles: HR_ROLES
+  },
   
   // === COMUNICACIONES ===
   { 
