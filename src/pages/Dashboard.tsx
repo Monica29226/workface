@@ -81,7 +81,6 @@ export function Dashboard() {
 
   // Memoize quick actions to prevent recreation
   const quickActions = useMemo(() => [
-  const quickActions = useMemo(() => [
     {
       title: "Nuevo Empleado",
       description: "Agregar colaborador al sistema",
