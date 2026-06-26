@@ -319,12 +319,15 @@ serve(async (req) => {
 
       // ========================================
       // DEDUCTIONS CALCULATION (per company rules)
+      // Base imponible para deducciones SIEMPRE en CRC
       // ========================================
-      const ccssResult = calculateCCSS(grossSalary);
-      const magisterioResult = calculateMagisterio(grossSalary);
+      const grossSalaryCRC = grossSalary * exchangeRate;
+      const ccssResult = calculateCCSS(grossSalaryCRC);
+      const magisterioResult = calculateMagisterio(grossSalaryCRC);
       const polizaVida = calculatePolizaVida();
-      const incomeTax = calculateIncomeTax(grossSalary);
-      
+      const monthlyTaxCredit = Math.max(0, Number(employee.tax_credit_monthly || 0));
+      const incomeTax = Math.max(0, calculateIncomeTax(grossSalaryCRC) - monthlyTaxCredit);
+
       // Get loan deduction from employee record
       const loanDeduction = Number(employee.loan_monthly_deduction || 0);
       
