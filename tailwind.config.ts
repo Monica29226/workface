@@ -98,6 +98,16 @@ export default {
           DEFAULT: "hsl(var(--info))",
           foreground: "hsl(var(--info-foreground))",
         },
+        royal: {
+          DEFAULT: "hsl(var(--royal))",
+          hover: "hsl(var(--royal-hover))",
+          foreground: "hsl(var(--royal-foreground))",
+        },
+        paper: {
+          DEFAULT: "hsl(var(--paper))",
+          light: "hsl(var(--paper-light))",
+        },
+        hairline: "hsl(var(--hairline))",
         // Chart colors
         chart: {
           1: "hsl(var(--chart-1))",
