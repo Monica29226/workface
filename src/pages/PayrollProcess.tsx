@@ -152,7 +152,7 @@ export function PayrollProcess() {
         .eq('batch_id', selectedBatch);
 
       if (error) throw error;
-      setPayrollLines(data || []);
+      setPayrollLines((data || []) as unknown as PayrollLine[]);
     } catch (error) {
       console.error('Error fetching payroll lines:', error);
       toast({
