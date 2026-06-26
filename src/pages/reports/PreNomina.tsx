@@ -616,6 +616,13 @@ export function PreNomina() {
                 Recalcular
               </Button>
               
+              {currentBatch?.status === 'calculado' && (
+                <Button onClick={handleApprove} disabled={isRevertingStatus} className="gap-2">
+                  {isRevertingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                  Aprobar
+                </Button>
+              )}
+
               {/* Delete Batch Button */}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
