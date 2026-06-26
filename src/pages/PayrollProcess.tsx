@@ -61,6 +61,7 @@ interface PayrollLine {
   aguinaldo_accrued: number;
   currency: string;
   exchange_rate_to_base?: number;
+  deductions_detail?: { base_imponible_crc?: number } | null;
 }
 
 export function PayrollProcess() {
