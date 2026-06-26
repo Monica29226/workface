@@ -204,8 +204,11 @@ export function PreNomina() {
   const isEditable = currentBatch?.status === 'borrador' || currentBatch?.status === 'calculado';
   const exchangeRate = payrollLines?.[0]?.exchange_rate_to_base || 505.10;
   
-  // Determine if batch currency is CRC (when TC=1, it means working in colones)
-  const isBatchCRC = currentBatch?.base_currency === 'CRC' || exchangeRate === 1;
+  // Determine if batch is CRC-only based on lines: if ANY line is USD with exchange_rate > 1, it's NOT CRC
+  const hasUSDLines = (payrollLines || []).some(
+    (l) => l.currency === 'USD' && Number(l.exchange_rate_to_base) > 1
+  );
+  const isBatchCRC = !hasUSDLines;
 
   // Handle field changes
   const handleFieldChange = useCallback((lineId: string, field: string, value: number) => {
