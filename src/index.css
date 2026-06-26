@@ -196,22 +196,40 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Mulish', 'Avenir', 'Avenir Next', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-family: var(--font-sans);
   }
-  
-  /* Typography hierarchy */
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Libre Caslon Display', 'Big Caslon', Georgia, serif;
+
+  /* Typography hierarchy — Caslon for display, Mulish for UI */
+  h1, h2, h3, h4, h5, h6,
+  .font-display {
+    font-family: var(--font-display);
     font-weight: 400;
     letter-spacing: -0.01em;
   }
-  
-  /* Tabular numbers for amounts */
-  .font-mono, 
+
+  .font-serif-italic {
+    font-family: var(--font-serif);
+    font-style: italic;
+  }
+
+  /* Tabular numbers for amounts and tables */
+  .font-mono,
   [class*="currency"],
   [class*="amount"],
+  table td,
+  table th,
   .tabular-nums {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Inputs: royal focus halo */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  [data-radix-select-trigger]:focus-visible {
+    outline: none;
+    border-color: hsl(var(--royal));
+    box-shadow: var(--focus-ring);
   }
   
   /* Custom scrollbar - ACL styled */
