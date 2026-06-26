@@ -72,26 +72,30 @@ async function fetchBCCRExchangeRate(date: string): Promise<{ venta: number; fec
     }
 
     // Convert YYYY-MM-DD to DD/MM/YYYY format required by BCCR
-    const [year, month, day] = date.split('-');
-    const formattedDate = `${day}/${month}/${year}`;
+    const endDate = new Date(`${date}T12:00:00Z`);
+    const startDate = new Date(endDate);
+    startDate.setUTCDate(startDate.getUTCDate() - 10);
+    const fmt = (d: Date) => `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
+    const fechaFinal = fmt(endDate);
+    const fechaInicio = fmt(startDate);
 
-    console.log(`Fetching BCCR exchange rate for date: ${date} (${formattedDate})`);
+    console.log(`Fetching BCCR exchange rate range: ${fechaInicio} -> ${fechaFinal}`);
 
-    const url = `https://gee.bccr.fi.cr/Indicadores/Suscripciones/WS/wsindicadoreseconomicos.asmx/ObtenerIndicadoresEconomicosXML?Indicador=318&FechaInicio=${formattedDate}&FechaFinal=${formattedDate}&Nombre=${encodeURIComponent(nombre)}&SubNiveles=N&CorreoElectronico=${encodeURIComponent(email)}&Token=${token}`;
+    const url = `https://gee.bccr.fi.cr/Indicadores/Suscripciones/WS/wsindicadoreseconomicos.asmx/ObtenerIndicadoresEconomicosXML?Indicador=318&FechaInicio=${fechaInicio}&FechaFinal=${fechaFinal}&Nombre=${encodeURIComponent(nombre)}&SubNiveles=N&CorreoElectronico=${encodeURIComponent(email)}&Token=${token}`;
 
     const response = await fetch(url);
     const xmlText = await response.text();
 
-    const valueMatch = xmlText.match(/<NUM_VALOR>([\d.]+)<\/NUM_VALOR>/);
-    
-    if (!valueMatch) {
-      console.error('Could not extract NUM_VALOR from BCCR response');
+    const matches = [...xmlText.matchAll(/<NUM_VALOR>([\d.]+)<\/NUM_VALOR>/g)];
+
+    if (matches.length === 0) {
+      console.error('Could not extract any NUM_VALOR from BCCR response');
       return null;
     }
 
-    const venta = parseFloat(valueMatch[1]);
-    console.log(`BCCR exchange rate retrieved: ${venta} CRC/USD for ${date}`);
-    
+    const venta = parseFloat(matches[matches.length - 1][1]);
+    console.log(`BCCR exchange rate retrieved: ${venta} CRC/USD (most recent in window ending ${date})`);
+
     return { venta, fecha: date };
   } catch (error) {
     console.error('Error fetching BCCR exchange rate:', error);
@@ -275,11 +279,29 @@ serve(async (req) => {
         if (bccrResult) {
           bccrExchangeRate = bccrResult.venta;
           console.log(`Using BCCR exchange rate: ${bccrExchangeRate} for date ${periodEnd}`);
-        } else {
-          console.error('Could not fetch BCCR rate for USD payroll processing');
+        }
+
+        // Fallback final: usar el último TC conocido de una planilla previa de esta empresa
+        if (!bccrExchangeRate) {
+          const { data: lastLine } = await supabaseClient
+            .from('payroll_lines')
+            .select('exchange_rate_to_base')
+            .eq('company_id', companyId)
+            .gt('exchange_rate_to_base', 1)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (lastLine?.exchange_rate_to_base) {
+            bccrExchangeRate = Number(lastLine.exchange_rate_to_base);
+            console.log(`Using LAST KNOWN exchange rate from previous payroll: ${bccrExchangeRate}`);
+          }
+        }
+
+        if (!bccrExchangeRate) {
+          console.error('Could not resolve any exchange rate for USD payroll processing');
           return new Response(
             JSON.stringify({
-              error: "No se pudo obtener el tipo de cambio del BCCR para este periodo. Indique un tipo de cambio manual o reintente."
+              error: "No se pudo obtener el tipo de cambio del BCCR ni de planillas previas. Indique un tipo de cambio manual."
             }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );

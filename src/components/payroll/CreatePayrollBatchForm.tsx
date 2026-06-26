@@ -191,9 +191,17 @@ export function CreatePayrollBatchForm({
 
     } catch (error: any) {
       console.error('Error processing payroll:', error);
+      let realMessage = error.message;
+      try {
+        const ctx = error?.context;
+        if (ctx && typeof ctx.json === 'function') {
+          const body = await ctx.json();
+          if (body?.error) realMessage = body.error;
+        }
+      } catch (_) { /* ignore */ }
       toast({
         title: "Error",
-        description: error.message || "No se pudo procesar la planilla",
+        description: realMessage || "No se pudo procesar la planilla",
         variant: "destructive",
       });
     } finally {
