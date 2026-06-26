@@ -680,6 +680,7 @@ serve(async (req) => {
 
     if (linesError) {
       console.error("Lines creation error:", linesError);
+      await supabaseClient.from('payroll_batches').delete().eq('id', batch.id);
       return new Response(
         JSON.stringify({ error: "Error al crear líneas de planilla" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
