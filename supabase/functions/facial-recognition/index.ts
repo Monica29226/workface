@@ -40,6 +40,26 @@ serve(async (req) => {
   }
 
   try {
+    // === AUTH GUARD ===
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const sb = createClient(supabaseUrl, supabaseServiceKey);
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, faces: [], face_count: 0, error: 'No authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user: callerUser }, error: authErr } = await sb.auth.getUser(token);
+    if (authErr || !callerUser) {
+      return new Response(
+        JSON.stringify({ success: false, faces: [], face_count: 0, error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const apiKey = Deno.env.get('FACEPP_API_KEY');
     const apiSecret = Deno.env.get('FACEPP_API_SECRET');
 
