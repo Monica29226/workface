@@ -165,7 +165,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const appOrigin = "https://aclcostarica.com";
+    const appOrigin = "https://planillas.aclcostarica.com";
     const platformUrl = `${appOrigin}/auth`;
     const unsubscribeEmail = "unsubscribe@aclcostarica.com";
 

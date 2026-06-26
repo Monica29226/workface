@@ -141,7 +141,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Build the invitation link
-    const appOrigin = "https://aclcostarica.com";
+    const appOrigin = "https://planillas.aclcostarica.com";
     const inviteLink = `${appOrigin}/auth?invite=${invitation.token}`;
     const systemName = "ACL Web · Planillas";
     const supportEmail = "soporte@aclcostarica.com";
