@@ -72,26 +72,30 @@ async function fetchBCCRExchangeRate(date: string): Promise<{ venta: number; fec
     }
 
     // Convert YYYY-MM-DD to DD/MM/YYYY format required by BCCR
-    const [year, month, day] = date.split('-');
-    const formattedDate = `${day}/${month}/${year}`;
+    const endDate = new Date(`${date}T12:00:00Z`);
+    const startDate = new Date(endDate);
+    startDate.setUTCDate(startDate.getUTCDate() - 10);
+    const fmt = (d: Date) => `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
+    const fechaFinal = fmt(endDate);
+    const fechaInicio = fmt(startDate);
 
-    console.log(`Fetching BCCR exchange rate for date: ${date} (${formattedDate})`);
+    console.log(`Fetching BCCR exchange rate range: ${fechaInicio} -> ${fechaFinal}`);
 
-    const url = `https://gee.bccr.fi.cr/Indicadores/Suscripciones/WS/wsindicadoreseconomicos.asmx/ObtenerIndicadoresEconomicosXML?Indicador=318&FechaInicio=${formattedDate}&FechaFinal=${formattedDate}&Nombre=${encodeURIComponent(nombre)}&SubNiveles=N&CorreoElectronico=${encodeURIComponent(email)}&Token=${token}`;
+    const url = `https://gee.bccr.fi.cr/Indicadores/Suscripciones/WS/wsindicadoreseconomicos.asmx/ObtenerIndicadoresEconomicosXML?Indicador=318&FechaInicio=${fechaInicio}&FechaFinal=${fechaFinal}&Nombre=${encodeURIComponent(nombre)}&SubNiveles=N&CorreoElectronico=${encodeURIComponent(email)}&Token=${token}`;
 
     const response = await fetch(url);
     const xmlText = await response.text();
 
-    const valueMatch = xmlText.match(/<NUM_VALOR>([\d.]+)<\/NUM_VALOR>/);
-    
-    if (!valueMatch) {
-      console.error('Could not extract NUM_VALOR from BCCR response');
+    const matches = [...xmlText.matchAll(/<NUM_VALOR>([\d.]+)<\/NUM_VALOR>/g)];
+
+    if (matches.length === 0) {
+      console.error('Could not extract any NUM_VALOR from BCCR response');
       return null;
     }
 
-    const venta = parseFloat(valueMatch[1]);
-    console.log(`BCCR exchange rate retrieved: ${venta} CRC/USD for ${date}`);
-    
+    const venta = parseFloat(matches[matches.length - 1][1]);
+    console.log(`BCCR exchange rate retrieved: ${venta} CRC/USD (most recent in window ending ${date})`);
+
     return { venta, fecha: date };
   } catch (error) {
     console.error('Error fetching BCCR exchange rate:', error);
