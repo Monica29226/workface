@@ -14,7 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['Mulish', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        display: ['"Libre Caslon Display"', '"Big Caslon"', 'Georgia', 'serif'],
+        serif: ['"Libre Caslon Text"', 'Georgia', 'serif'],
       },
       fontSize: {
         // KPI hierarchy
@@ -96,6 +98,16 @@ export default {
           DEFAULT: "hsl(var(--info))",
           foreground: "hsl(var(--info-foreground))",
         },
+        royal: {
+          DEFAULT: "hsl(var(--royal))",
+          hover: "hsl(var(--royal-hover))",
+          foreground: "hsl(var(--royal-foreground))",
+        },
+        paper: {
+          DEFAULT: "hsl(var(--paper))",
+          light: "hsl(var(--paper-light))",
+        },
+        hairline: "hsl(var(--hairline))",
         // Chart colors
         chart: {
           1: "hsl(var(--chart-1))",
@@ -106,9 +118,10 @@ export default {
         },
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "var(--radius-lg)",
+        md: "var(--radius)",
+        sm: "var(--radius-sm)",
+        pill: "9999px",
       },
       boxShadow: {
         'sm': 'var(--shadow-sm)',
