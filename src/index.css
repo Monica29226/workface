@@ -130,48 +130,58 @@
   .dark {
     /* Dark mode - ACL Navy based */
     --background: 232 45% 12%;
-    --foreground: 47 33% 91%;
+    --paper: 232 45% 12%;
+    --paper-light: 232 36% 15%;
+    --foreground: 45 30% 90%;
 
     --card: 232 36% 15%;
-    --card-foreground: 47 33% 91%;
+    --card-foreground: 45 30% 90%;
 
     --popover: 232 36% 15%;
-    --popover-foreground: 47 33% 91%;
+    --popover-foreground: 45 30% 90%;
 
-    --primary: 38 40% 51%;
-    --primary-foreground: 232 45% 19%;
+    --primary: 38 41% 51%;
+    --primary-foreground: 232 47% 19%;
 
     --secondary: 231 41% 24%;
-    --secondary-foreground: 47 33% 91%;
+    --secondary-foreground: 45 30% 90%;
 
     --muted: 232 28% 19%;
-    --muted-foreground: 42 22% 85%;
+    --muted-foreground: 45 20% 75%;
 
-    --accent: 217 92% 24%;
+    --accent: 217 68% 37%;
     --accent-foreground: 0 0% 100%;
+    --royal: 217 68% 37%;
+    --royal-hover: 217 70% 48%;
+    --royal-foreground: 0 0% 100%;
 
-    --destructive: 7 51% 55%;
+    --destructive: 354 55% 55%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 232 28% 24%;
+    --hairline: 232 28% 24%;
     --input: 232 28% 24%;
-    --ring: 38 40% 51%;
+    --ring: 38 41% 51%;
 
     /* Dark mode custom tokens */
-    --navy: 232 45% 19%;
+    --navy: 232 47% 19%;
     --navy-light: 231 41% 24%;
-    --gold: 38 40% 51%;
+    --gold: 38 41% 51%;
     --gold-light: 41 43% 62%;
-    --success: 153 53% 46%;
-    
+    --gold-dark: 36 43% 38%;
+    --graphite: 45 20% 80%;
+    --graphite-light: 45 15% 65%;
+    --success: 153 54% 46%;
+    --warning: 36 73% 55%;
+
     --sidebar-background: 232 45% 10%;
-    --sidebar-foreground: 47 33% 91%;
-    --sidebar-primary: 38 40% 51%;
+    --sidebar-foreground: 45 30% 90%;
+    --sidebar-primary: 38 41% 51%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 231 41% 18%;
-    --sidebar-accent-foreground: 47 33% 91%;
+    --sidebar-accent-foreground: 45 30% 90%;
     --sidebar-border: 231 41% 18%;
-    --sidebar-ring: 38 40% 51%;
+    --sidebar-ring: 38 41% 51%;
   }
 }
 
