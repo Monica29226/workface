@@ -11,72 +11,85 @@
 @layer base {
   :root {
     /* === ACL CORPORATE PALETTE === */
-    
-    /* Foundation from ACL branding JSON */
-    --background: 48 38% 98%;
-    --foreground: 232 45% 19%;
+
+    /* Foundation: paper background + ink text */
+    --background: 45 38% 94%;          /* #F5F2E9 paper */
+    --paper: 45 38% 94%;
+    --paper-light: 48 50% 97%;         /* #FBFAF5 */
+    --foreground: 232 47% 19%;         /* #1A2046 navy ink */
 
     --card: 0 0% 100%;
-    --card-foreground: 232 45% 19%;
+    --card-foreground: 232 47% 19%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 232 45% 19%;
+    --popover-foreground: 232 47% 19%;
 
-    /* ACL canonical palette */
-    --primary: 232 45% 19%;
-    --primary-foreground: 0 0% 100%;
+    /* Navy primary */
+    --primary: 232 47% 19%;            /* #1A2046 */
+    --primary-foreground: 48 50% 97%;
 
-    --secondary: 47 33% 91%;
-    --secondary-foreground: 232 45% 19%;
+    --secondary: 45 30% 90%;
+    --secondary-foreground: 232 47% 19%;
 
-    --muted: 48 33% 95%;
-    --muted-foreground: 235 8% 45%;
+    --muted: 45 35% 95%;
+    --muted-foreground: 235 8% 45%;    /* #6A6B7C */
 
-    --accent: 217 92% 24%;
+    /* Royal action blue */
+    --accent: 217 92% 24%;             /* #052C76 */
     --accent-foreground: 0 0% 100%;
+    --royal: 217 92% 24%;
+    --royal-hover: 217 68% 37%;        /* #1E4DA0 */
+    --royal-foreground: 0 0% 100%;
 
-    /* Destructive - restrained */
-    --destructive: 7 51% 47%;
+    --destructive: 354 51% 46%;        /* #B23A48 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 42 22% 85%;
-    --input: 48 24% 94%;
+    --border: 45 26% 80%;              /* #D9D3C0 hairline */
+    --hairline: 45 26% 80%;
+    --input: 45 26% 80%;
     --ring: 217 92% 24%;
 
-    --radius: 0.375rem;
+    /* Radius tokens: buttons 9px, cards 12px, sm 7px */
+    --radius-sm: 0.4375rem;            /* 7px */
+    --radius: 0.5625rem;               /* 9px */
+    --radius-lg: 0.75rem;              /* 12px */
 
     /* === ACL CUSTOM DESIGN TOKENS === */
-    
+
+    /* Fonts */
+    --font-display: 'Libre Caslon Display', 'Big Caslon', Georgia, serif;
+    --font-serif: 'Libre Caslon Text', Georgia, serif;
+    --font-sans: 'Mulish', 'Avenir', 'Avenir Next', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
     /* Navy variants */
-    --navy: 232 45% 19%;
+    --navy: 232 47% 19%;
     --navy-light: 231 41% 24%;
-    --navy-dark: 231 45% 16%;
-    
+    --navy-dark: 231 47% 14%;
+
     /* Gold accent */
-    --gold: 38 40% 51%;
+    --gold: 38 41% 51%;                /* #B6924F */
     --gold-light: 41 43% 62%;
-    --gold-dark: 39 43% 39%;
-    
-    /* Graphite */
-    --graphite: 232 45% 19%;
-    --graphite-light: 235 8% 45%;
-    
-    /* Success - Professional Green (#1F7A5F) */
-    --success: 153 53% 46%;
+    --gold-dark: 36 43% 38%;           /* #8C6E38 */
+
+    /* Graphite text */
+    --graphite: 235 14% 27%;           /* #3A3B4F */
+    --graphite-light: 235 8% 45%;      /* #6A6B7C */
+
+    /* Status — text on tinted backgrounds */
+    --success: 153 54% 40%;            /* #2F9E6E */
     --success-foreground: 0 0% 100%;
-    
-    /* Warning - Amber */
-    --warning: 38 92% 50%;
-    --warning-foreground: 207 27% 16%;
-    
-    /* Info */
-    --info: 199 89% 48%;
+    --success-bg: 142 36% 93%;         /* #E6F4EC */
+    --warning: 36 73% 45%;             /* #C9871F */
+    --warning-foreground: 0 0% 100%;
+    --warning-bg: 42 84% 92%;          /* #FBF1DC */
+    --info: 217 92% 24%;
     --info-foreground: 0 0% 100%;
-    
-    /* Keep helpers but avoid visible gradients in large surfaces */
-    --gradient-primary: linear-gradient(135deg, hsl(232 45% 19%), hsl(232 45% 19%));
-    --gradient-gold: linear-gradient(135deg, hsl(38 40% 51%), hsl(38 40% 51%));
-    --gradient-subtle: linear-gradient(180deg, hsl(48 38% 98%), hsl(48 38% 98%));
+    --destructive-bg: 357 67% 94%;     /* #F8E7E8 */
+
+    /* Gradients kept solid (no visible gradients in large surfaces) */
+    --gradient-primary: linear-gradient(135deg, hsl(232 47% 19%), hsl(232 47% 19%));
+    --gradient-gold: linear-gradient(135deg, hsl(38 41% 51%), hsl(38 41% 51%));
+    --gradient-subtle: linear-gradient(180deg, hsl(45 38% 94%), hsl(45 38% 94%));
     --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(0 0% 100%));
     
     /* === SHADOWS === */
