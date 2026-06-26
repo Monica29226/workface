@@ -95,13 +95,13 @@ export function EditablePayrollRow({
           {formatCurrency(Number(line.gross_salary), line.currency)}
         </TableCell>
         <TableCell className="text-right font-mono text-destructive">
-          {formatCurrency(Number(line.deductions), line.currency)}
+          {formatCurrency(Number(line.deductions), 'CRC')}
         </TableCell>
         <TableCell className="text-right font-mono font-semibold text-green-600">
-          {formatCurrency(Number(line.net_pay), line.currency)}
+          {formatCurrency(Number(line.net_pay), 'CRC')}
         </TableCell>
         <TableCell className="text-right font-mono text-primary">
-          {formatCurrency(Number(line.employer_contrib), line.currency)}
+          {formatCurrency(Number(line.employer_contrib), 'CRC')}
         </TableCell>
       </TableRow>
     );
