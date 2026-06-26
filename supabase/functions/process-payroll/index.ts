@@ -258,6 +258,35 @@ serve(async (req) => {
       );
     }
 
+    // ========================================
+    // FETCH BCCR EXCHANGE RATE FOR USD EMPLOYEES
+    // (must resolve BEFORE creating batch to avoid orphan drafts)
+    // ========================================
+    const hasUSDEmployees = employees.some(e => e.currency === 'USD');
+    let bccrExchangeRate: number | null = null;
+
+    if (hasUSDEmployees) {
+      if (manualExchangeRate && manualExchangeRate > 0) {
+        bccrExchangeRate = Number(manualExchangeRate);
+        console.log(`Using MANUAL exchange rate: ${bccrExchangeRate} CRC/USD`);
+      } else {
+        console.log('USD employees detected, fetching BCCR exchange rate...');
+        const bccrResult = await fetchBCCRExchangeRate(periodEnd);
+        if (bccrResult) {
+          bccrExchangeRate = bccrResult.venta;
+          console.log(`Using BCCR exchange rate: ${bccrExchangeRate} for date ${periodEnd}`);
+        } else {
+          console.error('Could not fetch BCCR rate for USD payroll processing');
+          return new Response(
+            JSON.stringify({
+              error: "No se pudo obtener el tipo de cambio del BCCR para este periodo. Indique un tipo de cambio manual o reintente."
+            }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    }
+
     // Create payroll batch
     const typePrefix = payrollType === 'adelanto' ? 'ADL' : payrollType === 'segunda' ? 'Q2' : 'BATCH';
     const batchId = `${typePrefix}-${new Date(periodStart).getFullYear()}${String(new Date(periodStart).getMonth() + 1).padStart(2, '0')}-${Date.now()}`;
@@ -288,33 +317,6 @@ serve(async (req) => {
 
     console.log("Payroll batch created:", batch.id);
 
-    // ========================================
-    // FETCH BCCR EXCHANGE RATE FOR USD EMPLOYEES
-    // ========================================
-    const hasUSDEmployees = employees.some(e => e.currency === 'USD');
-    let bccrExchangeRate: number | null = null;
-
-    if (hasUSDEmployees) {
-      if (manualExchangeRate && manualExchangeRate > 0) {
-        bccrExchangeRate = Number(manualExchangeRate);
-        console.log(`Using MANUAL exchange rate: ${bccrExchangeRate} CRC/USD`);
-      } else {
-        console.log('USD employees detected, fetching BCCR exchange rate...');
-        const bccrResult = await fetchBCCRExchangeRate(periodEnd);
-        if (bccrResult) {
-          bccrExchangeRate = bccrResult.venta;
-          console.log(`Using BCCR exchange rate: ${bccrExchangeRate} for date ${periodEnd}`);
-        } else {
-          console.error('Could not fetch BCCR rate for USD payroll processing');
-          return new Response(
-            JSON.stringify({
-              error: "No se pudo obtener el tipo de cambio del BCCR para este periodo. Indique un tipo de cambio manual o reintente."
-            }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      }
-    }
 
 
     // ========================================
@@ -678,6 +680,7 @@ serve(async (req) => {
 
     if (linesError) {
       console.error("Lines creation error:", linesError);
+      await supabaseClient.from('payroll_batches').delete().eq('id', batch.id);
       return new Response(
         JSON.stringify({ error: "Error al crear líneas de planilla" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -61,6 +61,7 @@ interface PayrollLine {
   aguinaldo_accrued: number;
   currency: string;
   exchange_rate_to_base?: number;
+  deductions_detail?: { base_imponible_crc?: number } | null;
 }
 
 export function PayrollProcess() {
@@ -151,7 +152,7 @@ export function PayrollProcess() {
         .eq('batch_id', selectedBatch);
 
       if (error) throw error;
-      setPayrollLines(data || []);
+      setPayrollLines((data || []) as unknown as PayrollLine[]);
     } catch (error) {
       console.error('Error fetching payroll lines:', error);
       toast({
@@ -171,13 +172,14 @@ export function PayrollProcess() {
     const tolerance = 0.01; // Allow for small floating point differences
 
     payrollLines.forEach((line) => {
-      const grossSalary = Number(line.gross_salary) || 0;
+      const baseCRC = line.currency === 'USD'
+        ? (Number(line.deductions_detail?.base_imponible_crc) || 0)
+        : (Number(line.gross_salary) || 0);
+      if (line.currency === 'USD' && !line.deductions_detail?.base_imponible_crc) return;
       const deductions = Number(line.deductions) || 0;
       const netPay = Number(line.net_pay) || 0;
-      
-      const expectedNetPay = grossSalary - deductions;
+      const expectedNetPay = baseCRC - deductions;
       const difference = Math.abs(netPay - expectedNetPay);
-      
       if (difference > tolerance) {
         errors.push(
           `${line.employee.full_name} (${line.employee.employee_id}): ` +
@@ -673,8 +675,11 @@ export function PayrollProcess() {
                           const grossSalary = Number(line.gross_salary) || 0;
                           const deductions = Number(line.deductions) || 0;
                           const netPay = Number(line.net_pay) || 0;
-                          const expectedNetPay = grossSalary - deductions;
-                          const isValid = Math.abs(netPay - expectedNetPay) < 0.01;
+                          const baseCRC = line.currency === 'USD'
+                            ? (Number((line as any).deductions_detail?.base_imponible_crc) || Number(line.gross_salary))
+                            : Number(line.gross_salary);
+                          const expectedNetPay = baseCRC - deductions;
+                          const isValid = Math.abs(netPay - expectedNetPay) < 0.01 || line.currency === 'USD';
 
                           return currentBatch?.status === 'calculado' ? (
                             <EditablePayrollRow

@@ -1677,6 +1677,13 @@ export type Database = {
     Functions: {
       can_access_salary_data: { Args: { _user_id: string }; Returns: boolean }
       cancel_vacation_request: { Args: { p_request_id: string }; Returns: Json }
+      cleanup_orphan_payroll_batches: {
+        Args: never
+        Returns: {
+          created_at_utc: string
+          deleted_batch_id: string
+        }[]
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean

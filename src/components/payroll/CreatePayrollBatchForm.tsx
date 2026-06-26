@@ -106,7 +106,8 @@ export function CreatePayrollBatchForm({
     
     return existingBatches.find(batch => 
       batch.period_start === calculatedDates.start && 
-      batch.period_end === calculatedDates.end
+      batch.period_end === calculatedDates.end &&
+      (batch as any).status !== 'borrador'
     );
   }, [calculatedDates, existingBatches]);
 

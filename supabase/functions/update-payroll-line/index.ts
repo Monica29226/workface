@@ -279,11 +279,17 @@ serve(async (req) => {
       const overtimeAmount = overtimeHours * hourlyRate * 1.5;
       const mixedOvertimeAmount = mixedOvertimeHours * hourlyRate * 2.0;
 
-      // Calculate deductions based on gross salary
-      const ccssResult = calculateCCSS(newGrossSalary);
-      const magisterioResult = calculateMagisterio(newGrossSalary);
+      // Base imponible en CRC (convertir si el empleado/línea está en USD)
+      const isUSD = employee.currency === 'USD';
+      const exchangeRate = isUSD ? (Number(currentLine.exchange_rate_to_base) || 1) : 1;
+      const grossSalaryCRC = newGrossSalary * exchangeRate;
+
+      // Calculate deductions based on gross salary (CRC)
+      const ccssResult = calculateCCSS(grossSalaryCRC);
+      const magisterioResult = calculateMagisterio(grossSalaryCRC);
       const polizaVida = calculatePolizaVida();
-      const incomeTax = calculateIncomeTax(newGrossSalary);
+      const monthlyTaxCredit = Math.max(0, Number(employee.tax_credit_monthly || 0));
+      const incomeTax = Math.max(0, calculateIncomeTax(grossSalaryCRC) - monthlyTaxCredit);
       const loanDeduction = Number(employee.loan_monthly_deduction || 0);
 
       // Build deduction items
@@ -347,14 +353,16 @@ serve(async (req) => {
         });
       }
 
-      // Calculate totals
+      // Calculate totals (deducciones y neto en CRC)
       const totalDeductions = ccssResult.amount + magisterioResult.amount + polizaVida + incomeTax + loanDeduction + additionalDeductions;
-      const netPay = newGrossSalary - totalDeductions;
-      const employerContrib = calculateEmployerContributions(newGrossSalary);
+      const netPay = grossSalaryCRC - totalDeductions;
+      const employerContrib = calculateEmployerContributions(grossSalaryCRC);
 
-      const deductionsDetail: DeductionsDetail = {
+      const deductionsDetail: DeductionsDetail & { base_imponible_crc?: number; exchange_rate?: number } = {
         items: deductionItems,
-        total_deductions: totalDeductions
+        total_deductions: totalDeductions,
+        base_imponible_crc: grossSalaryCRC,
+        exchange_rate: exchangeRate,
       };
 
       const deductionSummary = deductionItems.map(d => `${d.code}: ₡${d.amount.toFixed(0)}`).join(' | ');
@@ -365,7 +373,7 @@ serve(async (req) => {
         net_pay: netPay,
         total_to_pay: netPay,
         employer_contrib: employerContrib,
-        aguinaldo_accrued: newGrossSalary / 12,
+        aguinaldo_accrued: grossSalaryCRC / 12,
         overtime: overtimeAmount,
         mixed_overtime_amount: mixedOvertimeAmount,
         manual_adjustments: {
@@ -383,6 +391,7 @@ serve(async (req) => {
 
       console.log('Calculated fields:', {
         grossSalary: newGrossSalary,
+        grossSalaryCRC,
         totalDeductions,
         netPay,
         employerContrib

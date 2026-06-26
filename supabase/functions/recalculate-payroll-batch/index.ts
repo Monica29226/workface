@@ -263,6 +263,10 @@ serve(async (req) => {
     const updatedLines = [];
     for (const line of lines) {
       const employee = (line as any).employees;
+
+      const isUSD = (line.currency === 'USD') || (employee.currency === 'USD');
+      const exchangeRate = isUSD ? (Number(line.exchange_rate_to_base) || 1) : 1;
+
       
       // Calculate gross salary based on contract type and manual adjustments
       let grossSalary = 0;
@@ -315,12 +319,15 @@ serve(async (req) => {
 
       // ========================================
       // DEDUCTIONS CALCULATION (per company rules)
+      // Base imponible para deducciones SIEMPRE en CRC
       // ========================================
-      const ccssResult = calculateCCSS(grossSalary);
-      const magisterioResult = calculateMagisterio(grossSalary);
+      const grossSalaryCRC = grossSalary * exchangeRate;
+      const ccssResult = calculateCCSS(grossSalaryCRC);
+      const magisterioResult = calculateMagisterio(grossSalaryCRC);
       const polizaVida = calculatePolizaVida();
-      const incomeTax = calculateIncomeTax(grossSalary);
-      
+      const monthlyTaxCredit = Math.max(0, Number(employee.tax_credit_monthly || 0));
+      const incomeTax = Math.max(0, calculateIncomeTax(grossSalaryCRC) - monthlyTaxCredit);
+
       // Get loan deduction from employee record
       const loanDeduction = Number(employee.loan_monthly_deduction || 0);
       
@@ -393,22 +400,24 @@ serve(async (req) => {
       // Total deductions
       const totalDeductions = ccssResult.amount + magisterioResult.amount + polizaVida + incomeTax + loanDeduction + additionalDeductions;
 
-      const deductionsDetail: DeductionsDetail = {
+      const deductionsDetail: DeductionsDetail & { base_imponible_crc?: number; exchange_rate?: number } = {
         items: deductionItems,
-        total_deductions: totalDeductions
+        total_deductions: totalDeductions,
+        base_imponible_crc: grossSalaryCRC,
+        exchange_rate: exchangeRate,
       };
 
-      // Calculate net pay
-      const netPay = grossSalary - totalDeductions;
+      // Net pay siempre en CRC (bruto convertido - deducciones en CRC)
+      const netPay = grossSalaryCRC - totalDeductions;
       
       // Total to pay
       const totalToPay = netPay;
 
-      // Calculate employer contributions
-      const employerContrib = calculateEmployerContributions(grossSalary);
+      // Calculate employer contributions (sobre la base en CRC)
+      const employerContrib = calculateEmployerContributions(grossSalaryCRC);
 
       // Calculate accruals
-      const aguinaldoAccrued = grossSalary / 12;
+      const aguinaldoAccrued = grossSalaryCRC / 12;
       const vacationAccruedDays = (line.vacation_days_taken || 0) > 0 ? 0 : 1.25;
 
       // Build notes with summary

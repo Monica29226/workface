@@ -344,6 +344,28 @@ export function PreNomina() {
     }
   };
 
+  const handleApprove = async () => {
+    if (!selectedBatchId) return;
+    setIsRevertingStatus(true);
+    try {
+      const { error } = await supabase
+        .from('payroll_batches')
+        .update({ status: 'aprobado' as any, updated_at: new Date().toISOString() })
+        .eq('id', selectedBatchId);
+      if (error) throw error;
+      toast({
+        title: "✓ Planilla aprobada",
+        description: "Ahora podés generar las colillas desde Proceso de Planilla",
+      });
+      queryClient.invalidateQueries({ queryKey: ["payrollBatchesPreNomina"] });
+      queryClient.invalidateQueries({ queryKey: ["payrollBatches"] });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message || "No se pudo aprobar", variant: "destructive" });
+    } finally {
+      setIsRevertingStatus(false);
+    }
+  };
+
   // Delete batch and all its lines
   const handleDeleteBatch = async () => {
     if (!selectedBatchId || !currentBatch) return;
@@ -594,6 +616,13 @@ export function PreNomina() {
                 Recalcular
               </Button>
               
+              {currentBatch?.status === 'calculado' && (
+                <Button onClick={handleApprove} disabled={isRevertingStatus} className="gap-2">
+                  {isRevertingStatus ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                  Aprobar
+                </Button>
+              )}
+
               {/* Delete Batch Button */}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
