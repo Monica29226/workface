@@ -172,13 +172,14 @@ export function PayrollProcess() {
     const tolerance = 0.01; // Allow for small floating point differences
 
     payrollLines.forEach((line) => {
-      const grossSalary = Number(line.gross_salary) || 0;
+      const baseCRC = line.currency === 'USD'
+        ? (Number(line.deductions_detail?.base_imponible_crc) || 0)
+        : (Number(line.gross_salary) || 0);
+      if (line.currency === 'USD' && !line.deductions_detail?.base_imponible_crc) return;
       const deductions = Number(line.deductions) || 0;
       const netPay = Number(line.net_pay) || 0;
-      
-      const expectedNetPay = grossSalary - deductions;
+      const expectedNetPay = baseCRC - deductions;
       const difference = Math.abs(netPay - expectedNetPay);
-      
       if (difference > tolerance) {
         errors.push(
           `${line.employee.full_name} (${line.employee.employee_id}): ` +
