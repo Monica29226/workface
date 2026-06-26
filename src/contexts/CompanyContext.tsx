@@ -41,27 +41,48 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Get companies the user has access to
-      const { data: companyUsers, error: companyUsersError } = await supabase
-        .from('company_users')
-        .select('company_id')
+      // Check if user is a global admin / ACL_SuperAdmin → load ALL companies
+      const { data: roleRows } = await (supabase as any)
+        .from('user_roles')
+        .select('role')
         .eq('user_id', user.id);
+      const userRoles: string[] = (roleRows || []).map((r: any) => r.role);
+      const isGlobalAdmin = userRoles.includes('admin') || userRoles.includes('ACL_SuperAdmin');
 
-      if (companyUsersError) throw companyUsersError;
+      let companiesData: any[] | null = null;
+      let companiesError: any = null;
 
-      if (!companyUsers || companyUsers.length === 0) {
-        setCompanies([]);
-        setSelectedCompanyState(null);
-        setIsLoading(false);
-        return;
+      if (isGlobalAdmin) {
+        const res = await supabase
+          .from('companies')
+          .select('id, display_name, tax_id, logo_url, base_currency, payroll_email_from')
+          .order('display_name');
+        companiesData = res.data;
+        companiesError = res.error;
+      } else {
+        // Get companies the user has access to via company_users
+        const { data: companyUsers, error: companyUsersError } = await supabase
+          .from('company_users')
+          .select('company_id')
+          .eq('user_id', user.id);
+
+        if (companyUsersError) throw companyUsersError;
+
+        if (!companyUsers || companyUsers.length === 0) {
+          setCompanies([]);
+          setSelectedCompanyState(null);
+          setIsLoading(false);
+          return;
+        }
+
+        const companyIds = companyUsers.map(cu => cu.company_id);
+        const res = await supabase
+          .from('companies')
+          .select('id, display_name, tax_id, logo_url, base_currency, payroll_email_from')
+          .in('id', companyIds);
+        companiesData = res.data;
+        companiesError = res.error;
       }
-
-      // Get company details
-      const companyIds = companyUsers.map(cu => cu.company_id);
-      const { data: companiesData, error: companiesError } = await supabase
-        .from('companies')
-        .select('id, display_name, tax_id, logo_url, base_currency, payroll_email_from')
-        .in('id', companyIds);
 
       if (companiesError) throw companiesError;
 

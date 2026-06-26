@@ -541,16 +541,7 @@ export function EmployeeProfileHR() {
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => handleGenerateCertificate("laboral")} disabled={isGeneratingCertificate !== null}>
-            <FileBadge className="h-4 w-4 mr-2" />
-            Constancia Laboral
-          </Button>
-          <Button variant="outline" onClick={() => handleGenerateCertificate("salarial")} disabled={isGeneratingCertificate !== null}>
-            <FileText className="h-4 w-4 mr-2" />
-            Constancia Salarial
-          </Button>
-        </div>
+        {/* Constancia buttons moved to the dedicated /employee-certificates page */}
       </div>
 
       {/* Tabs */}

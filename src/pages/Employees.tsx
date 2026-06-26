@@ -70,6 +70,19 @@ export function Employees() {
     fetchData();
   }, []);
 
+  // Re-fetch employees whenever the page/tab becomes visible (salary may have been edited elsewhere)
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchData();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, []);
+
   useEffect(() => {
     if (selectedCompany) {
       setFilterCompany(selectedCompany.id);

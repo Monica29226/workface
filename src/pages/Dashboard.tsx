@@ -1,7 +1,8 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   BarChart3, 
   Users, 
@@ -19,7 +20,9 @@ import {
   CheckCircle2,
   FileBadge2,
   Send,
-  AlertCircle
+  AlertCircle,
+  Palmtree,
+  Wallet
 } from "lucide-react";
 import { useCompany } from "@/contexts/CompanyContext";
 import { formatCurrency } from "@/lib/utils";
@@ -70,9 +73,11 @@ KPICard.displayName = "KPICard";
 export function Dashboard() {
   const { selectedCompany, isLoading: isLoadingCompanies } = useCompany();
   const navigate = useNavigate();
-  
+
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+
   // Use cached dashboard data hook
-  const { kpiData, latestBatch, isLoading } = useDashboardData();
+  const { kpiData, latestBatch, activeBatch, batches, isLoading } = useDashboardData(selectedBatchId);
 
   // Memoize quick actions to prevent recreation
   const quickActions = useMemo(() => [
@@ -202,12 +207,45 @@ export function Dashboard() {
         </div>
       </div>
 
+      {/* Period selector */}
+      <Card className="card-elevated">
+        <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <CalendarDays className="h-4 w-4" />
+            Período de planilla:
+          </div>
+          <Select
+            value={activeBatch?.id || ''}
+            onValueChange={(v) => setSelectedBatchId(v)}
+          >
+            <SelectTrigger className="w-full sm:w-[360px]">
+              <SelectValue placeholder="Seleccione un período" />
+            </SelectTrigger>
+            <SelectContent>
+              {batches.map((b) => (
+                <SelectItem key={b.id} value={b.id}>
+                  {b.label} · {b.status}
+                </SelectItem>
+              ))}
+              {batches.length === 0 && (
+                <div className="p-2 text-sm text-muted-foreground">Sin planillas</div>
+              )}
+            </SelectContent>
+          </Select>
+          {activeBatch && (
+            <Badge variant="outline" className="ml-auto">
+              {activeBatch.label}
+            </Badge>
+          )}
+        </CardContent>
+      </Card>
+
       {/* KPI Cards Grid - Using memoized components */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="Salario Bruto Período"
           value={formatCurrency(kpiData.grossPeriod, 'CRC')}
-          subtitle="Último período"
+          subtitle={activeBatch?.label || 'Último período'}
           icon={DollarSign}
           iconBg="bg-emerald-100 group-hover:bg-emerald-200 text-emerald-600"
           borderColor="border-l-emerald-500"
@@ -243,6 +281,30 @@ export function Dashboard() {
           borderColor="border-l-amber-500"
           subtitleIcon={Building2}
           subtitleColor="text-amber-600"
+        />
+      </div>
+
+      {/* Additional widgets */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <KPICard
+          title="Días de vacaciones pendientes"
+          value={kpiData.pendingVacationDays.toFixed(1)}
+          subtitle="Saldo acumulado (empleados activos)"
+          icon={Palmtree}
+          iconBg="bg-teal-100 group-hover:bg-teal-200 text-teal-600"
+          borderColor="border-l-teal-500"
+          subtitleIcon={Palmtree}
+          subtitleColor="text-teal-600"
+        />
+        <KPICard
+          title="Salarios pagados últimos 6 meses"
+          value={formatCurrency(kpiData.netPaid6Months, 'CRC')}
+          subtitle="Suma de netos pagados"
+          icon={Wallet}
+          iconBg="bg-indigo-100 group-hover:bg-indigo-200 text-indigo-600"
+          borderColor="border-l-indigo-500"
+          subtitleIcon={TrendingUp}
+          subtitleColor="text-indigo-600"
         />
       </div>
 
