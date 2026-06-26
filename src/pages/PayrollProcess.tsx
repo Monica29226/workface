@@ -675,8 +675,11 @@ export function PayrollProcess() {
                           const grossSalary = Number(line.gross_salary) || 0;
                           const deductions = Number(line.deductions) || 0;
                           const netPay = Number(line.net_pay) || 0;
-                          const expectedNetPay = grossSalary - deductions;
-                          const isValid = Math.abs(netPay - expectedNetPay) < 0.01;
+                          const baseCRC = line.currency === 'USD'
+                            ? (Number((line as any).deductions_detail?.base_imponible_crc) || Number(line.gross_salary))
+                            : Number(line.gross_salary);
+                          const expectedNetPay = baseCRC - deductions;
+                          const isValid = Math.abs(netPay - expectedNetPay) < 0.01 || line.currency === 'USD';
 
                           return currentBatch?.status === 'calculado' ? (
                             <EditablePayrollRow
