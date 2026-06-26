@@ -14,7 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: ['Mulish', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        display: ['"Libre Caslon Display"', '"Big Caslon"', 'Georgia', 'serif'],
+        serif: ['"Libre Caslon Text"', 'Georgia', 'serif'],
       },
       fontSize: {
         // KPI hierarchy
