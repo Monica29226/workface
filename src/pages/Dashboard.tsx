@@ -73,11 +73,14 @@ KPICard.displayName = "KPICard";
 export function Dashboard() {
   const { selectedCompany, isLoading: isLoadingCompanies } = useCompany();
   const navigate = useNavigate();
-  
+
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+
   // Use cached dashboard data hook
-  const { kpiData, latestBatch, isLoading } = useDashboardData();
+  const { kpiData, latestBatch, activeBatch, batches, isLoading } = useDashboardData(selectedBatchId);
 
   // Memoize quick actions to prevent recreation
+  const quickActions = useMemo(() => [
   const quickActions = useMemo(() => [
     {
       title: "Nuevo Empleado",
