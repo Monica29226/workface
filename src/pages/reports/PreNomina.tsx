@@ -133,7 +133,7 @@ export function PreNomina() {
   const [isRevertingStatus, setIsRevertingStatus] = useState(false);
   const [focusedLineId, setFocusedLineId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showUSDColumn, setShowUSDColumn] = useState(false);
+  const [showUSDColumn, setShowUSDColumn] = useState(true);
 
   // Auto-select batch from URL parameter
   useEffect(() => {
