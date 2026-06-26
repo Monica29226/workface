@@ -263,6 +263,10 @@ serve(async (req) => {
     const updatedLines = [];
     for (const line of lines) {
       const employee = (line as any).employees;
+
+      const isUSD = (line.currency === 'USD') || (employee.currency === 'USD');
+      const exchangeRate = isUSD ? (Number(line.exchange_rate_to_base) || 1) : 1;
+
       
       // Calculate gross salary based on contract type and manual adjustments
       let grossSalary = 0;
