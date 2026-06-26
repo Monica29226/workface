@@ -400,22 +400,24 @@ serve(async (req) => {
       // Total deductions
       const totalDeductions = ccssResult.amount + magisterioResult.amount + polizaVida + incomeTax + loanDeduction + additionalDeductions;
 
-      const deductionsDetail: DeductionsDetail = {
+      const deductionsDetail: DeductionsDetail & { base_imponible_crc?: number; exchange_rate?: number } = {
         items: deductionItems,
-        total_deductions: totalDeductions
+        total_deductions: totalDeductions,
+        base_imponible_crc: grossSalaryCRC,
+        exchange_rate: exchangeRate,
       };
 
-      // Calculate net pay
-      const netPay = grossSalary - totalDeductions;
+      // Net pay siempre en CRC (bruto convertido - deducciones en CRC)
+      const netPay = grossSalaryCRC - totalDeductions;
       
       // Total to pay
       const totalToPay = netPay;
 
-      // Calculate employer contributions
-      const employerContrib = calculateEmployerContributions(grossSalary);
+      // Calculate employer contributions (sobre la base en CRC)
+      const employerContrib = calculateEmployerContributions(grossSalaryCRC);
 
       // Calculate accruals
-      const aguinaldoAccrued = grossSalary / 12;
+      const aguinaldoAccrued = grossSalaryCRC / 12;
       const vacationAccruedDays = (line.vacation_days_taken || 0) > 0 ? 0 : 1.25;
 
       // Build notes with summary
