@@ -670,15 +670,14 @@ export function PayrollProcess() {
                       </TableHeader>
                       <TableBody>
                         {payrollLines.map((line) => {
-                          // Validate: NET = GROSS - DEDUCTIONS
+                          // Validate: NET = GROSS(CRC) - DEDUCTIONS  with ₡100 tolerance
                           const grossSalary = Number(line.gross_salary) || 0;
                           const deductions = Number(line.deductions) || 0;
                           const netPay = Number(line.net_pay) || 0;
-                          const baseCRC = line.currency === 'USD'
-                            ? (Number((line as any).deductions_detail?.base_imponible_crc) || Number(line.gross_salary))
-                            : Number(line.gross_salary);
-                          const expectedNetPay = baseCRC - deductions;
-                          const isValid = Math.abs(netPay - expectedNetPay) < 0.01 || line.currency === 'USD';
+                          const rate = Number(line.exchange_rate_to_base) || 1;
+                          const grossCRC = line.currency === 'USD' ? grossSalary * rate : grossSalary;
+                          const expectedNetPay = grossCRC - deductions;
+                          const isValid = Math.abs(netPay - expectedNetPay) < 100;
 
                           return currentBatch?.status === 'calculado' ? (
                             <EditablePayrollRow
