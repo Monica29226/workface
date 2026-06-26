@@ -129,8 +129,11 @@ export default function AguinaldoReport() {
         const hire = e.hire_date || defaultHireDate(e.full_name);
         const baseUSD = defaultBaseSalary(e.full_name, Number(e.base_salary) || 0);
         const hireDate = new Date(hire + "T00:00:00Z");
+        const now = new Date();
+        const currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
         const months = monthDates.map((md, idx) => {
           if (md < new Date(Date.UTC(hireDate.getUTCFullYear(), hireDate.getUTCMonth(), 1))) return 0;
+          if (md > currentMonthStart) return aggregate[e.id]?.[idx] ?? 0;
           return aggregate[e.id]?.[idx] ?? baseUSD;
         });
         return {
