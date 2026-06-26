@@ -27,6 +27,7 @@ const CostCenters = lazy(() => import("@/pages/CostCenters").then(m => ({ defaul
 const VacationReport = lazy(() => import("@/pages/reports/VacationReport").then(m => ({ default: m.VacationReport })));
 const PreNomina = lazy(() => import("@/pages/reports/PreNomina").then(m => ({ default: m.PreNomina })));
 const PreColilla = lazy(() => import("@/pages/reports/PreColilla").then(m => ({ default: m.PreColilla })));
+const AguinaldoReport = lazy(() => import("@/pages/reports/AguinaldoReport"));
 const VacationApproval = lazy(() => import("@/pages/VacationApproval").then(m => ({ default: m.VacationApproval })));
 const EmployeeProfile = lazy(() => import("@/pages/EmployeeProfile").then(m => ({ default: m.EmployeeProfile })));
 const EmployeeProfileHR = lazy(() => import("@/pages/EmployeeProfileHR").then(m => ({ default: m.EmployeeProfileHR })));
@@ -98,6 +99,7 @@ const App = () => (
                     <Route path="/reports/vacations" element={<VacationReport />} />
                     <Route path="/reports/pre-nomina" element={<PreNomina />} />
                     <Route path="/reports/pre-colilla" element={<PreColilla />} />
+                    <Route path="/reports/aguinaldo" element={<AguinaldoReport />} />
                     <Route path="/vacation-approval" element={<VacationApproval />} />
                     <Route path="/historico" element={<Historico />} />
                     <Route path="/users" element={<UsersPage />} />
