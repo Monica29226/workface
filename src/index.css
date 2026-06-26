@@ -107,22 +107,24 @@
 
     /* === SIDEBAR (ACL Blue) === */
     --sidebar-background: 232 45% 19%;
-    --sidebar-foreground: 47 33% 91%;
-    --sidebar-primary: 38 40% 51%;
-    --sidebar-primary-foreground: 232 45% 19%;
+    /* === SIDEBAR (ACL Navy) === */
+    --sidebar-background: 232 47% 19%;
+    --sidebar-foreground: 45 30% 90%;
+    --sidebar-primary: 38 41% 51%;
+    --sidebar-primary-foreground: 232 47% 19%;
     --sidebar-accent: 231 41% 24%;
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 231 41% 24%;
-    --sidebar-ring: 38 40% 51%;
-    --sidebar-muted: 235 8% 45%;
-    --sidebar-muted-foreground: 42 22% 85%;
+    --sidebar-ring: 38 41% 51%;
+    --sidebar-muted: 235 8% 55%;
+    --sidebar-muted-foreground: 45 26% 80%;
 
     /* Chart colors */
-    --chart-1: 232 45% 19%;
-    --chart-2: 38 40% 51%;
-    --chart-3: 153 53% 46%;
+    --chart-1: 232 47% 19%;
+    --chart-2: 38 41% 51%;
+    --chart-3: 153 54% 40%;
     --chart-4: 217 92% 24%;
-    --chart-5: 7 51% 47%;
+    --chart-5: 354 51% 46%;
   }
 
   .dark {
