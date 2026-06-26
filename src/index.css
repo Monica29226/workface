@@ -97,7 +97,9 @@
     --shadow-md: 0 4px 16px rgba(21,22,44,.08), 0 1px 3px rgba(21,22,44,.06);
     --shadow-lg: 0 18px 48px rgba(21,22,44,.14), 0 4px 12px rgba(21,22,44,.08);
     --shadow-xl: 0 20px 56px rgba(21,22,44,.16), 0 4px 12px rgba(21,22,44,.08);
-    --shadow-gold: 0 4px 14px -2px hsl(38 40% 51% / 0.18);
+    --shadow-gold: 0 4px 14px -2px hsl(38 41% 51% / 0.18);
+    --shadow-modal: 0 18px 48px rgba(21,22,44,.14);
+    --focus-ring: 0 0 0 3px rgba(5,44,118,.10);
     
     /* === TRANSITIONS === */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
