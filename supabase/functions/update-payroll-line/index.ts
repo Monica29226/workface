@@ -353,14 +353,16 @@ serve(async (req) => {
         });
       }
 
-      // Calculate totals
+      // Calculate totals (deducciones y neto en CRC)
       const totalDeductions = ccssResult.amount + magisterioResult.amount + polizaVida + incomeTax + loanDeduction + additionalDeductions;
-      const netPay = newGrossSalary - totalDeductions;
-      const employerContrib = calculateEmployerContributions(newGrossSalary);
+      const netPay = grossSalaryCRC - totalDeductions;
+      const employerContrib = calculateEmployerContributions(grossSalaryCRC);
 
-      const deductionsDetail: DeductionsDetail = {
+      const deductionsDetail: DeductionsDetail & { base_imponible_crc?: number; exchange_rate?: number } = {
         items: deductionItems,
-        total_deductions: totalDeductions
+        total_deductions: totalDeductions,
+        base_imponible_crc: grossSalaryCRC,
+        exchange_rate: exchangeRate,
       };
 
       const deductionSummary = deductionItems.map(d => `${d.code}: ₡${d.amount.toFixed(0)}`).join(' | ');
@@ -371,7 +373,7 @@ serve(async (req) => {
         net_pay: netPay,
         total_to_pay: netPay,
         employer_contrib: employerContrib,
-        aguinaldo_accrued: newGrossSalary / 12,
+        aguinaldo_accrued: grossSalaryCRC / 12,
         overtime: overtimeAmount,
         mixed_overtime_amount: mixedOvertimeAmount,
         manual_adjustments: {
@@ -389,6 +391,7 @@ serve(async (req) => {
 
       console.log('Calculated fields:', {
         grossSalary: newGrossSalary,
+        grossSalaryCRC,
         totalDeductions,
         netPay,
         employerContrib
