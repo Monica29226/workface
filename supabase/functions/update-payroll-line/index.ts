@@ -279,11 +279,17 @@ serve(async (req) => {
       const overtimeAmount = overtimeHours * hourlyRate * 1.5;
       const mixedOvertimeAmount = mixedOvertimeHours * hourlyRate * 2.0;
 
-      // Calculate deductions based on gross salary
-      const ccssResult = calculateCCSS(newGrossSalary);
-      const magisterioResult = calculateMagisterio(newGrossSalary);
+      // Base imponible en CRC (convertir si el empleado/línea está en USD)
+      const isUSD = employee.currency === 'USD';
+      const exchangeRate = isUSD ? (Number(currentLine.exchange_rate_to_base) || 1) : 1;
+      const grossSalaryCRC = newGrossSalary * exchangeRate;
+
+      // Calculate deductions based on gross salary (CRC)
+      const ccssResult = calculateCCSS(grossSalaryCRC);
+      const magisterioResult = calculateMagisterio(grossSalaryCRC);
       const polizaVida = calculatePolizaVida();
-      const incomeTax = calculateIncomeTax(newGrossSalary);
+      const monthlyTaxCredit = Math.max(0, Number(employee.tax_credit_monthly || 0));
+      const incomeTax = Math.max(0, calculateIncomeTax(grossSalaryCRC) - monthlyTaxCredit);
       const loanDeduction = Number(employee.loan_monthly_deduction || 0);
 
       // Build deduction items
