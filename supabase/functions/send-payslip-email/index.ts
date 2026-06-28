@@ -238,10 +238,8 @@ serve(async (req) => {
       deductionRows.push({ label: 'Impuesto de Renta', amount: isrNeto });
     }
 
-    // Banco Popular
-    if (bancoPopular > 0) {
-      deductionRows.push({ label: 'LPT Banco Popular (1%)', amount: bancoPopular });
-    }
+    // (Banco Popular ya está incluido dentro del CCSS Obrero 10.83% — no se lista aparte)
+
 
     // Additional deductions
     if (additionalDeductions > 0) {
