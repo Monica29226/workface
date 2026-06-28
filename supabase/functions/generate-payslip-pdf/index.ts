@@ -1480,10 +1480,8 @@ function generateHorizontePositivoPayslipHTML(payslip: any, payrollLine: any, ad
       <div class="section">
         <div class="section-header">📋 Deducciones</div>
         <div class="section-body">
-          <div class="row">
-            <span class="row-label">LPT Banco Popular</span>
-            <span class="row-value deduction">-${formatUSD(lptBancoPopular)}</span>
-          </div>
+          <!-- LPT Banco Popular ya está incluido dentro del CCSS Obrero; no se lista como deducción separada -->
+
           <div class="row">
             <span class="row-label">SEM Trabajador CCSS (5.5%)</span>
             <span class="row-value deduction">-${formatUSD(semCCSS)}</span>
