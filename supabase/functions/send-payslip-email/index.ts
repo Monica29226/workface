@@ -186,9 +186,8 @@ serve(async (req) => {
     const isrNeto = detail.isr_neto != null
       ? Number(detail.isr_neto)
       : 0;
-    const bancoPopular = detail.lpt_banco_popular != null
-      ? Number(detail.lpt_banco_popular)
-      : Math.round(grossSalaryCRC * 0.01);
+    // NOTA: el CCSS obrero (10.83%) YA INCLUYE el Banco Popular (LPT 1%);
+    // no se muestra como línea separada en el desglose.
     const magisterio = isEducation && detail.magisterio != null
       ? Number(detail.magisterio)
       : (isEducation ? Math.round(grossSalaryCRC * ((companyParams?.magisterio_rate || 8.5) / 100)) : 0);
